@@ -35,11 +35,6 @@ export const USAGE = `openmausbot — your team of AI bots, ready in a few steps
   openmausbot service install [--domain HOST | --tunnel | --tailscale] [--port N] [--data-dir DIR] | uninstall
                     [--sentinel]   (the health scan below, every two minutes, instead of the server)
   openmausbot sentinel [--data-dir DIR] [--out DIR] [--once] [--json]   (read-only health scan; see --help)
-  openmausbot fleet init --domain HOST [--operator USER] | create NAME --admin EMAIL [--member EMAIL] [--brand FILE]
-                    [--anthropic-key-file FILE] [--cap USD] [--license-key KEY] [--memory 1G]
-                  | list | users NAME add|remove EMAIL [--chat-only] | suspend NAME | resume NAME
-                  | delete NAME --yes [--keep-data] | upgrade   (all take --dry-run)
-                  | agent [--socket PATH] [--group USER]   (root; installed by init --operator)
 
 setup   choose AI access and optional phone access; keep existing bots and chats
 start   same as openmausbot: use your saved settings and open the workspace
@@ -53,18 +48,9 @@ logout  releases that address and signs out
 access  who may sign in with an emailed code at /pair: an address or
         @domain; --chat-only gives chat and approvals without settings.
         Takes effect at once, no restart.
-service keep the server running across reboots: writes a systemd unit
-        (Linux) or a launchd agent (macOS) for the same serve options and
-        prints the commands that install it. Install the package
-        permanently first (npm install -g openmausbot).
-fleet   many client workspaces on one Linux server, each its own account,
-        service, data folder, brand, sign-in list and keys at NAME.HOST
-        behind the system Caddy. Plans are printed unless run as root;
-        --dry-run always prints. Install the package permanently first.
-        init --operator USER also installs the fleet agent, a root service
-        on a Unix socket only USER may open, so the workspace running as
-        USER manages the others from Settings → Installations.
-
+service keep the server running across reboots: writes a launchd agent
+        for macOS, or prints the Task Scheduler command on Windows.
+        Install the package permanently first (npm install -g openmausbot).
 --tailscale  serve over your tailnet: Tailscale terminates HTTPS and the
              link uses this machine's MagicDNS name (needs Tailscale signed in
              and HTTPS certificates enabled for the tailnet)

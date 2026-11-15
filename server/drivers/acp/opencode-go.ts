@@ -727,7 +727,6 @@ const support = (loadCatalog: OpenCodeCatalogLoader): AcpSupport => ({
   install: {
     command: {
       darwin: "npm install -g opencode-ai",
-      linux: "npm install -g opencode-ai",
       win32: "npm install -g opencode-ai",
     },
     docsUrl: "https://opencode.ai/docs/",

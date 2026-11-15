@@ -80,7 +80,6 @@ export const MinimaxDriver: ProviderDriver<MinimaxConfig> = {
     docsUrl: "https://platform.minimax.io/docs/token-plan/minimax-cli",
     command: {
       darwin: "npm install -g mmx-cli",
-      linux: "npm install -g mmx-cli",
       win32: "npm install -g mmx-cli",
     },
     signInCommand: "mmx auth login --api-key YOUR_MINIMAX_API_KEY",

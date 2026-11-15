@@ -15,7 +15,6 @@ import { shortcutLabel } from "./ShortcutHint";
 import { UsageSection } from "./UsageSection";
 import { SkillsSection } from "./SkillsSection";
 import { LicenseExpiryBanner } from "./LicenseExpiryBanner";
-import { WorkspacesSection, workspacesAvailable } from "./WorkspacesSection";
 import { SkinPicker } from "./SkinPicker";
 import { ChatWidthRow, FontRow } from "./AppearanceSelectRows";
 import { setColorUserBubbles, useColorUserBubbles } from "@/lib/user-bubble-preference";
@@ -59,7 +58,6 @@ export const SECTIONS: Array<{
   { id: "desktopWorkspaces", group: "computers", labelKey: "settings.section.desktopWorkspaces", icon: Building2, keywords: ["workspace", "cloud", "hosted", "server", "servers", "connect", "pair", "switch", "local"] },
   { id: "organization", group: "account", labelKey: "settings.section.organization", icon: Building2, keywords: ["company", "organization", "organisation", "sign in", "enroll", "managed", "models", "disconnect"] },
   { id: "usage", group: "account", labelKey: "settings.section.usage", icon: Coins, keywords: ["tokens", "cost", "billing", "plan", "quota", "remaining", "weekly", "5-hour", "model", "used"] },
-  { id: "workspaces", group: "account", labelKey: "settings.section.workspaces", icon: Building2, keywords: ["clients", "tenants", "fleet", "workspaces", "installation", "installations"] },
 ];
 
 export function sectionMatches(section: (typeof SECTIONS)[number], query: string): boolean {
@@ -281,9 +279,7 @@ export function SettingsModal() {
   const q = query.trim().toLowerCase();
   const baseSections = SECTIONS.filter((entry) => !remoteActive || entry.id === "companion" || entry.id === "appearance" || entry.id === "desktopWorkspaces")
     .filter((entry) => entry.id !== "desktopWorkspaces" || Boolean(window.ogb?.environments))
-    .filter((entry) => entry.id !== "organization" || Boolean(window.ogb?.organization))
-
-    .filter((entry) => entry.id !== "workspaces" || workspacesAvailable(state.config));
+    .filter((entry) => entry.id !== "organization" || Boolean(window.ogb?.organization));
   const availableSections = baseSections.filter((entry) => entry.id !== "skills" || skillsLibraryEnabled(state.config));
   const visibleSections = availableSections.filter((entry) => sectionMatches(entry, q));
 
@@ -399,8 +395,6 @@ export function SettingsModal() {
         return <UsageSection />;
       case "skills":
         return skillsLibraryEnabled(state.config) ? <SkillsSection /> : null;
-      case "workspaces":
-        return <WorkspacesSection />;
       default:
         return null;
     }

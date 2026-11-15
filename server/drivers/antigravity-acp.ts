@@ -204,7 +204,7 @@ export class AntigravityAcpClient {
     this.onAuthorizationUrl = onAuthorizationUrl;
     this.child = spawnCli(
       runtime.executablePath,
-      process.platform === "linux" ? ["--uid="] : [],
+      [],
       { cwd, env: profile.environment, stdio: ["pipe", "pipe", "pipe"] },
       "bot",
     );

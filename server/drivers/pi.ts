@@ -401,7 +401,6 @@ export function createPiDriver(runtime: PiRuntime): ProviderDriver<PiConfig> {
   } : {
     command: {
       darwin: "npm install -g @earendil-works/pi-coding-agent",
-      linux: "npm install -g @earendil-works/pi-coding-agent",
       win32: "npm install -g @earendil-works/pi-coding-agent",
     },
     needsNode: true,

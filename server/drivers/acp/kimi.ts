@@ -486,7 +486,6 @@ const support: AcpSupport = {
   install: {
     command: {
       darwin: "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash",
-      linux: "curl -fsSL https://code.kimi.com/kimi-code/install.sh | bash",
       win32: "irm https://code.kimi.com/kimi-code/install.ps1 | iex",
     },
     docsUrl: "https://moonshotai.github.io/kimi-code/en/guides/getting-started.html",

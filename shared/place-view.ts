@@ -71,7 +71,7 @@ export interface PlaceView {
 }
 
 /** Where this server runs, as the Auto line describes it. */
-export type ServerKind = "my-cloud" | "mac" | "pc" | "linux";
+export type ServerKind = "my-cloud" | "mac" | "pc";
 
 /** The facts a place's state is read from. */
 export interface PlaceFacts {
@@ -113,7 +113,6 @@ export const PLACE_EN = {
   "place.view.auto.short": "Chooses for you",
   "place.view.auto.lineMyCloud": "Uses the built-in browser. In a chat, it starts its cloud computer by itself when a task needs desktop apps.",
   "place.view.auto.lineDesktop": "Uses the built-in browser, a private desktop on this computer, or this computer's screen, whichever the task needs.",
-  "place.view.auto.lineLinux": "Uses the built-in browser, or a configured computer when a task needs a desktop.",
   "place.view.autoTeam.short": "Shared",
   "place.view.autoTeam.line": "Uses {computer}, the cloud computer this team shares.",
   "place.view.ccCannot.short": "Not with this model",
@@ -324,7 +323,7 @@ function sourceAction(source: PlaceSource): PlaceActionId | null {
 function lineKey(state: PlaceState, params: PlaceParams, server?: ServerKind): PlaceKey {
   const segment = STATE[state].key;
   if (state === "auto") {
-    return server === "my-cloud" ? "place.view.auto.lineMyCloud" : server === "linux" ? "place.view.auto.lineLinux" : "place.view.auto.lineDesktop";
+    return server === "my-cloud" ? "place.view.auto.lineMyCloud" : "place.view.auto.lineDesktop";
   }
   if (state === "cc-sign-in" && server === "my-cloud") return "place.view.ccSignIn.lineMyCloud";
   // A refusal read from a code alone has no numbers or names to give.

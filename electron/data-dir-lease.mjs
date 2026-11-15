@@ -32,13 +32,6 @@ function isPid(value) {
 let cachedBootSession;
 
 function readBootSession() {
-  try {
-    if (process.platform === "linux") {
-      return normalizeBootId(readFileSync("/proc/sys/kernel/random/boot_id", "utf8"));
-    }
-    
-  } catch {
-  }
   return null;
 }
 

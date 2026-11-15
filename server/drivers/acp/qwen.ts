@@ -219,7 +219,6 @@ const support: AcpSupport = {
   install: {
     command: {
       darwin: "curl -fsSL https://qwen-code-assets.oss-cn-hangzhou.aliyuncs.com/installation/install-qwen-standalone.sh | bash",
-      linux: "curl -fsSL https://qwen-code-assets.oss-cn-hangzhou.aliyuncs.com/installation/install-qwen-standalone.sh | bash",
       win32: "irm https://qwen-code-assets.oss-cn-hangzhou.aliyuncs.com/installation/install-qwen-standalone.ps1 | iex",
     },
     docsUrl: "https://qwenlm.github.io/qwen-code-docs/en/users/overview/",

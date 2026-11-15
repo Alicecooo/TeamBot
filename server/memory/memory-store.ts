@@ -308,7 +308,7 @@ export async function openMemoryLocation(
     command = target === "obsidian" ? "rundll32.exe" : "explorer.exe";
     args = target === "obsidian" ? ["url.dll,FileProtocolHandler", location] : [location];
   } else {
-    command = "xdg-open";
+    command = "open";
     args = [location];
   }
   const code = await run(command, args);

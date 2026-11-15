@@ -124,7 +124,7 @@ export interface SendTurnInput {
       command: string;
       args: string[];
       env: Record<string, string>;
-      platform?: "darwin" | "linux" | "win32";
+      platform?: "darwin" | "win32";
       generation?: string;
       scope?: "local-computer";
     };
@@ -274,9 +274,9 @@ export interface ProviderSnapshot {
 // How a user installs this engine; onboarding, the picker and settings render from it.
 export interface EngineInstall {
   /** Added by the registry: commands run on this server, not its web client. */
-  platform?: "darwin" | "win32" | "linux";
+  platform?: "darwin" | "win32";
   /** One-liner per platform; omit a platform with no such command and the UI falls back to docsUrl. */
-  command?: Partial<Record<"darwin" | "win32" | "linux", string>>;
+  command?: Partial<Record<"darwin" | "win32", string>>;
   /** Docs or download page. The only route for GUI-installed engines. */
   docsUrl?: string;
   /** Interactive sign-in run after installing, when install isn't enough. */

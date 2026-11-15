@@ -11,16 +11,15 @@ export function releaseNotesText(notes) {
   return trimmed ? trimmed.slice(0, 8000) : undefined;
 }
 
-export function createUpdaterCoordinator(updater, setState, { handOffInstall = null, nativeStaging = false } = {}) {
+export function createUpdaterCoordinator(updater, setState, { nativeStaging = false } = {}) {
   let checkOperation = null;
-  let downloadedFiles = null;
   let downloadOperation = null;
   let installOperation = null;
   let nativeStagingStarted = false;
   let nativeReady = false;
   // Squirrel has no cancellation or attempt ID: a retry could consume a failed attempt's late ready event.
   let recoveryRequired = false;
-  // A staged update, hand-off or failed action stays until the person acts; hourly checks must not replace it.
+  // A staged update or failed action stays until the person acts; hourly checks must not replace it.
   let actionOwnsState = false;
   const routedErrors = new WeakSet();
 
@@ -151,9 +150,6 @@ export function createUpdaterCoordinator(updater, setState, { handOffInstall = n
     try {
       void Promise.resolve(updater.downloadUpdate())
         .then((result) => {
-          if (!operation.failed) {
-            downloadedFiles = Array.isArray(result) ? result.filter((file) => typeof file === "string") : null;
-          }
           if (!operation.failed && operation.downloadedInfo) {
             nativeReady = nativeStaging;
             actionOwnsState = true;
@@ -174,10 +170,6 @@ export function createUpdaterCoordinator(updater, setState, { handOffInstall = n
   function install() {
     if (recoveryRequired || installOperation || downloadOperation || (nativeStaging && !nativeReady)) return;
     actionOwnsState = true;
-    if (handOffInstall) {
-      handOff();
-      return;
-    }
     const operation = { failed: false, timer: null };
     installOperation = operation;
     setState({ status: "installing" });
@@ -196,23 +188,6 @@ export function createUpdaterCoordinator(updater, setState, { handOffInstall = n
       }, 2 * 60 * 1000);
       operation.timer.unref?.();
     }
-  }
-
-  function handOff() {
-    const operation = { failed: false, timer: null };
-    installOperation = operation;
-    setState({ status: "installing" });
-    Promise.resolve()
-      .then(() => handOffInstall(downloadedFiles))
-      .then((patch) => {
-        if (installOperation !== operation) return;
-        installOperation = null;
-        setState({ status: "handed-off", ...patch });
-      })
-      .catch((error) => {
-        if (installOperation !== operation) return;
-        routeError(true, error);
-      });
   }
 
   return { check, install };

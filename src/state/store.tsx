@@ -346,12 +346,11 @@ export type { ConfigStatus, ManagedPolicySummary };
 // A section left out here is wiped from state.config whenever a config frame lands.
 export type ConfigStatusFrame = Pick<
   ConfigStatus,
-  "fleet" | "composio" | "box" | "mcp" | "threads" | "automaticRecovery" | "cacheKeepWarm" | "profile" | "language" | "features" | "onboarding" | "edition" | "budgets" | "billing" | "managedPolicy" | "cloudHome"
+  "composio" | "box" | "mcp" | "threads" | "automaticRecovery" | "cacheKeepWarm" | "profile" | "language" | "features" | "onboarding" | "edition" | "budgets" | "billing" | "managedPolicy" | "cloudHome"
 >;
 
 export function configStatusFromFrame(frame: ConfigStatusFrame): ConfigStatus {
   return {
-    fleet: frame.fleet,
     composio: frame.composio,
     box: frame.box,
     mcp: frame.mcp,
@@ -370,8 +369,8 @@ export function configStatusFromFrame(frame: ConfigStatusFrame): ConfigStatus {
 }
 
 export interface EngineInstall {
-  platform?: "darwin" | "win32" | "linux";
-  command?: Partial<Record<"darwin" | "win32" | "linux", string>>;
+  platform?: "darwin" | "win32";
+  command?: Partial<Record<"darwin" | "win32", string>>;
   docsUrl?: string;
   signInCommand?: string;
   needsNode?: boolean;
@@ -442,7 +441,6 @@ export type AppSettingsSection =
   | "usage"
   | "activity"
   | "backups"
-  | "workspaces"
   | "skills";
 
 export type BotSettingsSection =

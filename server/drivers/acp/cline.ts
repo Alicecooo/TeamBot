@@ -60,7 +60,7 @@ const SUPPORT: AcpSupport = {
   images: true,
   loginNote: LOGIN_NOTE,
   install: {
-    command: { darwin: "npm install -g cline", linux: "npm install -g cline", win32: "npm install -g cline" },
+    command: { darwin: "npm install -g cline", win32: "npm install -g cline" },
     needsNode: true,
     docsUrl: "https://docs.cline.bot/usage/acp",
     signInCommand: "cline auth",

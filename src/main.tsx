@@ -7,7 +7,7 @@ import { applySkin, readSkin } from "./lib/skins";
 import { applyChatWidth, readChatWidth } from "./lib/chat-width";
 import { applyFont, readFont } from "./lib/fonts";
 
-import { LoginPage } from "./pair/LoginPage";
+import { LoginPage } from "./login/LoginPage";
 import { setLocale } from "./lib/i18n";
 import { languageChoice } from "./lib/language-preference";
 import "./styles.css";

@@ -219,7 +219,7 @@ export const GUEST_CLAUDE_TOOLS = ["Read", "Grep", "Glob", "Edit", "Write", "Web
 const GUEST_FORBIDDEN_TOOLS = new Set(["Bash", "PowerShell", "WebFetch", "BashOutput", "KillShell", "KillBash", "NotebookEdit", "Task", "Agent"]);
 export const GUEST_CLAUDE_PERMISSIONS = {
   blockReadsOutsideWorkingDirectories: true,
-  deny: ["Bash", "PowerShell", "WebFetch", "Read(//proc/**)"],
+  deny: ["Bash", "PowerShell", "WebFetch"],
 } as const;
 
 export type ClaudeCliVersion = readonly [number, number, number];
@@ -830,7 +830,6 @@ export const ClaudeDriver: ProviderDriver<ClaudeConfig> = {
   install: {
     command: {
       darwin: "npm install -g @anthropic-ai/claude-code",
-      linux: "npm install -g @anthropic-ai/claude-code",
       win32: "npm install -g @anthropic-ai/claude-code",
     },
     needsNode: true,

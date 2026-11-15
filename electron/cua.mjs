@@ -16,19 +16,6 @@ const { localOnly } = localOriginModule;
 
 const require = createRequire(import.meta.url);
 const { createCuaConnectionStore } = require("./cua-connection.cjs");
-const {
-  createLinuxCuaPreferenceStore,
-  createLinuxCuaRuntime,
-  createUnavailableLinuxRuntime,
-} = require("./cua-linux-runtime.cjs");
-const {
-  cleanupAppImageCuaBundle,
-  reapStaleAppImageCuaBundles,
-  stageAppImageCuaBundle,
-} = require("./cua-linux-bundle.cjs");
-const { linuxLocalControlSupport } = require("./capabilities.cjs");
-
-
 
 const HOST_BUNDLE_ID = "com.openmausbot.app";
 const CUA_ENV = { CUA_DRIVER_RS_TELEMETRY_ENABLED: "0" };
@@ -44,56 +31,10 @@ let embeddedHost = null;
 let startupAbort = null;
 let lifecycleGeneration = 0;
 let retryInFlight = null;
-let linuxRuntime = null;
-let linuxBundleStage = null;
 let stateListener = () => {};
 const connectionStore = createCuaConnectionStore({
   getUserData: () => app.getPath("userData"),
 });
-
-function ensureLinuxRuntime() {
-  if (!linuxRuntime) {
-    const support = linuxLocalControlSupport(process.platform, process.env);
-    if (!support.available) {
-      linuxRuntime = createUnavailableLinuxRuntime({
-        connectionStore,
-        preferenceStore: createLinuxCuaPreferenceStore({
-          getUserData: () => app.getPath("userData"),
-        }),
-        clearPreference: true,
-        reasonCode: support.reasonCode,
-        message: support.message,
-        onChange: (connection) => stateListener(connection),
-      });
-      return linuxRuntime;
-    }
-    try {
-      let bundledDriverPath;
-      if (app.isPackaged && !process.env.CUA_DRIVER_PATH) {
-        bundledDriverPath = path.join(process.resourcesPath, "cua-linux-x64", "cua-driver");
-        // AppImage builders may normalize the resource tree to 0755/0775: copy the pinned binaries to a fresh 0700 dir and re-verify.
-        if (process.env.APPIMAGE) {
-          reapStaleAppImageCuaBundles();
-          linuxBundleStage ??= stageAppImageCuaBundle({ resourcesPath: process.resourcesPath });
-          bundledDriverPath = linuxBundleStage.driverPath;
-        }
-      }
-      linuxRuntime = createLinuxCuaRuntime({
-        getUserData: () => app.getPath("userData"),
-        connectionStore,
-        bundledDriverPath,
-        onChange: (connection) => stateListener(connection),
-      });
-    } catch (error) {
-      console.error("[cua] Bundled Linux driver failed integrity validation:", error);
-      linuxRuntime = createUnavailableLinuxRuntime({
-        connectionStore,
-        onChange: (connection) => stateListener(connection),
-      });
-    }
-  }
-  return linuxRuntime;
-}
 
 export function setCuaStateListener(listener) {
   stateListener = typeof listener === "function" ? listener : () => {};
@@ -113,17 +54,14 @@ export function resolveWindowsDriver() {
 }
 
 export function resolveDriverBinary() {
+  if (process.platform !== "win32") return null;
   if (process.env.CUA_DRIVER_PATH) return process.env.CUA_DRIVER_PATH;
   if (app.isPackaged) {
-    const bundled = path.join(process.resourcesPath, "cua-driver" + (process.platform === "win32" ? ".exe" : ""));
+    const bundled = path.join(process.resourcesPath, "cua-driver.exe");
     if (fs.existsSync(bundled)) return bundled;
   }
-  
-  if (process.platform === "win32") {
-    const staged = path.join(app.getAppPath(), "dist-native", "cua-win32-x64", "cua-driver.exe");
-    return fs.existsSync(staged) ? staged : resolveWindowsDriver();
-  }
-  return null;
+  const staged = path.join(app.getAppPath(), "dist-native", "cua-win32-x64", "cua-driver.exe");
+  return fs.existsSync(staged) ? staged : resolveWindowsDriver();
 }
 
 export function resolveEmbeddedDriverBinary(binary) {
@@ -174,7 +112,9 @@ async function startEmbedded(binary, signal) {
 }
 
 export async function startCua() {
-  if (process.platform === "linux") return ensureLinuxRuntime().initialize();
+  if (process.platform !== "win32") {
+    return persistAndNotify({ mode: "unavailable", reason: "Windows desktop control is unavailable on this platform" });
+  }
   lifecycleGeneration++;
   startupAbort?.abort();
   startupAbort = new AbortController();
@@ -187,8 +127,7 @@ export async function startCua() {
     });
   }
 
-  const wantEmbedded =
-    process.platform === "win32" || app.isPackaged || process.env.OPENMAUSBOT_CUA_EMBEDDED === "1";
+  const wantEmbedded = process.platform === "win32" || app.isPackaged || process.env.OPENMAUSBOT_CUA_EMBEDDED === "1";
   let nextConnection;
 
   if (wantEmbedded) {
@@ -196,21 +135,10 @@ export async function startCua() {
       nextConnection = await startEmbedded(binary, signal);
     } catch (err) {
       signal.throwIfAborted();
-      try {
-        nextConnection = await null;
-      } catch (standaloneError) {
-        signal.throwIfAborted();
-        nextConnection = {
-          mode: "unavailable",
-          reason: `embedded host failed: ${err?.message ?? err}; standalone launch failed: ${standaloneError?.message ?? standaloneError}`,
-        };
-      }
-      if (!nextConnection) {
-        nextConnection = {
-          mode: "unavailable",
-          reason: `embedded host failed: ${err?.message ?? err}`,
-        };
-      }
+      nextConnection = {
+        mode: "unavailable",
+        reason: `embedded host failed: ${err?.message ?? err}`,
+      };
     }
   } else {
     nextConnection = {
@@ -245,14 +173,6 @@ export async function stopCua() {
   lifecycleGeneration++;
   startupAbort?.abort();
   startupAbort = null;
-  if (linuxRuntime) {
-    await linuxRuntime.shutdown();
-    if (linuxBundleStage) {
-      cleanupAppImageCuaBundle(linuxBundleStage);
-      linuxBundleStage = null;
-    }
-    return;
-  }
   const host = embeddedHost;
   embeddedHost = null;
   if (host) {
@@ -270,71 +190,35 @@ export async function stopCua() {
 export function registerCuaIpc() {
   ipcMain.handle("cua:connection", localOnly("cua:connection", () => connectionStore.get()));
   ipcMain.handle("cua:permissions", localOnly("cua:permissions", () => cuaPermissionsStatus()));
-  ipcMain.handle("cua:linux-status", localOnly("cua:linux-status", () =>
-    process.platform === "linux"
-      ? ensureLinuxRuntime().getStatus()
-      : { enabled: false, status: "unavailable", reasonCode: "unsupported-platform" },
-  ));
-  ipcMain.handle("cua:linux-enable", localOnly("cua:linux-enable", async () => {
-    if (process.platform !== "linux") {
+  ipcMain.handle("cua:retry", localOnly("cua:retry", async () => {
+    if (process.platform !== "win32") {
       return { enabled: false, status: "unavailable", reasonCode: "unsupported-platform" };
     }
-    try {
-      await ensureLinuxRuntime().enable();
-    } catch (error) {
-      console.error("[cua] Linux enable failed:", error);
-    }
-    return ensureLinuxRuntime().getStatus();
-  }));
-  ipcMain.handle("cua:linux-disable", localOnly("cua:linux-disable", async () => {
-    if (process.platform !== "linux") {
-      return { enabled: false, status: "unavailable", reasonCode: "unsupported-platform" };
-    }
-    try {
-      await ensureLinuxRuntime().disable();
-    } catch (error) {
-      console.error("[cua] Linux disable failed:", error);
-    }
-    return ensureLinuxRuntime().getStatus();
-  }));
-  ipcMain.handle("cua:linux-retry", localOnly("cua:linux-retry", async () => {
-    if (process.platform === "win32") {
-      // Concurrent requests share one stop/start sequence; a later explicit Stop (or quit) cancels its delayed restart.
-      const platformLabel = "Windows";
-      retryInFlight ??= (async () => {
-        try {
-          const stopping = stopCua();
-          const generation = lifecycleGeneration;
-          await stopping;
-          if (generation !== lifecycleGeneration) throw new Error("Computer use restart cancelled");
-          const connection = await startCua();
-          const ready = connection?.mode === "embedded" || connection?.mode === "standalone";
-          return {
-            enabled: ready,
-            status: ready ? "ready" : "error",
-            reasonCode: ready ? undefined : "permissions-required",
-            message: connection?.reason,
-          };
-        } catch (error) {
-          console.error(`[cua] ${platformLabel} retry failed:`, error);
-          return {
-            enabled: false,
-            status: "error",
-            reasonCode: "permissions-required",
-            message: error instanceof Error ? error.message : String(error),
-          };
-        }
-      })().finally(() => { retryInFlight = null; });
-      return retryInFlight;
-    }
-    if (process.platform !== "linux") {
-      return { enabled: false, status: "unavailable", reasonCode: "unsupported-platform" };
-    }
-    try {
-      await ensureLinuxRuntime().retry();
-    } catch (error) {
-      console.error("[cua] Linux retry failed:", error);
-    }
-    return ensureLinuxRuntime().getStatus();
+    // Concurrent requests share one stop/start sequence; a later explicit Stop (or quit) cancels its delayed restart.
+    retryInFlight ??= (async () => {
+      try {
+        const stopping = stopCua();
+        const generation = lifecycleGeneration;
+        await stopping;
+        if (generation !== lifecycleGeneration) throw new Error("Computer use restart cancelled");
+        const connection = await startCua();
+        const ready = connection?.mode === "embedded" || connection?.mode === "standalone";
+        return {
+          enabled: ready,
+          status: ready ? "ready" : "error",
+          reasonCode: ready ? undefined : "permissions-required",
+          message: connection?.reason,
+        };
+      } catch (error) {
+        console.error("[cua] Windows retry failed:", error);
+        return {
+          enabled: false,
+          status: "error",
+          reasonCode: "permissions-required",
+          message: error instanceof Error ? error.message : String(error),
+        };
+      }
+    })().finally(() => { retryInFlight = null; });
+    return retryInFlight;
   }));
 }

@@ -19,7 +19,7 @@ export type RegistryEntry =
 function withServerInstall(install: AnyProviderDriver["install"], npmPresent: boolean): AnyProviderDriver["install"] {
   if (!install) return undefined;
   const server = serverInstallFor(install, npmPresent);
-  const platform = process.platform === "darwin" || process.platform === "linux" || process.platform === "win32" ? process.platform : undefined;
+  const platform = process.platform === "darwin" || process.platform === "win32" ? process.platform : undefined;
   return { ...install, platform, ...(server ? { server } : {}) };
 }
 

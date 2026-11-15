@@ -18,8 +18,7 @@ export interface PlaceSeat {
 }
 
 export function serverKind(_config: Pick<ConfigStatus, "cloudHome"> | null | undefined, platform: DesktopCapabilities["host"]["platform"]): ServerKind {
-  
-  return platform === "win32" ? "pc" : "linux";
+  return platform === "win32" ? "pc" : "my-cloud";
 }
 
 function engineFacts(instance: InstanceInfo | undefined, model: string | undefined): PlaceFacts["engine"] {

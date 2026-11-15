@@ -40,7 +40,7 @@ export function explainTailscaleFailure(reason: TailscaleFailure): string {
     case "no-magicdns":
       return "this machine has no MagicDNS name: enable MagicDNS in the tailnet's DNS settings";
     case "needs-operator":
-      return "Tailscale refused: on Linux run `sudo tailscale set --operator=$USER` once, then try again";
+      return "Tailscale refused this operation: grant the Tailscale app or CLI the required operator permission, then try again";
     case "https-not-enabled":
       return "HTTPS certificates are off for this tailnet: enable them in the admin console (DNS → HTTPS Certificates)";
     default:
@@ -113,5 +113,5 @@ export async function tailscaleServeOff(status: TailscaleStatus, httpsPort = 443
   await run(status.cli, ["serve", `--https=${httpsPort}`, "off"], 10_000);
 }
 
-function tailscaleCandidates(): string[] { return process.platform === "win32" ? ["C:\\Program Files\\Tailscale\\tailscale.exe", "C:\\Program Files (x86)\\Tailscale\\tailscale.exe", "tailscale"] : ["/usr/local/bin/tailscale", "/usr/bin/tailscale", "/run/current-system/sw/bin/tailscale", "tailscale"]; }
+function tailscaleCandidates(): string[] { return process.platform === "win32" ? ["C:\\Program Files\\Tailscale\\tailscale.exe", "C:\\Program Files (x86)\\Tailscale\\tailscale.exe", "tailscale"] : ["tailscale"]; }
 function tailscaleEnvironment(): NodeJS.ProcessEnv { return { ...process.env }; }

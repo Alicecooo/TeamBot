@@ -6,11 +6,6 @@ const browserCapabilities: DesktopCapabilities = {
     packaged: false,
   },
   windowChrome: "native",
-  screenPreview: {
-    available: false,
-    interaction: "none",
-    reasonCode: "desktop-app-required",
-  },
   localComputer: {
     available: false,
     support: "unsupported",
@@ -29,8 +24,8 @@ export function initialDesktopCapabilities(): DesktopCapabilities {
     ...browserCapabilities,
     host: {
       ...browserCapabilities.host,
-      platform: platform === "linux" || platform === "win32" ? platform : "other",
-      label: platform === "linux" ? "Linux" : platform === "win32" ? "Windows" : "Desktop",
+      platform: platform === "win32" ? "win32" : "other",
+      label: platform === "win32" ? "Windows" : "Desktop",
     },
     windowChrome: platform === "win32" ? "win-caption" : "native"};
 }

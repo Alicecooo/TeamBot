@@ -4,7 +4,7 @@
 // cloudflared's own updater stays disabled.
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -12,20 +12,6 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 export const CLOUDFLARED_VERSION = "2026.8.2";
 
 export const CLOUDFLARED_ASSETS = Object.freeze({
-  
-  
-  "linux-x64": Object.freeze({
-    name: "cloudflared-linux-amd64",
-    sha256: "fcfb02b575a52ca1af2e3267af4e1517bcdeb30ac48c834c69abaed3c0576ad2",
-    binarySha256: "fcfb02b575a52ca1af2e3267af4e1517bcdeb30ac48c834c69abaed3c0576ad2",
-    archive: false,
-  }),
-  "linux-arm64": Object.freeze({
-    name: "cloudflared-linux-arm64",
-    sha256: "7747d94570fb390cf47dcb4f9555c193c6355cda9793f0d878d9049e5d6a7790",
-    binarySha256: "7747d94570fb390cf47dcb4f9555c193c6355cda9793f0d878d9049e5d6a7790",
-    archive: false,
-  }),
   "win32-x64": Object.freeze({
     name: "cloudflared-windows-amd64.exe",
     sha256: "c29eee2b121f5436a642eed69fd9767da7e7b8c510fa50aaa130337f931357b5",
@@ -36,8 +22,6 @@ export const CLOUDFLARED_ASSETS = Object.freeze({
 
 export function targetsForHost(platform) {
   // Desktop package targets only. Self-hosted installs use --current instead.
-  
-  if (platform === "linux") return ["linux-x64"];
   if (platform === "win32") return ["win32-x64"];
   throw new Error(`Cloudflare Tunnel packaging is unsupported on ${platform}`);
 }
@@ -88,25 +72,12 @@ export function verifySha256(value, expected, label = "cloudflared asset") {
   return actual;
 }
 
-const executableName = (target) => (target.startsWith("win32-") ? "cloudflared.exe" : "cloudflared");
+const executableName = () => "cloudflared.exe";
 
 /** Identify the target from the executable header without running it, so a
  * correctly checksummed asset is never staged into the wrong resource directory. */
 export function executableTarget(value) {
   const bytes = Buffer.isBuffer(value) ? value : Buffer.from(value);
-
-
-  // ELF64, little-endian: AMD64 (EM_X86_64 = 62) or ARM64 (EM_AARCH64 = 183).
-  if (
-    bytes.length >= 20 &&
-    bytes.subarray(0, 4).equals(Buffer.from([0x7f, 0x45, 0x4c, 0x46])) &&
-    bytes[4] === 2 &&
-    bytes[5] === 1
-  ) {
-    const machine = bytes.readUInt16LE(18);
-    if (machine === 62) return "linux-x64";
-    if (machine === 183) return "linux-arm64";
-  }
 
   // PE32+ AMD64. e_lfanew points from the DOS header to PE\0\0.
   if (bytes.length >= 0x40 && bytes[0] === 0x4d && bytes[1] === 0x5a) {
@@ -245,8 +216,6 @@ async function stageTarget(root, target) {
       writeFileSync(candidate, payload, { mode: 0o700 });
     }
     if (!existsSync(candidate)) throw new Error(`${asset.name} did not contain cloudflared`);
-    if (!target.startsWith("win32-")) chmodSync(candidate, 0o700);
-
     verifyCloudflaredExecutable(candidate, target);
 
     const parent = dirname(finalDirectory);
@@ -254,11 +223,6 @@ async function stageTarget(root, target) {
     const stagedDirectory = mkdtempSync(join(parent, `.${target}-`));
     const stagedBinary = join(stagedDirectory, executableName(target));
     copyFileSync(candidate, stagedBinary);
-    if (!target.startsWith("win32-")) {
-      // copyFile preserves the source mode on Unix in current Node, but make
-      // the executable contract explicit instead of depending on that detail.
-      chmodSync(stagedBinary, 0o755);
-    }
     writeFileSync(
       join(stagedDirectory, "manifest.json"),
       `${JSON.stringify(expectedManifest(target), null, 2)}\n`,

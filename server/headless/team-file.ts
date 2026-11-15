@@ -118,7 +118,7 @@ export function loadTeamFile(path: string): TeamFile {
 
 const REDACTED = /«redacted \d+ chars»/;
 
-/** A Windows checkout has CRLF where Linux CI has LF: both must apply the same. */
+/** A Windows checkout may have CRLF: both line endings apply the same. */
 const lf = (text: string) => text.replace(/\r\n?/g, "\n");
 
 const readRelative = (dir: string, path: string, what: string): string => {

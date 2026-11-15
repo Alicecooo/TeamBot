@@ -4,8 +4,7 @@ import { loadBrand } from "../deployment/brand.ts";
 
 import { DATA_DIR, EVENTS_DIR, NATIVE_DIR, instanceConfigs, type AppConfig } from "../config/config.ts";
 import { decisionsCsv, readDecisionRange, readDecisions } from "../observability/decision-log.ts";
-import { editionForMembers, editionStatus, entitled } from "../deployment/enterprise.ts";
-import { fleetAvailable, fleetRequest, fleetSocketPath } from "../deployment/fleet-client.ts";
+import { editionForMembers, editionStatus } from "../deployment/enterprise.ts";
 import type { OutboundCounts } from "../usage/outbound-counts.ts";
 import { loadPlanUsage, planAccountsFromInstances } from "../usage/plan-usage.ts";
 import type { Store } from "../storage/store.ts";
@@ -30,7 +29,7 @@ export function createStatusRoutes(deps: StatusRouteDeps): RouteHandler {
     store, cfg, outboundCounts, staticDir: STATIC_DIR, sharedWorkspaceFullAccessEnabled,
 
   } = deps;
-  return async ({ req, res, url, path, method, auth, json, readBody }) => {
+  return async ({ res, url, path, method, auth, json }) => {
     let m: RegExpMatchArray | null = null;
     // The packaged app's port fallback: the forked child proves it is ours by echoing its pid.
     if (method === "GET" && path === "/api/health") {
@@ -40,29 +39,6 @@ export function createStatusRoutes(deps: StatusRouteDeps): RouteHandler {
       } });
     }
     // JSON-only, so a form posted from another local page cannot start the install. One install at a time.
-
-    // Admin scope plus the `admin` entitlement; the socket's own permissions decide whether this workspace may drive the agent.
-    const fleetRoute = /^\/api\/fleet(?:\/(workspaces(?:\/([a-z0-9-]+)(?:\/(users|suspend|resume))?)?|upgrade))?$/.exec(path);
-    if (fleetRoute) {
-      if (!entitled("admin")) return json(res, 403, { error: "Workspaces need an enterprise licence with the admin feature." });
-      const socket = fleetSocketPath();
-      if (!fleetAvailable(socket)) return json(res, 404, { error: "No fleet agent on this server. Run `openmausbot fleet init --domain … --operator <this user>` as root." });
-      const [, resource, slug, sub] = fleetRoute;
-      let forward: { method: string; path: string; body?: unknown } | null = null;
-      if (method === "GET" && !resource) forward = { method: "GET", path: "/workspaces" };
-      else if (method === "POST" && resource === "workspaces") forward = { method: "POST", path: "/workspaces", body: await readBody(req, 256 * 1024) };
-      else if (method === "POST" && resource === "upgrade") forward = { method: "POST", path: "/upgrade" };
-      else if (slug && method === "POST" && (sub === "users" || sub === "suspend" || sub === "resume")) forward = { method: "POST", path: `/workspaces/${slug}/${sub}`, ...(sub === "users" ? { body: await readBody(req, 8192) } : {}) };
-      else if (slug && method === "DELETE" && !sub) forward = { method: "DELETE", path: `/workspaces/${slug}`, body: await readBody(req, 8192) };
-      if (!forward) return json(res, 405, { error: "no such fleet operation" });
-      res.setHeader("cache-control", "no-store");
-      try {
-        const reply = await fleetRequest(socket, forward.method, forward.path, forward.body);
-        return json(res, reply.status, reply.body ?? {});
-      } catch (error) {
-        return json(res, 502, { error: error instanceof Error ? error.message : String(error) });
-      }
-    }
 
     if (method === "GET" && path === "/api/edition") {
       // A member learns what is entitled; when the key lapses is for admins.

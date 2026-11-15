@@ -1,11 +1,9 @@
 // macOS auto-update requires a signed app, so this runs only when packaged. electron-updater is vendored
 // because the packaged app ships no node_modules.
-import { app, clipboard, ipcMain } from "electron";
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { app, ipcMain } from "electron";
+import { appendFileSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { HAND_OFF_PACKAGE_TYPES, linuxPackageType, packageInstallCommand, stagedInstallFile } from "./package-install-command.mjs";
-import { openBlankTerminal } from "./terminal-launch.mjs";
 import { createUpdaterCoordinator } from "./updater-coordinator.mjs";
 
 const require = createRequire(import.meta.url);
@@ -30,19 +28,6 @@ function updaterLogger() {
     }
   };
   return Object.fromEntries(["debug", "info", "warn", "error"].map((level) => [level, (...values) => write(level, values)]));
-}
-
-// electron-updater would install a .deb through a polkit root prompt and `dpkg -i` (no dependency resolution) over the running app.
-const HAND_OFF_TYPES = new Set(HAND_OFF_PACKAGE_TYPES);
-
-// The command is never executed for the person, so nothing here becomes a process argument.
-export function handOffDownloadedPackage(packageType) {
-  return async (files) => {
-    const target = stagedInstallFile(files);
-    const command = packageInstallCommand(packageType, target);
-    clipboard.writeText(command);
-    return { command, terminalOpened: await openBlankTerminal() };
-  };
 }
 
 function setState(patch) {
@@ -91,14 +76,10 @@ export function startUpdater() {
   autoUpdater.autoDownload = false;
   autoUpdater.logger = updaterLogger();
 
-  // Broadcast the install flavour before the first check so the banner never offers a restart it cannot deliver.
-  const packageType = linuxPackageType({ readMarker: (file) => (existsSync(file) ? readFileSync(file, "utf8") : null) });
-  const handOff = HAND_OFF_TYPES.has(packageType);
-  // On macOS this also starts Squirrel.Mac's native staging at once; a system package is never installed on quit.
-  autoUpdater.autoInstallOnAppQuit = !handOff;
-  setState({ installMode: handOff ? "handoff" : "restart" });
+  // macOS starts Squirrel.Mac's native staging at once; Windows restarts into the NSIS update.
+  autoUpdater.autoInstallOnAppQuit = true;
+  setState({ installMode: "restart" });
   updaterCoordinator = createUpdaterCoordinator(autoUpdater, setState, {
-    handOffInstall: handOff ? handOffDownloadedPackage(packageType) : null,
     nativeStaging: process.platform === "darwin",
   });
 

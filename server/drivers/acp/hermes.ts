@@ -361,7 +361,6 @@ const support: AcpSupport = {
   install: {
     command: {
       darwin: "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
-      linux: "curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
       win32: "iex (irm https://hermes-agent.nousresearch.com/install.ps1)",
     },
     docsUrl: "https://hermes-agent.nousresearch.com/docs/getting-started/quickstart",

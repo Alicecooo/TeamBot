@@ -551,7 +551,6 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
   install: {
     command: {
       darwin: "npm install -g @openai/codex",
-      linux: "npm install -g @openai/codex",
       win32: "npm install -g @openai/codex",
     },
     needsNode: true,

@@ -72,13 +72,8 @@ const bridge = {
     setMode: (botId, mode, options) => ipcRenderer.invoke("approvals:set-trusted-mode", botId, mode, options),
   },
   localControl: {
-    status: () => ipcRenderer.invoke("cua:linux-status"),
-    enable: () => ipcRenderer.invoke("cua:linux-enable"),
-    disable: () => ipcRenderer.invoke("cua:linux-disable"),
-    retry: () => ipcRenderer.invoke("cua:linux-retry"),
+    retry: () => ipcRenderer.invoke("cua:retry"),
   },
-  /** Arms exactly one display-media request from the current renderer frame. */
-  beginScreenPreviewIntent: () => ipcRenderer.sendSync("screen:preview-intent"),
   screenFrame: () => ipcRenderer.invoke("screen:frame"),
   onOpenAppSettings: (cb) => {
     appSettingsListeners.add(cb);

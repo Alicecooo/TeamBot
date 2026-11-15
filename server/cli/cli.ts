@@ -27,19 +27,16 @@ import { writeFileAtomic } from "../storage/atomic.ts";
 import { ensureCaddy, normalizeDomainOption, startCaddy, type RunningCaddy } from "../network/caddy.ts";
 import { runServiceCommand } from "./service-cli.ts";
 import { runSentinelCli } from "../sentinel/cli.ts";
-import { runFleetCommand, type FleetInput } from "../deployment/fleet-cli.ts";
-import { startFleetAgent } from "../deployment/fleet-agent.ts";
-import { fleetLayout } from "../deployment/fleet.ts";
 import { explainTailscaleFailure, tailscaleServe, tailscaleServeOff, tailscaleStatus, type TailscaleStatus } from "../network/tailscale.ts";
 import { SetupCancelled, type SetupIo } from "./cli-prompts.ts";
 import { HEADLESS_VERB_NAMES, USAGE } from "./cli-usage.ts";
 import type { AppConfig } from "../config/config.ts";
-import { cleanupTunnelOrigin, createTunnelAccount, createTunnelOrigin, describeTunnelAccount, describeTunnelState, ensureCloudflared, FLEET_CREDENTIAL_ENV, fleetAccess, fleetCredential, guardianEntry, startTunnel, tunnelAccess, type CompanionOriginEndpoint, type ManagedTunnelAccess, type RunningTunnel, type TunnelAccount, type TunnelRecovery } from "../network/tunnel.ts";
+import { cleanupTunnelOrigin, createTunnelAccount, createTunnelOrigin, describeTunnelAccount, describeTunnelState, ensureCloudflared, guardianEntry, startTunnel, tunnelAccess, type CompanionOriginEndpoint, type ManagedTunnelAccess, type RunningTunnel, type TunnelAccount, type TunnelRecovery } from "../network/tunnel.ts";
 
 const HERE = SERVER_ROOT;
 
 export interface CliOptions {
-  command: "setup" | "start" | "serve" | "sessions" | "status" | "login" | "logout" | "access" | "service" | "fleet" | "help";
+  command: "setup" | "start" | "serve" | "sessions" | "status" | "login" | "logout" | "access" | "service" | "help";
   port: number;
   dataDir: string;
   label?: string;
@@ -58,8 +55,6 @@ export interface CliOptions {
   serviceAction?: "install" | "uninstall";
   sentinel?: boolean;
   email?: string;
-  /** `fleet init|create|list|users|suspend|resume|delete|upgrade|agent` */
-  fleetAction?: FleetInput["action"] | "agent";
   operator?: string;
   socket?: string;
   group?: string;
@@ -74,7 +69,6 @@ export interface CliOptions {
   dryRun?: boolean;
   yes?: boolean;
   keepData?: boolean;
-  fleetUserAction?: "add" | "remove";
   withDeps?: boolean;
   json: boolean;
   /** Explicitly ignore saved remote access for this launch. */
@@ -84,7 +78,7 @@ export interface CliOptions {
   
 }
 
-const COMMANDS = ["setup", "start", "serve", "sessions", "status", "login", "logout", "access", "service", "fleet", "help", "--help", "-h"];
+const COMMANDS = ["setup", "start", "serve", "sessions", "status", "login", "logout", "access", "service", "help", "--help", "-h"];
 
 export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env): CliOptions | { error: string } {
   const implicitStart = !argv.length || (argv[0]!.startsWith("--") && argv[0] !== "--help");
@@ -136,12 +130,6 @@ export function parseArgs(argv: string[], env: NodeJS.ProcessEnv = process.env):
   if (options.command === "service" && !options.serviceAction) return { error: "service needs one of: install [the same options as serve], uninstall" };
   if (options.domain && (options.tailscale || options.tunnel || options.publicUrl)) return { error: "--domain already gives the server its address; drop --tailscale, --tunnel and --public-url" };
   if (options.local && (options.tailscale || options.tunnel || options.publicUrl)) return { error: "--local cannot be combined with a remote-access option" };
-  if (options.command === "fleet") {
-    if (!options.fleetAction) return { error: "fleet needs one of: init --domain HOST [--operator USER], create NAME --admin EMAIL, list, users NAME add|remove EMAIL, suspend NAME, resume NAME, delete NAME --yes, upgrade, agent" };
-    if (["create", "users", "suspend", "resume", "delete"].includes(options.fleetAction) && !options.slug) return { error: `fleet ${options.fleetAction} needs a workspace name` };
-    if (options.fleetAction === "users" && !options.fleetUserAction) return { error: "fleet users needs: NAME add|remove EMAIL [--chat-only]" };
-    if (options.cap !== undefined && (!Number.isFinite(options.cap) || options.cap < 0)) return { error: "--cap must be a dollar amount of 0 or more" };
-  }
   return options;
 }
 
@@ -217,9 +205,9 @@ export async function isWorkspaceRunning(options: CliOptions): Promise<boolean> 
 
 /** No shell commands, credentials or remote URLs go to the OS URL opener. */
 export async function openDashboard(port: number, env = process.env): Promise<boolean> {
-  if (env.SSH_CONNECTION || env.SSH_TTY || (process.platform === "linux" && !env.DISPLAY && !env.WAYLAND_DISPLAY)) return false;
+  if (env.SSH_CONNECTION || env.SSH_TTY) return false;
   const url = `http://127.0.0.1:${port}`;
-  const command = process.platform === "win32" ? "rundll32.exe" : "xdg-open";
+  const command = process.platform === "win32" ? "rundll32.exe" : "open";
   const args = process.platform === "win32" ? ["url.dll,FileProtocolHandler", url] : [url];
   return new Promise((done) => {
     const child = spawn(command, args, { stdio: "ignore", windowsHide: true });
@@ -320,8 +308,7 @@ export async function runStatus(options: CliOptions, io: CliIo = defaultIo()): P
   }
   if (!options.json) {
     const account = describeTunnelAccount(createTunnelAccount({ dataDir: options.dataDir, version: serverVersion() }).credentials.read());
-    if (fleetCredential()) io.log(`public address: managed by the fleet (${FLEET_CREDENTIAL_ENV} is set; the address is fetched when serve --tunnel starts)`);
-    else if (account.address) io.log(`public address: ${account.address} (signed in as ${account.email ?? "?"}; serve it with --tunnel)`);
+    if (account.address) io.log(`public address: ${account.address} (signed in as ${account.email ?? "?"}; serve it with --tunnel)`);
   }
   return code;
 }
@@ -382,7 +369,6 @@ export async function runAccess(options: CliOptions, io: CliIo = defaultIo()): P
 
 export async function runLogin(options: CliOptions, io: CliIo = defaultIo()): Promise<number> {
   const account = createTunnelAccount({ dataDir: options.dataDir, version: serverVersion() });
-  if (fleetCredential()) io.log(`note: ${FLEET_CREDENTIAL_ENV} is set, so serve --tunnel will use that credential rather than this account`);
   if (account.credentials.status === "unavailable") {
     io.error(`${account.credentials.file} exists but could not be read; fix or remove it, then try again`);
     return 1;
@@ -475,31 +461,21 @@ async function planTunnel(options: CliOptions, log: (line: string) => void, reco
     account?.service.dispose();
     return { error };
   };
-  const credential = fleetCredential();
-  if (credential) {
-    log(`tunnel: using the installation credential from ${FLEET_CREDENTIAL_ENV}`);
-    try {
-      access = await fleetAccess({ credential, version: serverVersion() });
-    } catch (error) {
-      return { error: `--tunnel: ${message(error)}` };
-    }
-  } else {
-    account = createTunnelAccount({ dataDir: options.dataDir, version: serverVersion(), recovery, log: (line) => log(`tunnel: ${line}`) });
-    if (account.credentials.status === "unavailable") return fail(`${account.credentials.file} exists but could not be read; fix or remove it`);
-    if (!describeTunnelAccount(account.credentials.read()).email) {
-      return fail("no account on this machine yet: run `openmausbot login` first, then `openmausbot serve --tunnel`");
-    }
-    try {
-      const state = await account.service.retry();
-      const saved = tunnelAccess(account.credentials.read()) !== null;
-      if (state.status === "signed-out") log(`tunnel: the sign-in on this machine expired; run \`openmausbot login\` to renew it${saved ? " (serving the saved address until then)" : ""}`);
-      else if (state.message) log(`tunnel: ${state.message}${saved ? " Serving the saved address for now." : ""}`);
-    } catch (error) {
-      log(`tunnel: control plane not reachable right now (${message(error)}); using the saved address`);
-    }
-    access = tunnelAccess(account.credentials.read());
-    if (!access) return fail("this machine has no public address; run `openmausbot login` again");
+  account = createTunnelAccount({ dataDir: options.dataDir, version: serverVersion(), recovery, log: (line) => log(`tunnel: ${line}`) });
+  if (account.credentials.status === "unavailable") return fail(`${account.credentials.file} exists but could not be read; fix or remove it`);
+  if (!describeTunnelAccount(account.credentials.read()).email) {
+    return fail("no account on this machine yet: run `openmausbot login` first, then `openmausbot serve --tunnel`");
   }
+  try {
+    const state = await account.service.retry();
+    const saved = tunnelAccess(account.credentials.read()) !== null;
+    if (state.status === "signed-out") log(`tunnel: the sign-in on this machine expired; run \`openmausbot login\` to renew it${saved ? " (serving the saved address until then)" : ""}`);
+    else if (state.message) log(`tunnel: ${state.message}${saved ? " Serving the saved address for now." : ""}`);
+  } catch (error) {
+    log(`tunnel: control plane not reachable right now (${message(error)}); using the saved address`);
+  }
+  access = tunnelAccess(account.credentials.read());
+  if (!access) return fail("this machine has no public address; run `openmausbot login` again");
   let binary: string;
   try {
     binary = await ensureCloudflared({ dataDir: options.dataDir, log });
@@ -806,42 +782,6 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       return runServiceCommand({
         action: options.serviceAction ?? "install", dataDir: options.dataDir, port: options.port, domain: options.domain, tunnel: options.tunnel,
         tailscale: options.tailscale, label: options.label, sentinel: options.sentinel, script: process.argv[1] ?? "", node: process.execPath,
-      }, { log: (line) => console.log(line), error: (line) => console.error(line) });
-    case "fleet":
-      if (options.fleetAction === "agent") {
-        const layout = fleetLayout();
-        await startFleetAgent({
-          socketPath: options.socket ?? layout.socketPath,
-          group: options.group,
-          node: process.execPath,
-          script: process.argv[1] ?? "",
-          licenseKey: options.licenseKey ?? process.env.OMB_LICENSE_KEY,
-        }, { log: (line) => console.log(line) });
-        await new Promise<void>((resolveStop) => {
-          for (const signal of ["SIGTERM", "SIGINT"] as const) process.once(signal, () => resolveStop());
-        });
-        return 0;
-      }
-      return runFleetCommand({
-        action: options.fleetAction as FleetInput["action"],
-        slug: options.slug,
-        domain: options.domain,
-        operator: options.operator ?? process.env.SUDO_USER,
-        admins: options.admins ?? [],
-        members: options.members ?? [],
-        brandFile: options.brandFile,
-        anthropicKeyFile: options.anthropicKeyFile,
-        cap: options.cap,
-        licenseKey: options.licenseKey ?? process.env.OMB_LICENSE_KEY,
-        memory: options.memory,
-        dryRun: options.dryRun ?? false,
-        yes: options.yes ?? false,
-        keepData: options.keepData ?? false,
-        userAction: options.fleetUserAction,
-        email: options.email,
-        chatOnly: options.chatOnly,
-        node: process.execPath,
-        script: process.argv[1] ?? "",
       }, { log: (line) => console.log(line), error: (line) => console.error(line) });
     case "logout":
       return runLogout(options);

@@ -27,7 +27,7 @@ export function registerEnginesBinDir(baseDir = DATA_DIR): void {
 }
 
 export function npmPackageOf(install: EngineInstall | undefined): string | null {
-  const line = install?.command?.linux ?? install?.command?.darwin ?? install?.command?.win32;
+  const line = install?.command?.darwin ?? install?.command?.win32;
   const match = line ? /^npm install -g ((?:@[\w.-]+\/)?[\w.-]+)$/.exec(line.trim()) : null;
   return match ? match[1]! : null;
 }

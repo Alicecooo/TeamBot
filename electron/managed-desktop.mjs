@@ -459,7 +459,7 @@ export function createManagedDesktopClient({ store, applyConnection, applyPolicy
       if (clearing) throw new Error("Wait for company sign-out to finish before starting another sign-in.");
       if (closed || grant || issuedGrant || cleanupNeeded) throw new Error("Disconnect your current organization before connecting another.");
       const portalOrigin = managedPortalOrigin(input?.portalOrigin);
-      if (!safeText(deviceName, 100) || !["darwin", "win32", "linux"].includes(platform)) throw new Error("This desktop platform is not supported.");
+      if (!safeText(deviceName, 100) || !["darwin", "win32"].includes(platform)) throw new Error("This desktop platform is not supported.");
       const stamp = reset();
       publish({ status: "connecting" });
       try {

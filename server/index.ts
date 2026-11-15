@@ -65,7 +65,6 @@ import { ledgerCost } from "./model-catalog/model-prices.ts";
 import type { PriceList } from "./usage/prices.ts";
 import type { RequestAuth } from "./auth/request-auth.ts";
 import { assertWithinBudget, noteSpend, spendAlertText, spendState, takeSpendAlert } from "./usage/spend.ts";
-import { fleetAvailable, fleetSocketPath } from "./deployment/fleet-client.ts";
 import { HOSTED_CONTRACT_HEADER, HOSTED_CONTRACT_METADATA, HOSTED_CONTRACT_VERSION } from "./deployment/hosted-contract.ts";
 import { describeSpawnFailure, execCli } from "./platform/procs.ts";
 import { buildNotification, buildSpendNotification, type Notification } from "./observability/notify.ts";
@@ -6651,7 +6650,6 @@ function configStatus() {
   const eventLogMaxBytes = threadEventLogMaxBytes(cfg);
   const eventLogRetentionDays = threadEventLogRetentionDays(cfg);
   return {
-    fleet: { available: fleetAvailable(fleetSocketPath()) },
     edition: editionForSettings(editionStatus()),
     budgets: {
       ...(cfg.budgets?.monthlyUsd !== undefined ? { monthlyUsd: cfg.budgets.monthlyUsd } : {}),

@@ -26,28 +26,6 @@ const RELEASES = new Map<string, AntigravityReleaseAsset>([
     },
   ],
   [
-    "linux-x64",
-    {
-      version: ANTIGRAVITY_RELEASE_VERSION,
-      url: "https://dl.google.com/agy-extensions/releases/linux/agy-acp-server-agy_acp_server_1.1.1-linux-x86_64.zip",
-      sha256: "38f62d01b32deb0907b3d39a71ec301fd36369f6ffd1cf262d4af385177f79df",
-      archiveBytes: 681_969_407,
-      executable: { name: "agy_acp_server.par", bytes: 1_880_360_328 },
-      harness: { name: "localharness_external", bytes: 128_966_920 },
-    },
-  ],
-  [
-    "linux-arm64",
-    {
-      version: ANTIGRAVITY_RELEASE_VERSION,
-      url: "https://dl.google.com/agy-extensions/releases/linux/agy-acp-server-agy_acp_server_1.1.1-linux-arm64.zip",
-      sha256: "ed69e64b308fcb123ab54bf3277bf9cb0d651064f885ea5aab0ff520c7175398",
-      archiveBytes: 656_572_786,
-      executable: { name: "agy_acp_server.par", bytes: 1_862_073_131 },
-      harness: { name: "localharness_external", bytes: 122_158_704 },
-    },
-  ],
-  [
     "win32-x64",
     {
       version: ANTIGRAVITY_RELEASE_VERSION,

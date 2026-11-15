@@ -308,7 +308,6 @@ const support: AcpSupport = {
   install: {
     command: {
       darwin: "curl -fsSL https://x.ai/cli/install.sh | bash",
-      linux: "curl -fsSL https://x.ai/cli/install.sh | bash",
     },
     docsUrl: "https://x.ai/cli",
     signInCommand: "grok login",

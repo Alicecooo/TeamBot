@@ -214,7 +214,7 @@ export async function runSetup(
 
     io.log(`\nDefault for new bots: ${entry.displayName ?? id} / ${model}`);
     if (!await io.confirm("Save this setup?", true)) throw new SetupCancelled();
-    // An explicit fleet starts from an empty config's defaults, not instanceConfigs(cfg), whose env holds secrets.
+    // An explicit instance set starts from empty defaults, not instanceConfigs(cfg), whose env holds secrets.
     const instances = { ...(cfg.instances && Object.keys(cfg.instances).length ? cfg.instances : instanceConfigs({})), [id]: entry };
     saveConfig({ instances, defaultModelSelection: { instanceId: id, model } });
     io.log("\nSetup saved. Existing bots and conversations were not changed.");

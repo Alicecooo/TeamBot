@@ -10,8 +10,6 @@ export const CADDY_VERSION = "2.11.4";
 
 /** Release assets by platform-arch, with the sha512 from the release's checksums file. */
 export const CADDY_ASSETS: Readonly<Record<string, { name: string; sha512: string }>> = Object.freeze({
-  "linux-x64": { name: `caddy_${CADDY_VERSION}_linux_amd64.tar.gz`, sha512: "8220d1f013b6f27510247b2360c9e0ca9f018feebd82515f07635318b34ff9777ccc8fd0b6e6f2486ce3a33fe389fbb7db12d05baa474f4587509fb4f5ebf1c9" },
-  "linux-arm64": { name: `caddy_${CADDY_VERSION}_linux_arm64.tar.gz`, sha512: "d5a7c423853c24a799765e0e8210d5c7c22a8f56ed37a3cae2fb9f58be138853c02b4efd6b59d576e6d8c7c0d30b9c1592deeaa6a536ff69bcca23b8c1ea709c" },
   "darwin-x64": { name: `caddy_${CADDY_VERSION}_mac_amd64.tar.gz`, sha512: "e04eb10f9ce7e2e079bc9bff1bd5d3a3164888d1edbb1a49e5d15be4eab691b57e89ed36bb29c65ba43f1ba8d9279e0967b1003991c13fe4cb78384c3caf25de" },
   "darwin-arm64": { name: `caddy_${CADDY_VERSION}_mac_arm64.tar.gz`, sha512: "3190ae0df98b59ab4b6021556fa35adc3c526a4f3e138776b0eaec8a037cc26121cbbb1ad53453f565551b47d37d5ba4755e2c2c3652256737fe2ce9e53c8ec0" },
 });
@@ -131,10 +129,8 @@ export function portPermissionRefused(output: string): boolean {
   return /permission denied|bind: operation not permitted|EACCES/i.test(output) && /:80|:443|listen/i.test(output);
 }
 
-export function portPermissionHint(binary: string): string {
-  return process.platform === "linux"
-    ? `Caddy may not bind ports 80 and 443 as this user. Grant it once with:\n  sudo setcap 'cap_net_bind_service=+ep' ${binary}\nthen run the same command again. (A service unit can grant the same capability.)`
-    : "Caddy may not bind ports 80 and 443 as this user. Run the server as an administrator, or put your own HTTPS proxy in front.";
+export function portPermissionHint(_binary?: string): string {
+  return "Caddy may not bind ports 80 and 443 as this user. Run the server as an administrator, or put your own HTTPS proxy in front.";
 }
 
 export async function startCaddy(options: {
@@ -173,7 +169,7 @@ export async function startCaddy(options: {
   });
   const settled = await Promise.race([exited.then((code) => ({ code })), new Promise<{ code: undefined }>((r) => setTimeout(() => r({ code: undefined }), options.settleMs ?? 1500))]);
   if (settled.code !== undefined) {
-    const reason = portPermissionRefused(output) ? portPermissionHint(options.binary) : output.trim().split("\n").slice(-3).join("\n");
+    const reason = portPermissionRefused(output) ? portPermissionHint() : output.trim().split("\n").slice(-3).join("\n");
     throw new Error(`Caddy stopped right after starting (exit ${settled.code}).\n${reason}`);
   }
   return {

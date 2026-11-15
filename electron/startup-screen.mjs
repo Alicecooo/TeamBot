@@ -57,7 +57,7 @@ export function createStartupScreen({
     shown = true; splash.show(); resolveReady();
   };
   splash.once("ready-to-show", showSplash);
-  // Some Wayland compositors (COSMIC) never paint a hidden window, so ready-to-show never comes.
+  // Some window managers never paint a hidden window, so ready-to-show never comes.
   splash.webContents.once("did-finish-load", () => {
     const grace = setTimeout(showSplash, 500);
     grace.unref?.();

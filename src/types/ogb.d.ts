@@ -10,19 +10,14 @@ const __APP_VERSION__: string;
 
   type DesktopCapabilities = {
     host: {
-      platform: "darwin" | "linux" | "win32" | "other";
+      platform: "darwin" | "win32" | "other";
       /** The user's home folder, for showing paths as ~/… */
       homeDir?: string;
       label: string;
-      session: "x11" | "wayland" | "headless" | "unknown";
+      session: "headless" | "unknown";
       packaged: boolean;
     };
     windowChrome: "mac-inset" | "win-caption" | "native";
-    screenPreview: {
-      available: boolean;
-      interaction: "direct" | "portal-picker" | "none";
-      reasonCode?: string;
-    };
     localComputer: {
       available: boolean;
       support: "supported" | "limited" | "unsupported";
@@ -33,8 +28,7 @@ const __APP_VERSION__: string;
       driverPath?: string;
       driverVersion?: string;
       driverSource?: "bundled" | "environment" | "user-local" | "path";
-      session?: "x11" | "wayland" | "headless" | "unknown";
-      compositor?: "gnome-mutter";
+      session?: "headless" | "unknown";
     };
   };
 
@@ -138,14 +132,6 @@ const __APP_VERSION__: string;
             modelSelection?: import("../state/store").ModelSelection; updateBotDefault?: boolean },
         ): Promise<import("../state/store").Bot>;
       };
-      localControl: {
-        status(): Promise<LinuxLocalControlStatus>;
-        enable(): Promise<LinuxLocalControlStatus>;
-        disable(): Promise<LinuxLocalControlStatus>;
-        retry(): Promise<LinuxLocalControlStatus>;
-      };
-      /** Arms one user-initiated display capture request from this frame. */
-      beginScreenPreviewIntent(): boolean;
       screenFrame(): Promise<string | null>;
       /** Absolute path of a dropped File ("" when the drag carried no
        * file on disk). Absent in older builds of the shell. */
@@ -164,7 +150,7 @@ const __APP_VERSION__: string;
       /** Recolor the native window chrome for a skin; absent on older builds. */
       applySkin?(skin: string): Promise<boolean>;
       /** The renderer-drawn Windows caption buttons; absent outside the
-       * frameless Windows shell (macOS/Linux/browser keep native chrome). */
+       * frameless Windows shell. */
       windowControls?: {
         minimize(): Promise<boolean>;
         toggleMaximize(): Promise<boolean>;
@@ -224,19 +210,6 @@ const __APP_VERSION__: string;
   }
 }
 
-export interface LinuxLocalControlStatus {
-  enabled: boolean;
-  status: "disabled" | "checking" | "starting" | "ready" | "error" | "stopped" | "unavailable";
-  reasonCode?: string;
-  message?: string;
-  driverPath?: string;
-  driverVersion?: string;
-  driverSource?: "bundled" | "environment" | "user-local" | "path";
-  session?: "x11" | "wayland" | "headless" | "unknown";
-  compositor?: "gnome-mutter";
-  warnings?: Array<{ label: string; status: string; message: string; detail?: string }>;
-}
-
 export interface UpdaterState {
   status:
     | "idle"
@@ -246,8 +219,6 @@ export interface UpdaterState {
     | "preparing"
     | "downloaded"
     | "installing"
-    /** the command is on the clipboard; the user finishes in a terminal */
-    | "handed-off"
     | "error";
   version?: string;
   /** the release's notes as published (HTML or Markdown), when the feed has them */
@@ -256,16 +227,8 @@ export interface UpdaterState {
   message?: string;
   /** native work may still be running; recovery requires an app restart */
   retryable?: boolean;
-  /**
-   * How the download gets applied. "restart" quits and installs in place;
-   * "handoff" copies the install command and opens a terminal so the user
-   * can finish — Ubuntu .deb (and rpm/pacman) builds use this.
-   */
-  installMode?: "restart" | "handoff";
-  /** hand-off only: the install command, already on the clipboard */
-  command?: string;
-  /** hand-off only: whether a terminal was opened to paste it into */
-  terminalOpened?: boolean;
+  /** Updates are applied by restarting the desktop app. */
+  installMode?: "restart";
 }
 
 export interface CompanionAccountState {

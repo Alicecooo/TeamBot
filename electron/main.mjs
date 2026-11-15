@@ -48,10 +48,6 @@ import { installServerSessions, reportOwnListeners } from "./server-session.mjs"
 const { desktopCapabilities, nativeDesktopActions } = capabilitiesModule;
 const nativeActions = nativeDesktopActions(process.platform);
 const require = createRequire(import.meta.url);
-const { createDisplayMediaGuard, invokeDisplayMediaCallback, selectCaptureSource } = require(
-  "./screen-preview.cjs",
-);
-const { STAGE_PREFIX: APPIMAGE_CUA_STAGE_PREFIX } = require("./cua-linux-bundle.cjs");
 const { desktopViewerUrl, sameDesktopViewerOrigin } = require("./desktop-viewer.cjs");
 const { createTrustedApprovalModeCoordinator } = require("./approval-trusted-mode.cjs");
 const { desktopServerHeaders } = require("./desktop-server-auth.cjs");
@@ -145,14 +141,6 @@ function applyUnreadBadge(win = mainWindow) {
     );
     return;
   }
-  if (process.platform === "linux") app.setBadgeCount(count);
-}
-
-// GNOME groups the window with its desktop entry only when both identities match; set before ready.
-// Chromium's GPU process crashed on NVIDIA/libGLES and left an invisible window intercepting input.
-if (process.platform === "linux") {
-  app.disableHardwareAcceleration();
-  app.setDesktopName("com.openmausbot.app.desktop");
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -431,7 +419,7 @@ import { CREDENTIAL_PATCH, credentialSaveError } from "./credential-patch.mjs";
 
 /** Second wall after preload's reduced bridge: computer-controlling IPC answers only the local server's UI.
  * Declared before any handler registration (temporal dead zone). */
-const { isLocalSender: senderIsLocal, localOnly, localOnlySync, setLocalOrigin } = localOriginModule;
+const { isLocalSender: senderIsLocal, localOnly, setLocalOrigin } = localOriginModule;
 
 
 
@@ -545,8 +533,7 @@ function ensureManagedDesktop() {
   if (managedDesktop) return managedDesktop;
   if (!app.isPackaged || null) throw new Error("Organization sign-in requires the installed desktop app running on this computer.");
   const encryption = {
-    available: async () => (await safeStorage.isAsyncEncryptionAvailable()) &&
-      (process.platform !== "linux" || safeStorage.getSelectedStorageBackend() !== "basic_text"),
+    available: async () => safeStorage.isAsyncEncryptionAvailable(),
     encrypt: value => safeStorage.encryptStringAsync(value),
     decrypt: value => safeStorage.decryptStringAsync(value),
   };
@@ -732,18 +719,9 @@ function buildErrorPage({ allPortsOccupied }) {
 }
 
 let cuaReady = Promise.resolve({ mode: "unavailable", reason: "not-started" });
-const displayMediaGuard = createDisplayMediaGuard();
-let displayMediaRequestCount = 0;
 
 function rendererOrigin() {
   return new URL(app.isPackaged || null ? `http://127.0.0.1:${SERVER_PORT}` : DEV_URL).origin;
-}
-
-function respondToDisplayMediaRequest(callback, response) {
-  const error = invokeDisplayMediaCallback(callback, response);
-  if (error && response.video) {
-    console.error("[screen-preview] failed to deliver selected source:", error);
-  }
 }
 
 function notifyDesktopViewer(open) {
@@ -872,10 +850,6 @@ function openDesktopViewer(owner, rawUrl, rawTitle, contextId) {
   });
   return true;
 }
-
-ipcMain.on("screen:preview-intent", localOnlySync("screen:preview-intent", (event) => {
-  event.returnValue = displayMediaGuard.begin(event.senderFrame);
-}));
 
 ipcMain.on("desktop:unread-count", (event, value) => {
   const sender = BrowserWindow.fromWebContents(event.sender);
@@ -1481,40 +1455,7 @@ function createWindow({ deferNavigation = false } = {}) {
             `unexpected packaged renderer URL: ${result.location} (expected ${expectedLocation})`,
           );
         }
-        if (process.env.OMB_SMOKE_BUNDLED_CUA === "1") {
-          const connection = await cuaReady;
-          const expectedDriver = path.join(
-            process.resourcesPath,
-            "cua-linux-x64",
-            "cua-driver",
-          );
-          let exactBundledPath = false;
-          try {
-            exactBundledPath =
-              Boolean(connection?.driver?.path) &&
-              fs.realpathSync(connection.driver.path) === fs.realpathSync(expectedDriver);
-          } catch {}
-          result.cuaRuntime = {
-            driverSource: connection?.driver?.source,
-            exactBundledPath,
-            appImagePrivateStage:
-              Boolean(process.env.APPIMAGE) &&
-              connection?.driver?.path !== expectedDriver &&
-              path.basename(path.dirname(connection?.driver?.path ?? "")).startsWith(
-                APPIMAGE_CUA_STAGE_PREFIX,
-              ),
-            driverPath: connection?.driver?.path,
-            driverVersion: connection?.driver?.version,
-            daemonPid: connection?.daemon?.pid,
-            socketPath: connection?.daemon?.socketPath,
-            pidFile: connection?.daemon?.socketPath
-              ? path.join(path.dirname(connection.daemon.socketPath), "driver.pid")
-              : undefined,
-            mcpEnv: connection?.mcp?.env,
-          };
-        }
         result.hardwareAccelerationEnabled = app.isHardwareAccelerationEnabled();
-        result.displayMediaRequests = displayMediaRequestCount;
         console.log(`[smoke] renderer-ready ${JSON.stringify(result)}`);
       } catch (error) {
         console.error(`[smoke] renderer-failed ${error?.stack ?? error}`);
@@ -2017,54 +1958,6 @@ app.whenReady().then(async () => {
   if (app.isPackaged) await undefined;
   
   const hostedAccount = undefined;
-  // Display capture needs a one-shot renderer intent from the same frame/origin, no audio, and a user gesture.
-  if (process.platform === "linux") {
-    session.defaultSession.setDisplayMediaRequestHandler(
-      (request, callback) => {
-        displayMediaRequestCount += 1;
-        if (!displayMediaGuard.consume(request, rendererOrigin())) {
-          respondToDisplayMediaRequest(callback, {});
-          return;
-        }
-
-        const capabilities = desktopCapabilities({
-          platform: process.platform,
-          env: process.env,
-          packaged: app.isPackaged,
-        });
-        const captureHost =
-          capabilities.host.session;
-        if (!capabilities.screenPreview.available) {
-          respondToDisplayMediaRequest(callback, {});
-          return;
-        }
-
-        desktopCapturer
-          .getSources({ types: ["screen"], thumbnailSize: { width: 0, height: 0 } })
-          .then((sources) => {
-            const source = selectCaptureSource({
-              sources,
-              host: captureHost,
-              primaryDisplayId:
-                process.platform === "linux" && captureHost === "x11"
-                  ? screen.getPrimaryDisplay().id
-                  : null,
-            });
-            if (!source) {
-              console.warn(
-                `[screen-preview] rejected ${captureHost} source set (${sources.length} candidates)`,
-              );
-            }
-            respondToDisplayMediaRequest(callback, source ? { video: source } : {});
-          })
-          .catch((error) => {
-            console.warn("[screen-preview] source discovery failed:", error);
-            respondToDisplayMediaRequest(callback, {});
-          });
-      },
-      { useSystemPicker: false },
-    );
-  }
   registerCuaIpc();
   registerUpdaterIpc({ pageAllowed: updaterPageAllowed });
   registerDesktopPrefs({ ipcMain, ...jsonFile(path.join(app.getPath("userData"), "desktop-prefs.json")), localConfig: jsonFile(path.join(desktopDataDir(), "config.json")).read, cloudOffered: () => undefined,
@@ -2072,7 +1965,7 @@ app.whenReady().then(async () => {
     thisComputer: async landing => { let ok = false; if (serverReady) await workspaceMenuAction(async () => { ok = (await switchEnvironment(LOCAL_ID))?.ok !== false; }); return ok && await navigateMainWindow(`${rendererOrigin()}/${landing}`); } });
   // Before the window, so the harness has the CUA descriptor on first render.
   cuaReady =
-    (process.platform === "linux" || process.platform === "win32")
+    process.platform === "win32"
       ? startCua().catch((e) => {
           console.error("[cua] start failed:", e);
           return { mode: "unavailable", reason: String(e) };
@@ -2178,8 +2071,7 @@ const CUA_STOP_TIMEOUT_MS = 2500;
 let cuaCleanedUp = false;
 let signalQuitRequested = false;
 
-// Linux package managers and watchdogs stop apps with SIGTERM/SIGINT: the first becomes a normal quit,
-// a second keeps Node's default force-quit (`once` listeners).
+// External shutdown signals become a normal quit; a second keeps Node's default force-quit (`once` listeners).
 const requestSignalQuit = () => {
   if (signalQuitRequested) return;
   signalQuitRequested = true;

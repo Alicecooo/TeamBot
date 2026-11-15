@@ -1,13 +1,11 @@
 // Bundle electron-updater into one self-contained file the packaged app can
-// require: it ships no node_modules. `electron` stays external. The bundle is
-// then patched so an AppImage update keeps the path the user launches.
+// require: it ships no node_modules. `electron` stays external.
 import { build } from "esbuild";
 import { createRequire } from "node:module";
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join, sep } from "node:path";
 
-import { patchAppImageUpdater } from "./patch-appimage-updater.mjs";
 import { patchOrganizationUpdater } from "./patch-organization-updater.mjs";
 
 const require = createRequire(import.meta.url);
@@ -29,7 +27,5 @@ await build({
   logLevel: "info",
 });
 
-// Throws when upstream's shape moved, so a bundle that would silently break
-// AppImage launchers never reaches a release.
-await writeFile(outfile, patchOrganizationUpdater(patchAppImageUpdater(await readFile(outfile, "utf8"))));
-console.log("patched AppImage replacement and one-shot organisation relaunch");
+await writeFile(outfile, patchOrganizationUpdater(await readFile(outfile, "utf8")));
+console.log("patched one-shot organisation relaunch");

@@ -402,7 +402,6 @@ const support = (run: typeof execCli): AcpSupport => ({
   install: {
     command: {
       darwin: "curl https://cursor.com/install -fsS | bash",
-      linux: "curl https://cursor.com/install -fsS | bash",
       win32: "irm 'https://cursor.com/install?win32=true' | iex",
     },
     docsUrl: "https://cursor.com/docs/cli/installation",

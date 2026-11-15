@@ -494,7 +494,7 @@ function resolved(segments: string[]): { parts: string[]; above: number } {
 }
 
 interface Host {
-  /** macOS and Windows find `/ETC` where Linux does not. */
+  /** Case-folding differs between macOS/Windows and other hosts. */
   foldCase: boolean;
   mac: boolean;
   windows: boolean;
@@ -551,7 +551,7 @@ function windowsTarget(word: string, percent: boolean, host: Host): FloorVerdict
   return home && drive && home === `${drive}\\${parts.join("\\")}`.toLowerCase() ? DELETE_HOME : null;
 }
 
-/** `powershell`: PowerShell on macOS or Linux, whose deletes take POSIX paths. */
+/** `powershell`: PowerShell can also be used with POSIX paths on macOS. */
 type Mode = "posix" | "windows" | "powershell";
 
 /** `synced` goes false for good once any part, or a script a wrapper hands on, could not be read to its end. */
@@ -678,7 +678,7 @@ function scan(source: string, pass: Pass, mode: Mode, depth: number): FloorVerdi
 export type FloorReading = { read: true; verdict: FloorVerdict | null } | { read: false };
 
 /** Reads a shell command line against the never-list; never throws. A caller enforcing the floor must not answer
- * for `{ read: false }`. `platform` picks the reading: POSIX (a backslash escapes) on macOS and Linux; on Windows also
+ * for `{ read: false }`. `platform` picks the reading: POSIX (a backslash escapes) on macOS; on Windows also
  * cmd and PowerShell (a backslash ends a path), and a hit in either blocks. `home` lets a spelled-out home path match. */
 export function floorReading(command: string, platform: NodeJS.Platform = process.platform, home?: string): FloorReading {
   if (typeof command !== "string" || !command.trim()) return { read: true, verdict: null };
