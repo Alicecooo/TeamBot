@@ -98,7 +98,7 @@ export function createChiefNotices(deps: ChiefNoticeDeps) {
     deliver({
       chief: chiefForBot(store.bots, bot), title: INCIDENTS_THREAD_TITLE, bot, threadId,
       chip: incidentChip(incident), text: incidentText(incident, count),
-      alreadyNotified: input.kind === "could-not-start" || input.kind === "routine-failed",
+      alreadyNotified: input.kind === "could-not-start",
     });
   }
 

@@ -89,25 +89,6 @@ export const WIDGET_SAMPLES: Record<string, unknown> = {
     ],
   },
 
-  routineForm: {
-    type: "Card",
-    title: "New routine: release check",
-    caption: "Scout proposes this. Change anything before you create it.",
-    children: [
-      field("Runs on", { type: "DayPicker", name: "days", defaultValue: "mon,tue,wed,thu,fri" }),
-      { type: "Divider" },
-      field("Starts", { type: "DatePicker", name: "starts", defaultValue: "2026-10-14", min: "2026-10-13", clearable: true }),
-      { type: "Divider" },
-      field("At", { type: "TimePicker", name: "at", defaultValue: "09:00", step: 15, required: true }),
-      { type: "Divider" },
-      field("Report to", { type: "Select", name: "report", placeholder: "Choose a channel", options: [{ label: "Discord · #releases", value: "discord:releases" }, { label: "This chat", value: "chat" }] }),
-      { type: "Divider" },
-      { type: "Checkbox", name: "stopOnRed", label: "Stop if any check is red", defaultChecked: true },
-    ],
-    confirm: { label: "Create routine", action: { type: "routine.create", payload: { name: "release-check" } } },
-    cancel: { label: "Discard", action: { type: "routine.discard" } },
-  },
-
   // what a bot shows for "help me book a call": every field labels itself
   bookCall: {
     type: "Card",

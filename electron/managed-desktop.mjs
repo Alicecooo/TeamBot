@@ -164,7 +164,6 @@ export function createManagedDesktopClient({ store, applyConnection, applyPolicy
     deviceId: connection.deviceId, expiresAt: connection.expiresAt,
     branding,
     providers: connection.providers.map(({ id, configured, models }) => ({ id, configured, models: [...models] })),
-    cloudBackups: state.cloudBackups ?? false,
   } : {}) });
   async function request(origin, route, { method = "GET", body, token, signal = controller.signal } = {}) {
     const response = await fetcher(`${origin}${route}`, {
@@ -355,7 +354,7 @@ export function createManagedDesktopClient({ store, applyConnection, applyPolicy
       if (!current(stamp)) return snapshot();
       connection = next;
       branding = parseOrganizationBranding(result.branding);
-      publish({ ...view("connected"), cloudBackups: Boolean(result.cloudBackups) });
+      publish(view("connected"));
       if (library) void synchronizeLibrary(stamp, grant, result.library).catch(() => {});
       if (renewalSupported && grant.policy && reportedPolicyVersion !== grant.policy.version) {
         const reported = grant.policy.version, enrolled = grant;
@@ -499,18 +498,6 @@ export function createManagedDesktopClient({ store, applyConnection, applyPolicy
     connection: () => connection ? structuredClone(connection) : null,
     whenRestored: () => restored,
     policy: () => !policyLifted && grant?.policy && grant.expiresAt > now() ? structuredClone(grant.policy) : null,
-    backupGeneration: () => generation,
-    /** Fixed first-party backup API only; this function stays in Electron main. */
-    async requestBackup(route, options = {}) {
-      if (!/^\/api\/desktop\/backups(?:\/[a-f0-9-]{36}(?:\/(?:complete|abort|download|parts\/[0-9]+))?)?$/.test(route)) throw new Error("Unsupported company backup operation.");
-      if (options.generation !== undefined && options.generation !== generation) throw new Error("Your organization connection changed during the backup.");
-      if (!grant || !connection || grant.expiresAt <= now()) throw new Error("Reconnect your organization before using company backups.");
-      const stamp = generation, enrolled = grant;
-      const result = await request(enrolled.portalOrigin, route, { method: options.method ?? "GET", body: options.body, token: enrolled.token,
-        signal: options.signal ? AbortSignal.any([controller.signal, options.signal]) : controller.signal });
-      if (!current(stamp) || grant !== enrolled || enrolled.expiresAt <= now()) throw new Error("Your organization connection changed during the backup.");
-      return result;
-    },
     /** Fixed library routes only; raw bytes the caller verifies. Electron main only. */
     async fetchLibraryBytes(route, maxBytes, options = {}) {
       const limits = libraryRouteLimits(route);

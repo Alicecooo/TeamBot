@@ -1,12 +1,11 @@
 import type { NotificationTarget } from "@/lib/notify";
 import type { Action, AppState } from "./store";
-import type { PrivateChatRef } from "../../shared/private-chats";
 
 interface NotificationThreadOwner {
   id: string;
   threadId: string;
   mainThreadId?: string;
-  tasks?: Array<{ threadId: string; privateChatRef?: PrivateChatRef }>;
+  tasks?: Array<{ threadId: string }>;
 }
 
 interface NotificationRoutingState {
@@ -14,9 +13,9 @@ interface NotificationRoutingState {
 }
 
 export function visibleNotificationThread(
-  state: NotificationRoutingState & Pick<AppState, "activeView" | "selectedId" | "privateChatsOpen">,
+  state: NotificationRoutingState & Pick<AppState, "activeView" | "selectedId">,
 ): string | null {
-  if (state.activeView !== "chat" || state.privateChatsOpen) return null;
+  if (state.activeView !== "chat") return null;
   return (
     state.bots.find((candidate) => candidate.id === state.selectedId)?.threadId ??
     null
@@ -65,15 +64,10 @@ export function openBot(
 /** With threads hidden the switch alone selects the bot, so the thread left behind keeps its unread mark. */
 export function openBotThread(
   dispatch: (action: Action) => void,
-  bot: Pick<NotificationThreadOwner, "id" | "threadId" | "tasks">,
+  bot: Pick<NotificationThreadOwner, "id" | "threadId">,
   threadId: string,
   threadsShown: boolean,
 ) {
-  const chat = bot.tasks?.find(task => task.threadId === threadId)?.privateChatRef;
-  if (chat) {
-    dispatch({ type: "openPrivateChats", botId: bot.id, chatId: chat.id });
-    return;
-  }
   if (threadsShown || threadId === bot.threadId) dispatch({ type: "select", id: bot.id });
   dispatch({ type: "switchTask", botId: bot.id, threadId });
 }

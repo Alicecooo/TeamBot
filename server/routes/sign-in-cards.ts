@@ -1,27 +1,4 @@
-// POST /api/bots/<bot>/sign-in-cards/<message>/(done|cancel) with {threadId}, and GET .../save-login?threadId=
-// for where a login saved from the card would fill. A saved password goes into the encrypted store and no route ever
-// returns it.
-// POST /api/bots/<bot>/sign-in-cards/<message>/(done|cancel|save-login) with {threadId}, and GET .../save-login?threadId=
-// for where a login saved from the card would fill. A saved password goes into the encrypted store and no route ever
-// returns it.
-// POST /api/bots/<bot>/sign-in-cards/<message>/(done|cancel) with {threadId}, and GET .../save-login?threadId=
-// for where a login saved from the card would fill. A saved password goes into the encrypted store and no route ever
-// returns it.
-// POST /api/bots/<bot>/sign-in-cards/<message>/(done|cancel|save-login) with {threadId}, and GET .../save-login?threadId=
-// for where a login saved from the card would fill. A saved password goes into the encrypted store and no route ever
-// returns it.
-// POST /api/bots/<bot>/sign-in-cards/<message>/(done|cancel) with {threadId}, and GET .../save-login?threadId=
-// for where a login saved from the card would fill. A saved password goes into the encrypted store and no route ever
-// returns it.
-// POST /api/bots/<bot>/sign-in-cards/<message>/(done|cancel|save-login) with {threadId}, and GET .../save-login?threadId=
-// for where a login saved from the card would fill. A saved password goes into the encrypted store and no route ever
-// returns it.
-// POST /api/bots/<bot>/sign-in-cards/<message>/(done|cancel) with {threadId}, and GET .../save-login?threadId=
-// for where a login saved from the card would fill. A saved password goes into the encrypted store and no route ever
-// returns it.
-// POST /api/bots/<bot>/sign-in-cards/<message>/(done|cancel|save-login) with {threadId}, and GET .../save-login?threadId=
-// for where a login saved from the card would fill. A saved password goes into the encrypted store and no route ever
-// returns it.
+// POST /api/bots/<bot>/sign-in-cards/<message>/(done|cancel) with {threadId}.
 import type { RequestAuth } from "../auth/request-auth.ts";
 import { PASS, type RouteHandler } from "./table.ts";
 
@@ -38,7 +15,7 @@ export interface SignInCardRouteDeps {
 
 const HIDDEN: Answer = { status: 404, body: { error: "no such sign-in request" } };
 
-const CARD = /^\/api\/bots\/([\w-]+)\/sign-in-cards\/([\w-]+)\/(done|cancel|save-login)$/u;
+const CARD = /^\/api\/bots\/([\w-]+)\/sign-in-cards\/([\w-]+)\/(done|cancel)$/u;
 
 export function createSignInCardRoutes(deps: SignInCardRouteDeps): RouteHandler {
   return async ({ req, res,  path, method, auth, json, readBody }) => {

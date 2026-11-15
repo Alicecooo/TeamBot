@@ -11,7 +11,6 @@ export interface PendingTeamImport {
   chiefOfStaff?: string;
   groups: number;
   playbooks: number;
-  routines: number;
   apps: Array<{ label: string; optional: boolean }>;
   skills?: string[];
   conversations?: number;
@@ -42,7 +41,7 @@ export function teamImportPreview(manifest: unknown): PendingTeamImport {
       members: backup.bots.map((bot) => ({ name: bot.name, title: bot.title })),
       groups: backup.groups.length,
       playbooks: backup.bots.reduce((total, bot) => total + bot.playbooks.length, 0),
-      routines: backup.routines.length, apps: [],
+      apps: [],
       conversations: backup.bots.reduce((total, owner) => total + owner.tasks.length, 0),
       archivedBots: backup.bots.filter((bot) => bot.hidden).length,
       warnings: backup.warnings,
@@ -79,7 +78,6 @@ export function teamImportPreview(manifest: unknown): PendingTeamImport {
     members,
     groups: 0,
     playbooks: 0,
-    routines: 0,
     apps: [],
   };
 }
@@ -121,7 +119,6 @@ function sharedTeamPreview(document: PackageDocument, manifest: unknown): Pendin
       ? `data:${agent.appearance.avatar.mime};base64,${agent.appearance.avatar.data}`
       : null),
     playbooks: pkg.playbooks?.length ?? 0,
-    routines: pkg.routines?.length ?? 0,
     apps: pkg.requirements.apps.map((app) => ({ label: app.label, optional: app.optional === true })),
     skills: (pkg.skills?.entries ?? []).filter((skill) => referenced.has(skill.name)).map((skill) => skill.name),
     offeredSkills: (pkg.skills?.entries ?? []).filter((skill) => !referenced.has(skill.name)).map((skill) => skill.name),
@@ -146,7 +143,6 @@ function libraryPreview(document: PackageDocument, manifest: unknown): PendingTe
     members: [],
     groups: 0,
     playbooks: pkg.playbooks?.length ?? 0,
-    routines: 0,
     apps: [],
     skills: [],
     offeredSkills: (pkg.skills?.entries ?? []).filter((skill) => !pkg.presets!.some((preset) => preset.skills?.includes(skill.name))).map((skill) => skill.name),
@@ -200,7 +196,6 @@ function packagePreview(root: Record<string, unknown>, manifest: unknown): Pendi
     groups: 0,
     ...(typeof chief === "string" ? { chiefOfStaff: chief } : {}),
     playbooks: Array.isArray(pkg.playbooks) ? pkg.playbooks.length : 0,
-    routines: Array.isArray(pkg.routines) ? pkg.routines.length : 0,
     apps,
     skills: Array.isArray(skills) ? skills.flatMap((skill) => {
       if (!skill || typeof skill !== "object" || Array.isArray(skill)) return [];

@@ -61,11 +61,11 @@ function parseEntry(value) {
       !record(publisher) || !matches(UUID, publisher.organizationId) || !safeText(publisher.name, 100) || typeof publisher.self !== "boolean" ||
       !oneOf(["required", "available", "off"], mode) || !oneOf(["keep", "remove"], offAction) || release === undefined ||
       !Array.isArray(withdrawnReleases) || withdrawnReleases.length > WITHDRAWN_MAX || !withdrawnReleases.every(item => record(item) && matches(SEMVER, item.version) && matches(HEX64, item.sha256)) ||
-      !record(contents) || !["bots", "skills", "presets", "rooms", "routines", "connections"].every(key => count(contents[key])) ||
+      !record(contents) || !["bots", "skills", "presets", "rooms", "connections"].every(key => count(contents[key])) ||
       !Array.isArray(contents.botNames) || contents.botNames.length > 12 || !contents.botNames.every(bot => safeText(bot, 100)) || !count(scanFindings)) return null;
   return { packageId, ref, name, tagline, kind, publisher: { organizationId: publisher.organizationId, name: publisher.name, self: publisher.self }, mode, offAction, release,
     withdrawnReleases: withdrawnReleases.map(({ version, sha256 }) => ({ version, sha256 })),
-    contents: { bots: contents.bots, skills: contents.skills, presets: contents.presets, rooms: contents.rooms, routines: contents.routines, connections: contents.connections, botNames: [...contents.botNames] },
+    contents: { bots: contents.bots, skills: contents.skills, presets: contents.presets, rooms: contents.rooms, connections: contents.connections, botNames: [...contents.botNames] },
     scanFindings };
 }
 /** null for a malformed envelope or another organization's catalog, so the caller keeps the last good one. */

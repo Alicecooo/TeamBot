@@ -9,7 +9,6 @@ export function SidebarSectionHeader({
   name,
   collapsed,
   attention,
-  alert,
   onToggle,
   reorderable,
   dragging,
@@ -25,7 +24,6 @@ export function SidebarSectionHeader({
   name: string;
   collapsed: boolean;
   attention?: SidebarSectionAttention;
-  alert?: boolean;
   onToggle?: () => void;
   reorderable: boolean;
   dragging: boolean;
@@ -82,7 +80,7 @@ export function SidebarSectionHeader({
           >
             <span className="truncate">{name}</span>
             {collapsed && <ChevronRight size={11} className="shrink-0" aria-hidden="true" />}
-            <SectionAttention attention={attention} label={attentionLabel} alert={alert} />
+            <SectionAttention attention={attention} label={attentionLabel} />
           </button>
         ) : (
           <div className="flex min-w-0 shrink items-center px-0.5 text-[11.5px] font-medium tracking-[0.01em] text-ink-tertiary">
@@ -124,7 +122,7 @@ export function SidebarSectionHeader({
             {name}
           </span>
           <Chevron size={13} className="shrink-0 text-ink-secondary" aria-hidden="true" />
-          <SectionAttention attention={attention} label={attentionLabel} alert={alert} />
+            <SectionAttention attention={attention} label={attentionLabel} />
         </button>
       ) : (
         <div className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-0.5">
@@ -164,7 +162,7 @@ export function SidebarSectionHeader({
   );
 }
 
-function SectionAttention({ attention, label, alert }: { attention?: SidebarSectionAttention; label: string; alert?: boolean }) {
+function SectionAttention({ attention, label }: { attention?: SidebarSectionAttention; label: string }) {
   return (
     <>
       {attention && attention.waiting > 0 && (
@@ -192,12 +190,6 @@ function SectionAttention({ attention, label, alert }: { attention?: SidebarSect
         </span>
       )}
       {label && <span className="sr-only">{label}</span>}
-      {alert && (
-        <>
-          <span data-testid="section-alert" aria-hidden="true" className="size-2 shrink-0 rounded-full bg-danger" />
-          <span className="sr-only">{t("computer.routines.needsYou")}</span>
-        </>
-      )}
     </>
   );
 }

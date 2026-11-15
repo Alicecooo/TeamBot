@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, BookOpen, CalendarClock, Check, Crown, Loader2, NotebookPen, Plug, Users, UploadCloud, X } from "lucide-react";
+import { ArrowLeft, BookOpen, Check, Crown, Loader2, NotebookPen, Plug, Users, UploadCloud, X } from "lucide-react";
 import { track } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { teamImportPreview, type PendingTeamImport } from "@/lib/team-import";
 import { api, useStore, type Bot, type Group } from "@/state/store";
-import type { Routine } from "@/lib/routines";
 import { MAX_TEAM_BACKUP_BYTES } from "../../shared/team-backup";
 import { takeImportName } from "../../shared/import-name";
 
@@ -49,7 +48,6 @@ export function TeamImportDetails({ pending, importedNames, org = false }: {
           {pending.chiefOfStaff && <span className="flex items-center gap-1.5 rounded-full bg-raised px-3 py-1.5"><Crown size={13} />{t("templates.leads", { name: pending.chiefOfStaff })}</span>}
           {!pending.library && <span className="flex items-center gap-1.5 rounded-full bg-raised px-3 py-1.5"><Users size={13} />{t("templates.groups", { count: pending.groups })}</span>}
           {!(pending.library && !pending.playbooks) && <span className="flex items-center gap-1.5 rounded-full bg-raised px-3 py-1.5"><BookOpen size={13} />{t("templates.playbooks", { count: pending.playbooks })}</span>}
-          {!pending.library && <span className="flex items-center gap-1.5 rounded-full bg-raised px-3 py-1.5"><CalendarClock size={13} />{pending.version === 2 ? t("teamImport.routinesPaused", { count: pending.routines }) : t("templates.pausedRoutines", { count: pending.routines })}</span>}
           {pending.kind === "package" && pending.version !== 2 && <span className="flex items-center gap-1.5 rounded-full bg-raised px-3 py-1.5"><Plug size={13} />{t("templates.connections", { count: pending.apps.length })}</span>}
           {Boolean(pending.connections?.length) && <span className="flex items-center gap-1.5 rounded-full bg-raised px-3 py-1.5"><Plug size={13} />{t("teamImport.connections", { count: pending.connections?.length ?? 0 })}</span>}
           {Boolean(pending.notes) && <span className="flex items-center gap-1.5 rounded-full bg-raised px-3 py-1.5"><NotebookPen size={13} />{t("teamImport.notes", { count: pending.notes ?? 0 })}</span>}
@@ -199,13 +197,11 @@ export function TeamLibraryPanel({ onClose, onImported, returnFocusRef }: {
       })) as {
         bots: Bot[];
         groups?: Group[];
-        routines?: Routine[];
         connections?: unknown[];
         presets?: unknown[];
       };
       for (const bot of response.bots) dispatch({ type: "botAdded", bot });
       for (const group of response.groups ?? []) dispatch({ type: "groupPatched", group });
-      for (const routine of response.routines ?? []) dispatch({ type: "routinePatched", routine });
       const first = response.bots.find((bot) => !bot.hidden);
       if (first) dispatch({ type: "select", id: first.id });
       track("team_imported", { members: response.bots.length, source: "file", mode: "add", format: pending.kind });

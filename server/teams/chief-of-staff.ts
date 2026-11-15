@@ -5,10 +5,10 @@ export type ChiefTeamMember = RosterMember;
 
 export function chiefTidies(
   from: RosterMember,
-  task: Pick<TaskRecord, "openedBy" | "routineRunId">,
+  task: Pick<TaskRecord, "openedBy">,
   opener: RosterMember | null | undefined,
 ): boolean {
-  return from.chiefOfStaff === true && Boolean(task.openedBy) && !task.routineRunId &&
+  return from.chiefOfStaff === true && Boolean(task.openedBy) &&
     opener != null && canReachPeer(from, opener);
 }
 

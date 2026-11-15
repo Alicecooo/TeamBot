@@ -1,11 +1,10 @@
 import { useState, type ReactNode } from "react";
 
 import { t } from "@/lib/i18n";
-import { useStore, type Bot } from "@/state/store";
+import type { Bot } from "@/state/store";
 import { AccessSection } from "../bot-settings/AccessSection";
 import { ModelSection } from "../bot-settings/ModelSection";
 import { PromptPreview } from "../bot-settings/PromptPreview";
-import { RoutinesSection } from "../bot-settings/RoutinesSection";
 import { SkillsSection } from "../bot-settings/SkillsSection";
 import { SlackSection } from "../bot-settings/SlackSection";
 import { NotificationsSection } from "../bot-settings/NotificationsSection";
@@ -38,14 +37,11 @@ function FolderPage({ bot, derived }: Pick<PageContext, "bot" | "derived">) {
 
 export function PageBody({ page, ...context }: PageContext & { page: PageId }): ReactNode {
   const { bot, derived, slackUrl, prompt } = context;
-  const { state } = useStore();
   switch (page) {
     case "model":
       return <ModelSection bot={bot} />;
     case "always":
       return <AccessSection bot={bot} derived={derived} parts={["always"]} />;
-    case "routines":
-      return <RoutinesSection bot={bot} routines={derived.botRoutines} runs={state.routineRuns} />;
     case "apps":
       return <AccessSection bot={bot} derived={derived} parts={["apps"]} />;
     case "memory":

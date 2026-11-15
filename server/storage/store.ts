@@ -92,12 +92,12 @@ export interface TaskRecord extends Omit<WireTask, TaskWireDerivedKeys> {
   lastContextModel?: string;
   /** Absent (legacy) may be a person's choice: only an "auto" pin yields to a Works on change. */
   surfaceSource?: "user" | "auto";
-  /** Epoch ms a person last wrote here: never a teammate, routine, the bot itself or a Slack relay. */
+  /** Epoch ms a person last wrote here: never a teammate, the bot itself or a Slack relay. */
   askedAt?: number;
 }
 
 export type TaskWirePrivateKeys = "resumeCursors" | "lastInstanceId" | "handedMessages" | "appliedCompactionId" | "contextFloor" | "lastContextModel" | "surfaceSource" | "askedAt";
-export type TaskWireDerivedKeys = "surfaceAuto" | "followsBotModel" | "privateChatRef";
+export type TaskWireDerivedKeys = "surfaceAuto" | "followsBotModel";
 export type TaskWireProjection = Pick<TaskRecord, Exclude<keyof TaskRecord, TaskWirePrivateKeys>> & Pick<WireTask, TaskWireDerivedKeys>;
 type AssertExact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
 type AssertSameKeys<A, B> = [keyof A] extends [keyof B] ? ([keyof B] extends [keyof A] ? true : never) : never;
@@ -118,7 +118,7 @@ const ASK_NOW = { approvalMode: "ask" as const, autoApprove: false, alwaysAllow:
 const TASK_PATCH_FIELDS = [
   "title", "projectId", "modelSelection", "approvalMode", "autoApprove", "alwaysAllow",
   "unread", "lastReadMessageId", "rewound", "archivedAt", "pinned", "pinnedMessageId", "resumeCursors", "lastInstanceId", "cwd",
-  "routineRunId", "surface", "surfaceSource", "link", "linkAuto", "appliedCompactionId", "contextFloor", "lastContextModel",
+  "surface", "surfaceSource", "link", "linkAuto", "appliedCompactionId", "contextFloor", "lastContextModel",
 ] as const satisfies readonly (keyof TaskRecord)[];
 export type TaskPatch = Partial<Pick<TaskRecord, typeof TASK_PATCH_FIELDS[number]>>;
 
@@ -138,13 +138,6 @@ function redactBotAuthored<T extends Omit<Message, "id" | "at"> & { at?: number 
   if (out.tool?.name) {
     out.tool = { ...out.tool, name: redactSecretsInText(out.tool.name) };
     if (out.tool.summary) out.tool.summary = redactSecretsInText(out.tool.summary);
-  }
-  if (out.routineRun) {
-    const routineRun = { ...out.routineRun };
-    routineRun.routineName = redactSecretsInText(routineRun.routineName);
-    if (routineRun.summary) routineRun.summary = redactSecretsInText(routineRun.summary);
-    if (routineRun.error) routineRun.error = redactSecretsInText(routineRun.error);
-    out.routineRun = routineRun;
   }
   if (out.card) {
     const card = { ...out.card } as OptionCardData & { summary?: string };
@@ -166,35 +159,6 @@ function redactBotAuthored<T extends Omit<Message, "id" | "at"> & { at?: number 
             ...(option.description ? { description: redactSecretsInText(option.description) } : {}),
           })),
         })),
-      };
-    }
-    if (card.routineRequest) {
-      const operation = card.routineRequest.operation;
-      card.routineRequest = {
-        ...card.routineRequest,
-        operation: operation.action === "create"
-          ? {
-              ...operation,
-              routine: {
-                ...operation.routine,
-                name: redactSecretsInText(operation.routine.name),
-                instructions: redactSecretsInText(operation.routine.instructions),
-              },
-            }
-          : operation.action === "update"
-            ? {
-                ...operation,
-                changes: {
-                  ...operation.changes,
-                  ...(typeof operation.changes.name === "string"
-                    ? { name: redactSecretsInText(operation.changes.name) }
-                    : {}),
-                  ...(typeof operation.changes.instructions === "string"
-                    ? { instructions: redactSecretsInText(operation.changes.instructions) }
-                    : {}),
-                },
-              }
-            : { ...operation },
       };
     }
     if (card.skillRequest) card.skillRequest = scrubbedSkillRequest(card.skillRequest);
@@ -358,8 +322,8 @@ export function mentionedBots<T extends { name: string; hidden?: boolean }>(text
   return found;
 }
 
-function taskCountsAsBotUnread(task: { unread?: boolean; routineRunId?: string }): boolean {
-  return Boolean(task.unread) && !task.routineRunId;
+function taskCountsAsBotUnread(task: { unread?: boolean }): boolean {
+  return Boolean(task.unread);
 }
 
 interface ThreadState {
@@ -435,6 +399,11 @@ export class Store {
         botsMigrated = true;
       }
       for (const task of b.tasks ?? []) {
+        const openedBy = task.openedBy as { kind?: string } | undefined;
+        if (openedBy?.kind === "pair") {
+          delete openedBy.kind;
+          botsMigrated = true;
+        }
         if (task.surface === undefined || (task.surfaceSource === "auto" &&
           (task as unknown as { surface?: string }).surface !== "vm")) continue;
         delete task.surface;
@@ -602,10 +571,6 @@ export class Store {
           task.unread = task === active && b.unread;
           botsMigrated = true;
         }
-        if (task.routineRunId && task.unread) {
-          task.unread = false;
-          botsMigrated = true;
-        }
         if (task === active) {
           if (task.rewound === undefined && b.rewound !== undefined) {
             task.rewound = b.rewound;
@@ -633,8 +598,6 @@ export class Store {
     // Repair timestamps from the durable SQLite transcript after loading the roster.
     this.repairThreadUpdatedAts();
     if (fillAskedAts) this.fillTaskAskedAts();
-    // After the roster loads, so identity resolution sees which opener ids are live.
-    this.repairDuplicatePairConversations();
     this.registeringInitialSections = false;
   }
 
@@ -671,7 +634,7 @@ export class Store {
   }
 
   private fillTaskAskedAts(): void {
-    const tasks = this.bots.flatMap((bot) => bot.tasks ?? []).filter((task) => task.askedAt === undefined && !task.routineRunId);
+    const tasks = this.bots.flatMap((bot) => bot.tasks ?? []).filter((task) => task.askedAt === undefined);
     const asked = mdb.latestPersonLineAts(tasks.map((task) => task.threadId));
     for (const task of tasks) {
       const at = asked.get(task.threadId);
@@ -679,43 +642,6 @@ export class Store {
     }
     if (asked.size) this.saveBots();
     writeFileAtomic(ASKED_AT_FILLED, "Threads from before askedAt have it from the lines people wrote there.\n", { mode: 0o600 });
-  }
-
-  private openerIdentity(openedBy: TaskOpenedBy): string {
-    if (this.bot(openedBy.botId)) return openedBy.botId;
-    const named = this.bots.filter((bot) => bot.name === openedBy.name);
-    return named.length === 1 ? named[0].id : openedBy.botId;
-  }
-
-  /** At most one live pair row per (recipient, sender identity); extra rows become closed plain threads, never deleted. */
-  private repairDuplicatePairConversations(): void {
-    let botsDirty = false;
-    type SweepTask = { openedBy?: TaskOpenedBy; closedBy?: TaskClosedBy };
-    const sweep = (tasks: SweepTask[] | undefined, repaired: () => void) => {
-      const pairs = new Map<string, SweepTask[]>();
-      for (const task of tasks ?? []) {
-        const by = task.openedBy;
-        if (by?.kind !== "pair" || task.closedBy) continue;
-        const identity = this.openerIdentity(by);
-        pairs.set(identity, [...(pairs.get(identity) ?? []), task]);
-      }
-      for (const rows of pairs.values()) {
-        for (const duplicate of rows.slice(1)) {
-          const by = duplicate.openedBy!;
-          const identity = this.openerIdentity(by);
-          const { kind: _kind, ...opened } = by;
-          duplicate.openedBy = opened;
-          duplicate.closedBy = {
-            botId: identity,
-            name: this.bot(identity)?.name ?? by.name,
-            at: Date.now(),
-          };
-          repaired();
-        }
-      }
-    };
-    for (const bot of this.bots) sweep(bot.tasks, () => { botsDirty = true; });
-    if (botsDirty) this.saveBots();
   }
 
   private commitBotChange(bot: BotRecord, action: string, change: () => void, onRollback?: () => void) {
@@ -1822,7 +1748,6 @@ export class Store {
       }
       if (typeof patch.title === "string") task.title = patch.title.trim().slice(0, 80) || UNTITLED_THREAD;
       if (Object.prototype.hasOwnProperty.call(patch, "pinned") && task.pinned !== true) delete task.pinned;
-      if (task.routineRunId) task.unread = false;
       if (bot.threadId === threadId) this.mirrorActiveTask(bot, task);
       bot.unread = bot.tasks!.some(taskCountsAsBotUnread);
     }, revocation && (() => Object.assign(task, revocation)));
@@ -1962,15 +1887,6 @@ export class Store {
     };
   }
 
-  setTaskOpenedBy(botId: string, threadId: string, openedBy: TaskOpenedBy): TaskRecord | null {
-    const bot = this.bot(botId);
-    const task = this.taskByThread(botId, threadId);
-    if (!bot || !task) return null;
-    this.commitBotChange(bot, "who opened the thread", () => { task.openedBy = structuredClone(openedBy); });
-    this.emit({ type: "bot", botId });
-    return task;
-  }
-
   setTaskAskedAt(botId: string, threadId: string, at: number): TaskRecord | null {
     const task = this.taskByThread(botId, threadId);
     if (!task || !Number.isFinite(at) || (task.askedAt ?? -1) >= at) return task ?? null;
@@ -2041,7 +1957,7 @@ export class Store {
     const doomed = new Set(deleted);
     mdb.deleteThreads(deleted, () => this.commitBotChange(bot, "the thread deletion", () => {
       const kept = bot.tasks!.filter((t) => !doomed.has(t.threadId));
-      const visible = kept.find((task) => !task.routineRunId && task.openedBy?.kind !== "pair" && task.openedBy?.kind !== "work") ?? this.buildTask(bot);
+      const visible = kept[0] ?? this.buildTask(bot);
       bot.tasks = kept.includes(visible) ? kept : [visible, ...kept];
       if (doomed.has(bot.threadId)) this.mirrorActiveTask(bot, visible);
       bot.unread = bot.tasks.some(taskCountsAsBotUnread);

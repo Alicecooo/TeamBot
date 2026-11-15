@@ -91,12 +91,11 @@ export function openPlaceAction(
   target: { botId: string; threadId?: string; place?: Place },
   dispatch: (action: Action) => void,
 ): boolean {
-  const appSettings = (section: "engines" | "computer" | "connections" | "cloudAccount") =>
+  const appSettings = (section: "engines" | "computer") =>
     dispatch({ type: "toggleAppSettings", open: true, section });
   switch (id) {
     case "choose-model": openBotSettings(dispatch, "model", { botId: target.botId }); return true;
     case "open-tools": openBotSettings(dispatch, "access", { botId: target.botId, page: "tools" }); return true;
-    case "change-routine": openBotSettings(dispatch, "routines", { botId: target.botId }); return true;
     case "sign-in": appSettings("engines"); return true;
     case "manage-computers": appSettings("computer"); return true;
     case "add-boat-key": appSettings("computer"); return true;

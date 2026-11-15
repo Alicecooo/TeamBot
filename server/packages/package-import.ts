@@ -2,9 +2,8 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import { mcpServerNameError, MAX_MCP_SERVERS, parseStoredMcpServer } from "../mcp/mcp-registry.ts";
-import { AGENT_PARTS, agentReleaseValues, connectionLocalValue, connectionReleaseValue, pair, pairs, playbookValues, ROUTINE_PARTS, routineReleaseValues, scheduleValue, sha256Hex, TEAM_PARTS, type AgentPart, type PartPair, type TeamPart } from "./package-parts.ts";
+import { AGENT_PARTS, agentReleaseValues, connectionLocalValue, connectionReleaseValue, pair, pairs, playbookValues, sha256Hex, TEAM_PARTS, type AgentPart, type PartPair, type TeamPart } from "./package-parts.ts";
 import type { PresetRegistry } from "./presets.ts";
-import type { Routine, RoutineInput, RoutineManager } from "../automation/routines.ts";
 import type { SkillListing, SkillPackageStamp } from "../skills/skills.ts";
 import type { BotRecord, GroupRecord, InstalledPackageMetadata, Store } from "../storage/store.ts";
 import { importedMemberProfile, type ParsedTeamManifest, type TeamManifestMember } from "./team-manifest.ts";
@@ -33,14 +32,12 @@ export type ImportSkipReason =
   | "connection_refused_by_policy"
   | "too_many_connections"
   | "connection_invalid"
-  | "run_limit_adjusted"
   | "too_many_presets";
 
 export interface ImportSkip { part: string; reason: ImportSkipReason }
 
 export interface PackageImportDeps {
   store: Store;
-  routines: Pick<RoutineManager, "create" | "remove"> & Partial<Pick<RoutineManager, "stampInstalledPackage">>;
   skills: {
     install(botId: string, source: string, files: Array<{ path: string; content: string }>): SkillListing | { error: string };
     setEnabled(botId: string, name: string, enabled: boolean): SkillListing | { error: string };
@@ -85,7 +82,6 @@ export interface OrgInstallIndex {
   section: string;
   team: { parts: Partial<Record<TeamPart, PartPair>> };
   bots: Record<string, string>;
-  routines: Record<string, string>;
   connections: Record<string, { name: string; r: string; w: string }>;
 }
 
@@ -98,7 +94,6 @@ export interface PackageImportResult {
   bots: BotRecord[];
   groups: GroupRecord[];
   group?: GroupRecord;
-  routines: Routine[];
   offeredSkills: string[];
   connections: Array<{ key: string; name: string; label: string }>;
   skipped: ImportSkip[];
@@ -162,7 +157,7 @@ export function importPackageDocument(
     if (org.ref !== `${org.publisher.slug}/${pkg.id}`) {
       throw new PackageImportError("invalid_package", "This package is not the one your organization listed.");
     }
-    if (!deps.skills.installOrg || !deps.routines.stampInstalledPackage) {
+    if (!deps.skills.installOrg) {
       throw new PackageImportError("invalid_package", "This installation cannot add packages from an organization.");
     }
     if (deps.store.bots.some((bot) => bot.installedPackage?.installId === org.installId && !bot.installedPackage.presetKey) ||
@@ -172,12 +167,12 @@ export function importPackageDocument(
     if (library) {
       const registered = deps.presets?.register(document, { source: "org", installId: org.installId, org });
       return {
-        alreadyAdded: false, installId: org.installId, name: pkg.name, section: "", bots: [], groups: [], routines: [],
+        alreadyAdded: false, installId: org.installId, name: pkg.name, section: "", bots: [], groups: [],
         offeredSkills: (pkg.skills?.entries ?? []).map((skill) => skill.name), connections: [],
         skipped: registered?.skipped ?? (pkg.presets ?? []).map((preset) => ({ part: `presets[${preset.key}]`, reason: "presets_not_supported_yet" as const })),
         brief: false, notes: 0,
         ...(registered ? { presets: [...registered.added, ...registered.existing] } : {}),
-        org: { kind: "library", section: "", team: { parts: {} }, bots: {}, routines: {}, connections: {} },
+        org: { kind: "library", section: "", team: { parts: {} }, bots: {}, connections: {} },
       };
     }
   }
@@ -191,7 +186,7 @@ function importLibraryFile(document: PackageDocument, presets: PresetRegistry): 
   const installId = randomUUID();
   const registered = presets.register(document, { source: "file", installId });
   return {
-    alreadyAdded: false, installId, name: pkg.name, section: "", bots: [], groups: [], routines: [],
+    alreadyAdded: false, installId, name: pkg.name, section: "", bots: [], groups: [],
     offeredSkills: (pkg.skills?.entries ?? []).map((skill) => skill.name), connections: [],
     skipped: registered.skipped, brief: false, notes: 0, presets: [...registered.added, ...registered.existing],
   };
@@ -218,11 +213,10 @@ function runImport(source: ImportSource, options: PackageImportOptions, deps: Pa
 
   const importedBots: BotRecord[] = [];
   const createdGroups: GroupRecord[] = [];
-  const createdRoutines: Routine[] = [];
   const createdServers: string[] = [];
   const createdPresets: string[] = [];
   const skipped: ImportSkip[] = [];
-  const orgIndex: OrgInstallIndex = { kind: "team", section: "", team: { parts: {} }, bots: {}, routines: {}, connections: {} };
+  const orgIndex: OrgInstallIndex = { kind: "team", section: "", team: { parts: {} }, bots: {}, connections: {} };
   const takenNames = new Set(store.bots.map((bot) => bot.name.trim().toLowerCase()));
   const botIds = new Map<string, string>();
   let group: GroupRecord | undefined;
@@ -367,41 +361,6 @@ function runImport(source: ImportSource, options: PackageImportOptions, deps: Pa
     const brief = Boolean(pkg?.team?.brief?.trim());
     if (brief) deps.sections.writeBrief(section, pkg!.team!.brief!);
 
-    for (const routine of pkg?.routines ?? []) {
-      // Routines always arrive paused.
-      let timeoutMinutes = routine.timeoutMinutes;
-      if (timeoutMinutes !== undefined && (timeoutMinutes < 5 || timeoutMinutes > 240)) {
-        timeoutMinutes = Math.min(240, Math.max(5, timeoutMinutes));
-        skipped.push({ part: `routines[${routine.key}].timeoutMinutes`, reason: "run_limit_adjusted" });
-      }
-      const input: RoutineInput = {
-        name: routine.name,
-        prompt: routine.prompt,
-        botId: botIds.get(routine.agent)!,
-        target: "bot" as const,
-        runOn: routine.runOn,
-        enabled: false,
-        schedule: routine.schedule,
-        durationMinutes: routine.durationMinutes,
-        ...(timeoutMinutes === undefined ? {} : { timeoutMinutes }),
-        ...(routine.overlap ? { overlap: routine.overlap } : {}),
-        ...(routine.continuity ? { continuity: true } : {}),
-        ...(routine.runOnStartup ? { runOnStartup: true } : {}),
-      };
-      const created = deps.routines.create(input);
-      createdRoutines.push(created);
-      if (org) {
-        const local = {
-          name: created.name,
-          prompt: created.prompt,
-          schedule: scheduleValue(created),
-          target: { botId: created.botId },
-        };
-        deps.routines.stampInstalledPackage!(created.id, { installId: org.installId, key: routine.key, parts: pairs(ROUTINE_PARTS, routineReleaseValues(routine), local) });
-        orgIndex.routines[routine.key] = created.id;
-      }
-    }
-
     if (pkg?.team?.leader) store.setChiefOfStaff(botIds.get(pkg.team.leader)!);
     if (org && pkg?.team) {
       orgIndex.section = section;
@@ -437,7 +396,6 @@ function runImport(source: ImportSource, options: PackageImportOptions, deps: Pa
       bots,
       groups: createdGroups.map((created) => store.group(created.id) ?? created),
       ...(group ? { group } : {}),
-      routines: createdRoutines,
       offeredSkills: (pkg?.skills?.entries ?? []).filter((skill) => !referenced.has(skill.name)).map((skill) => skill.name),
       connections,
       skipped,
@@ -446,7 +404,6 @@ function runImport(source: ImportSource, options: PackageImportOptions, deps: Pa
       ...(presets ? { presets } : {}),
     };
   } catch (error) {
-    for (const routine of createdRoutines) deps.routines.remove(routine.id);
     for (const created of createdGroups) store.deleteGroup(created.id);
     for (const bot of importedBots) store.deleteBot(bot.id);
     deps.presets?.remove(createdPresets);

@@ -40,11 +40,7 @@ export function buildNotification(
         ? `${who} has a question`
         : kind === "sign-in"
           ? `${who} needs you to sign in to ${extra?.site ?? "a website"}`
-          : kind === "routine-failed"
-            ? `${who}'s routine failed`
-            : kind === "routine-deferred"
-              ? `${who}'s routine is waiting`
-            : kind === "turn-failed"
+          : kind === "turn-failed"
               ? `${who} couldn't start`
               : kind === "incident"
                 ? `${who} hit a problem`

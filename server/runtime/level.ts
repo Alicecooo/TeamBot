@@ -29,7 +29,7 @@ function engineCap(inherited: Level, driverKind: string | undefined): Level {
 
 export function assignmentLevel(input: LevelInput): { level: Level; source: LevelSource } {
   const { own, chief, origin, chiefLineage, driverKind } = input;
-  const inherited = chiefLineage && (origin === "person" || origin === "routine") ? chief : undefined;
+  const inherited = chiefLineage && origin === "person" ? chief : undefined;
   if (own === "custom" || inherited === undefined || rank(inherited) <= rank(own)) return { level: own, source: "own" };
   const capped = engineCap(inherited, driverKind);
   if (rank(capped) <= rank(own)) return { level: own, source: "engine_cap" };

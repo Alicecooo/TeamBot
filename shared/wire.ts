@@ -4,21 +4,17 @@
 import type { ApprovalMode } from "./approval-mode.ts";
 import type { ToolScope } from "./tool-scope.ts";
 import type { TurnDigest } from "./digest.ts";
-import type { PrivateChatRef } from "./private-chats.ts";
 import type { BotAvatarCrop } from "./bot-avatar.ts";
 import type { MascotBodyId } from "./mascot-bodies.ts";
 import type { TeamSetupRequest } from "./team-setup.ts";
-import type { RoutineRequestCardData } from "./routine-request.ts";
 import type { ProfileRequestCardData } from "./profile-request.ts";
 import type { PlaceRow } from "./place-view.ts";
 import type { ModelRequestCardData } from "./model-request.ts";
 import type { SkillRequestCardData } from "./skill-request.ts";
 import type { QuestionRequestCardData } from "./ask-question.ts";
-import type { RoutineRunCardData } from "./routine-run.ts";
 import type { WidgetPayload } from "./widget.ts";
 import type { RuntimeEvent } from "./runtime-events.ts";
 import type { NotificationLogEntry } from "./notification.ts";
-import type { Routine, RoutineRun } from "./routines.ts";
 
 /** Reasoning-effort levels, ascending: a union of what any engine accepts;
  * each driver declares the subset its CLI will take. */
@@ -66,10 +62,8 @@ export interface TaskOpenedBy {
   botId: string;
   name: string;
   delegationId?: string;
-  /** What kind of conversation the opener made this: "pair" is the one
-   * durable conversation between two bots; "work" closes itself once its
-   * result has been reported. */
-  kind?: "pair" | "work";
+  /** Work threads close after their result has been reported. */
+  kind?: "work";
   /** The opener's own conversation this "work" thread was opened from.
    * Everything that conversation later sends this bot continues here. */
   threadId?: string;
@@ -101,8 +95,6 @@ export interface TaskUsage {
 /** One task = one conversation with its own context, thread and provider
  * session. */
 export interface WireTask {
-  /** Derived navigation target for an internal Bot-to-Bot receiving context. */
-  privateChatRef?: PrivateChatRef;
   /** Outstanding handoffs, not an active provider turn. */
   waitingForTeammates?: boolean;
   threadId: string;
@@ -113,8 +105,6 @@ export interface WireTask {
   titleFromFirstMessage?: true;
   /** Organizational grouping only; never a directory or provider context. */
   projectId?: string;
-  /** Detached routine execution, reachable through its visible results card. */
-  routineRunId?: string;
   /** Set when a bot, not a person, opened this thread. */
   openedBy?: TaskOpenedBy;
   /** Set by close_thread; absent while the thread is open. */
@@ -235,8 +225,7 @@ export interface WireBot {
   id: string;
   /** The task selected in the UI; running turns keep their own thread id. */
   threadId: string;
-  /** Where a routine without a thread of its own reports. Absent only for a
-   * bot without threads. */
+  /** The bot's primary conversation for navigation. */
   mainThreadId?: string;
   /** newest first */
   tasks?: WireTask[];
@@ -365,12 +354,10 @@ export type CardAnswerer = (
 
 /** One transcript line, serialized as stored. */
 export interface WireMessage {
-  /** Opens the shared, read-only Bot-to-Bot transcript instead of a personal conversation. */
-  privateChatRef?: PrivateChatRef;
   peerRequest?: { id: string; phase: "request" | "result" };
   id: string;
   role: "bot" | "user";
-  kind: "text" | "options" | "activity" | "screen" | "connector" | "secret" | "signin" | "routine.run" | "digest" | "compaction" | "widget";
+  kind: "text" | "options" | "activity" | "screen" | "connector" | "secret" | "signin" | "digest" | "compaction" | "widget";
   text?: string;
   digest?: TurnDigest;
   compaction?: {
@@ -395,8 +382,6 @@ export interface WireMessage {
   secret?: SecretRequestCardData;
   /** signin rows: the bot asked the person to sign in to a site themselves. */
   signIn?: SignInRequestCardData;
-  /** One idempotently updated status card for a routine run. */
-  routineRun?: RoutineRunCardData;
   /** activity messages: tool name + outcome. */
   tool?: {
     name: string; ok?: boolean; setup?: boolean; terminal?: boolean; summary?: string; input?: string; output?: string;
@@ -516,8 +501,6 @@ export interface OptionCardData {
   autoApplied?: boolean;
   /** A person undid that change. */
   undone?: boolean;
-  /** A durable chat-created routine proposal. */
-  routineRequest?: RoutineRequestCardData;
   /** A durable profile-change proposal (propose_profile). */
   profileRequest?: ProfileRequestCardData;
   /** A durable default-model proposal (propose_model). */
@@ -579,9 +562,8 @@ export interface SecretRequestCardData {
   stopped?: boolean;
 }
 
-/** A bot asked the person to sign in to a website themselves: they type the
- * password into the page, or save a login the server fills for the bot. The
- * bot never sees the password either way. */
+/** A bot asked the person to sign in to a website themselves. The person
+ * enters their password directly into the page; the bot never receives it. */
 export interface SignInRequestCardData {
   /** The page to open, an http(s) address. */
   url: string;
@@ -596,10 +578,6 @@ export interface SignInRequestCardData {
   /** A newer request for the same site in this conversation replaced this
    * card; it no longer offers Done or Cancel. */
   superseded?: boolean;
-  /** Answered by saving a login: the site it was saved for (and a sign-in
-   * host on another site the person confirmed), which the bot then fills
-   * with fill_login. */
-  savedLogin?: string;
   resumed?: boolean;
   error?: string;
   /** Stop ended the turn this card paused: it offers no Done or Cancel,
@@ -664,9 +642,6 @@ export type ServerFrame =
   | { kind: "group"; group: WireGroup }
   | { kind: "notify"; notification: NotificationLogEntry }
   | { kind: "group.deleted"; groupId: string }
-  | { kind: "routine"; routine: Routine }
-  | { kind: "routine.deleted"; routineId: string }
-  | { kind: "routine.run"; run: RoutineRun }
   | { kind: "runtime"; event: RuntimeEvent }
   | { kind: "screen"; botId: string; threadId: string; png: string; mime?: string }
   /** A bot's cloud computer is being set up or woken for a turn; the chat shows

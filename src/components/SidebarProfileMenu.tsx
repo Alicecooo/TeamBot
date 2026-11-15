@@ -1,8 +1,7 @@
-import { Gauge, Settings as SettingsIcon, Zap } from "lucide-react";
+import { Gauge, Settings as SettingsIcon } from "lucide-react";
 import { InitialsAvatar } from "./Avatar";
 import { SidebarPopoverMenu, type SidebarMenuItem } from "./SidebarPopoverMenu";
 import { useStore } from "@/state/store";
-import { isRoutineProblemRun } from "@/lib/routines";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 
@@ -17,16 +16,12 @@ export function profileLabel(profile?: { name?: string; email?: string }): strin
   return profile?.name?.trim() || profile?.email?.trim() || t("sidebar.profile.you");
 }
 
-export function profileMenuItems({ usage, onUsage, onSettings, onAutomations, automationsActive, automationsNeedYou }: {
+export function profileMenuItems({ usage, onUsage, onSettings }: {
   usage: boolean;
   onUsage: () => void;
   onSettings: () => void;
-  onAutomations: () => void;
-  automationsActive?: boolean;
-  automationsNeedYou?: boolean;
 }): SidebarMenuItem[] {
   return [
-    { key: "automations", label: t("sidebar.nav.automations"), icon: <Zap size={18} />, active: automationsActive, attention: automationsNeedYou, tourId: "nav-automations", onSelect: onAutomations },
     ...(usage ? [{ key: "usage", label: t("settings.section.usage"), icon: <Gauge size={18} />, onSelect: onUsage }] : []),
     { key: "settings", label: t("sidebar.menu.settings"), icon: <SettingsIcon size={18} />, onSelect: onSettings },
   ];
@@ -40,9 +35,6 @@ export function SidebarProfileMenu({ iconOnly = false, rail = false }: { iconOnl
     usage: window.ogb?.remoteClient?.active !== true,
     onUsage: () => dispatch({ type: "toggleAppSettings", open: true, section: "usage" }),
     onSettings: () => dispatch({ type: "toggleAppSettings" }),
-    onAutomations: () => dispatch({ type: "showRoutines", view: "list" }),
-    automationsActive: state.activeView === "routines",
-    automationsNeedYou: state.routineRuns.some((run) => isRoutineProblemRun(run) && !run.seenAt),
   });
 
   return (

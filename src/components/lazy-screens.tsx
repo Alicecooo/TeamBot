@@ -72,10 +72,9 @@ export const InspectorPanel = lazyScreen("InspectorPanel", async () => (await im
 
 export const NewBotDialog = lazyScreen("NewBotDialog", async () => (await import("./NewBotDialog")).NewBotDialog);
 
-export const TriggersPage = lazyScreen("TriggersPage", async () => (await import("./TriggersPage")).TriggersPage);
 export const SettingsModal = lazyScreen("SettingsModal", async () => (await import("./SettingsModal")).SettingsModal);
 
-const SCREENS = [ActivityPanel, BotSettingsDialog, InspectorPanel, NewBotDialog, SettingsModal, TriggersPage];
+const SCREENS = [ActivityPanel, BotSettingsDialog, InspectorPanel, NewBotDialog, SettingsModal];
 
 if (typeof location !== "undefined" && new URLSearchParams(location.search).has("desktop-settings")) {
   void SettingsModal.preload().catch(() => {});

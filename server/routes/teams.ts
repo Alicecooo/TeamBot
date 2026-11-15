@@ -12,7 +12,6 @@ import { PackageImportError, importPackageDocument, importTeamManifest, type Pac
 import { readPublishedLibrary, writePublishedLibrary, type DefaultsPreset } from "../packages/presets.ts";
 import { scoutProject, suggestTeam } from "../workspace/project-scout.ts";
 import { readPublishedTeam, writePublishedTeam } from "../packages/published-teams.ts";
-import type { RoutineManager } from "../automation/routines.ts";
 import { readSectionContext } from "../teams/section-context.ts";
 import { sectionKey, type BotRecord, type GroupRecord, type Store } from "../storage/store.ts";
 import { createTeamBackup, importTeamBackup } from "../packages/team-backup.ts";
@@ -23,7 +22,6 @@ import { PASS, type RouteHandler } from "./table.ts";
 export interface TeamRouteDeps {
   store: Store;
   cfg: Pick<AppConfig, "profile" | "mcpServers">;
-  routines(): RoutineManager | null;
   orgLibrary(): Pick<OrgLibrary, "list" | "preview" | "add" | "offeredSkills" | "addOfferedSkill"> | null;
   broadcast(payload: Record<string, unknown>): void;
   publicBot(bot: BotRecord): WireBot;
@@ -46,7 +44,6 @@ export function createTeamRoutes(deps: TeamRouteDeps): RouteHandler {
   } = deps;
   return async ({ req, res, url, path, method, json, readBody }) => {
     let m: RegExpMatchArray | null = null;
-    const routines = deps.routines();
     const orgLibrary = deps.orgLibrary();
     if (method === "POST" && path === "/api/teams/export") {
       const body = await readBody(req, 8 * 1024 * 1024);
@@ -104,7 +101,6 @@ export function createTeamRoutes(deps: TeamRouteDeps): RouteHandler {
             authorName: profileName,
             bots: store.bots,
             groups: store.groups,
-            routines: routines!.listRoutines(),
             brief: readSectionContext(team)?.text,
             published: readPublishedTeam(team),
             skillsByBot: skills.skillsByBot,
@@ -139,7 +135,7 @@ export function createTeamRoutes(deps: TeamRouteDeps): RouteHandler {
       if ((body.format === "backup" ? store.bots.length : memberIds.length) === 0) return json(res, 400, { error: "Create a bot before exporting your team" });
       try {
         if (body.format === "backup") {
-          return json(res, 200, createTeamBackup(store, routines!.listRoutines(), name));
+          return json(res, 200, createTeamBackup(store, name));
         }
         if (body.format === "package") {
           const selectedBots = store.bots.filter((bot) => !bot.hidden);
@@ -150,7 +146,6 @@ export function createTeamRoutes(deps: TeamRouteDeps): RouteHandler {
             authorName: profileName,
             bots: selectedBots,
             groups: store.groups,
-            routines: routines!.listRoutines(),
             skillsByBot: collectExportSkills(selectedBots, skillNames.names),
           });
           return json(res, 200, {
@@ -247,7 +242,6 @@ export function createTeamRoutes(deps: TeamRouteDeps): RouteHandler {
         section: imported.section,
         bots: imported.bots.map((bot) => publicBot(store.bot(bot.id) ?? bot)),
         groups: imported.groups.map((created) => publicGroupState(store.group(created.id) ?? created)),
-        routines: imported.routines,
         offeredSkills: imported.offeredSkills,
         connections: imported.connections,
         skipped: imported.skipped,
@@ -295,7 +289,7 @@ export function createTeamRoutes(deps: TeamRouteDeps): RouteHandler {
       if (body?.format === "openmaus.backup") {
         if (importMode !== "add") return json(res, 400, { error: "Import backups alongside your existing bots; project mode is only for templates" });
         try {
-          const imported = importTeamBackup(store, routines!, body, await defaultSelection());
+          const imported = importTeamBackup(store, body, await defaultSelection());
           // A restore writes transcripts without store events: these frames carry the restored pages to other clients.
           const bots = imported.bots.map((bot) => publicBot(bot));
           const groups = imported.groups.map((group) => publicGroupState(store.group(group.id) ?? group));
@@ -306,7 +300,7 @@ export function createTeamRoutes(deps: TeamRouteDeps): RouteHandler {
           return json(res, 400, { error: error instanceof Error ? error.message : "Backup could not be imported" });
         }
       }
-      // Read as a FILE: it cannot claim a publisher, its skills and routines arrive off; only the org library imports with trust "org".
+      // Read as a FILE: it cannot claim a publisher; only the org library imports with trust "org".
       let packageDocument: PackageDocument | null = null;
       let manifest: ReturnType<typeof parseTeamManifest> | null = null;
       try {
@@ -337,7 +331,6 @@ export function createTeamRoutes(deps: TeamRouteDeps): RouteHandler {
         bots: imported.bots.map((bot) => publicBot(store.bot(bot.id) ?? bot)),
         group: imported.group,
         groups: imported.groups.map((created) => publicGroupState(store.group(created.id) ?? created)),
-        routines: imported.routines,
         offeredSkills: imported.offeredSkills,
         connections: imported.connections,
         skipped: imported.skipped,

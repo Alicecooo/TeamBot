@@ -12,7 +12,7 @@ export interface OrgLibraryPackage {
   publisher: { organizationId: string; name: string; self: boolean };
   mode: "required" | "available" | "off";
   release: null | { version: string; sha256: string; sizeBytes: number; formatVersion: number; publishedAt: number; notes: string };
-  contents: { bots: number; skills: number; presets: number; routines: number; connections: number; botNames: string[] };
+  contents: { bots: number; skills: number; presets: number; connections: number; botNames: string[] };
   scanFindings: number;
   blob: "ready" | "unavailable" | "unsupported";
   installed: { installId: string; release: string; status: "installed" | "withdrawn" | "removed" } | null;
@@ -75,7 +75,6 @@ export function orgContentsLine(contents: OrgLibraryPackage["contents"]): string
   if (contents.bots) parts.push(t("orgLibrary.bots", { count: contents.bots }));
   if (contents.skills) parts.push(t("orgLibrary.skills", { count: contents.skills }));
   if (contents.presets) parts.push(t("orgLibrary.presets", { count: contents.presets }));
-  if (contents.routines) parts.push(t("orgLibrary.routines", { count: contents.routines }));
   if (contents.connections) parts.push(t("orgLibrary.connections", { count: contents.connections }));
   return parts.join(" · ");
 }
@@ -108,7 +107,6 @@ export function orgPackagePreview(document: PackageDocument): PendingTeamImport 
     members: [],
     groups: 0,
     playbooks: pkg.playbooks?.length ?? 0,
-    routines: 0,
     apps: pkg.requirements.apps.map((app) => ({ label: app.label, optional: app.optional === true })),
     skills: [],
     offeredSkills: (pkg.skills?.entries ?? []).map((skill) => skill.name),

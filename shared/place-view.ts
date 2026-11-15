@@ -21,14 +21,14 @@ export type PlaceState = (typeof PLACE_STATES)[number];
 /** Where a failed place came from: the one control a person changes when it
  * can't be used. Auto and a team's shared computer name no place, so they
  * never fail as one. */
-export type PlaceSource = "works-on" | "pin" | "auto-pin" | "routine";
+export type PlaceSource = "works-on" | "pin" | "auto-pin";
 
 /** The next actions a place offers. Each is one button in the app and, on a
  * stored row, one sentence a phone can read. */
 export const PLACE_ACTIONS = [
   "choose-model", "open-tools", "sign-in", "start", "wake", "watch", "see-plan", "manage-computers",
   "try-again", "open-my-cloud", "add-boat-key", "turn-on-browser",
-  "clear-pin", "change-routine",
+  "clear-pin",
 ] as const;
 export type PlaceActionId = (typeof PLACE_ACTIONS)[number];
 
@@ -182,7 +182,6 @@ export const PLACE_EN = {
   "place.action.turnOnBrowser": "Turn on the browser",
   "place.action.clearPin": "Clear this conversation's place",
   "place.action.usePlace": "Use {place}",
-  "place.action.changeRoutine": "Change where it runs",
   "place.askAdmin": "Ask an Admin to change it.",
   "place.backOnAuto": "This conversation is back on Auto.",
 } as const;
@@ -205,7 +204,6 @@ export const PLACE_WORDS: Record<PlaceActionId, string> = {
   "add-boat-key": "Add a Boat key in Settings → API keys.",
   "turn-on-browser": "Turn on the built-in browser in Settings.",
   "clear-pin": "Clear this conversation's place in the composer to continue.",
-  "change-routine": "Change where this routine runs.",
 };
 
 /** The words a person reads, in some language: the app passes its t(), the
@@ -256,7 +254,7 @@ const PASSING: ReadonlySet<PlaceState> = new Set(["cc-unavailable", "cc-no-start
  * them, so the line ends "Ask an Admin to change it." instead. */
 const ADMIN_ONLY: ReadonlySet<PlaceActionId> = new Set([
   "choose-model", "open-tools", "sign-in", "see-plan", "manage-computers", "open-my-cloud",
-  "add-boat-key", "turn-on-browser", "change-routine",
+  "add-boat-key", "turn-on-browser",
 ]);
 /** Starting or waking a computer early: a User's own message does it, so
  * there is nothing to ask anyone for. */
@@ -276,7 +274,6 @@ const ACTION_KEY: Record<PlaceActionId, PlaceKey> = {
   "add-boat-key": "place.action.addBoatKey",
   "turn-on-browser": "place.action.turnOnBrowser",
   "clear-pin": "place.action.clearPin",
-  "change-routine": "place.action.changeRoutine",
 };
 
 export function placeState(facts: PlaceFacts): { state: PlaceState; params: PlaceParams } {
@@ -321,7 +318,6 @@ function sourceAction(source: PlaceSource): PlaceActionId | null {
     case "works-on": return "try-again";
     case "auto-pin": return "try-again";
     case "pin": return "clear-pin";
-    case "routine": return "change-routine";
   }
 }
 

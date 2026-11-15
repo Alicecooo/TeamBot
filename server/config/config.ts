@@ -50,8 +50,6 @@ const featureConfigSchema = z.object({
   skillReviewSteps: z.number().int().min(3).max(100).optional(),
   /** Show each tool run in the transcript. Off unless explicitly enabled. */
   showToolCalls: z.boolean().optional(),
-  /** Run a routine in the conversation it reports to, not a hidden thread. Off unless true. */
-  routinesInConversation: z.boolean().optional(),
   /** Built-in browser. On unless false; each bot also has its own switch. */
 
   /** Computer sharing. Off unless true, set by hand: there is no Settings toggle. */
@@ -238,7 +236,7 @@ export interface AppConfig extends HelperConfig {
   threads?: { maxConcurrentPerBot: number; eventLogMaxBytes?: number; eventLogRetentionDays?: number };
   context?: { rebuildBytes?: number; compactAt?: number; autoCompact?: boolean; replayToolHistory?: boolean };
   memory?: { captureQuietMs?: number; tidyHour?: number };
-  features?: { skillAuthoring?: boolean; skillReview?: boolean; skillReviewSteps?: number; showToolCalls?: boolean;  sharedComputers?: boolean; claudeUserMcp?: boolean; claudeUserSkills?: boolean; llmThreadTitles?: boolean; autoRecall?: boolean; routinesInConversation?: boolean; skillsLibrary?: boolean; shareLearnedSkills?: "off" | "ask" | "auto"; chiefEscalations?: boolean; acpPlanLines?: boolean; agentsToolBridge?: boolean };
+  features?: { skillAuthoring?: boolean; skillReview?: boolean; skillReviewSteps?: number; showToolCalls?: boolean;  sharedComputers?: boolean; claudeUserMcp?: boolean; claudeUserSkills?: boolean; llmThreadTitles?: boolean; autoRecall?: boolean; skillsLibrary?: boolean; shareLearnedSkills?: "off" | "ask" | "auto"; chiefEscalations?: boolean; acpPlanLines?: boolean; agentsToolBridge?: boolean };
   onboarding?: { completedAt?: string; version?: number; reelSeen?: boolean; hintsSeen?: string[]; firstTurnAt?: string };
 
   instances?: InstanceConfigMap;
@@ -324,10 +322,6 @@ export function tidyHour(cfg: AppConfig): number {
 
 export function showToolCallsEnabled(cfg: AppConfig): boolean {
   return cfg.features?.showToolCalls === true;
-}
-
-export function routinesInConversationEnabled(cfg: AppConfig): boolean {
-  return cfg.features?.routinesInConversation === true;
 }
 
 /** Security: off unless true because a read-only folder grant can still be escalated to a shell. */

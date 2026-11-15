@@ -11,7 +11,6 @@ export interface ManagedDesktopState {
   deviceId?: string;
   expiresAt?: number;
   providers?: Array<{ id: string; configured: boolean; models: string[] }>;
-  cloudBackups?: boolean;
   branding?: import("./organization-branding.mjs").OrganizationBranding;
 }
 export interface ManagedDesktopBridge {

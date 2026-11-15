@@ -8,8 +8,8 @@ import { Select } from "./Select";
 import { Card } from "./SettingsPrimitives";
 import { UsageBudgetCards, type BudgetState } from "./UsageBudget";
 
-export type UsageGroupBy = "bot" | "model" | "user" | "day" | "engine" | "routine";
-export const USAGE_GROUPINGS: readonly UsageGroupBy[] = ["bot", "model", "user", "day", "engine", "routine"];
+export type UsageGroupBy = "bot" | "model" | "user" | "day" | "engine";
+export const USAGE_GROUPINGS: readonly UsageGroupBy[] = ["bot", "model", "user", "day", "engine"];
 export type UsagePeriod = "month" | "lastMonth" | "days30";
 
 export interface UsageGroup {
@@ -45,11 +45,9 @@ export function usagePeriodRange(period: UsagePeriod, now = new Date()): { from:
 }
 
 export function usageGroupLabel(groupBy: UsageGroupBy, group: UsageGroup): string {
-  if (groupBy === "routine") return group.key === "manual" ? t("usage.history.notRoutine") : group.label;
   if (groupBy !== "user") return group.label;
   if (group.key === "owner") return t("usage.history.owner");
   if (group.key === "bot") return t("usage.history.botToBot");
-  if (group.key.startsWith("routine:")) return t("usage.history.routine", { name: group.label.replace(/^Routine: /, "") });
   return group.label;
 }
 
@@ -57,13 +55,12 @@ export function usageExportHref(range: { from: string; to: string }): string {
   return `/api/usage.csv?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`;
 }
 
-const GROUP_LABEL_KEYS: Record<UsageGroupBy, "usage.history.byBot" | "usage.history.byModel" | "usage.history.byUser" | "usage.history.byDay" | "usage.history.byEngine" | "usage.history.byRoutine"> = {
+const GROUP_LABEL_KEYS: Record<UsageGroupBy, "usage.history.byBot" | "usage.history.byModel" | "usage.history.byUser" | "usage.history.byDay" | "usage.history.byEngine"> = {
   bot: "usage.history.byBot",
   model: "usage.history.byModel",
   user: "usage.history.byUser",
   day: "usage.history.byDay",
   engine: "usage.history.byEngine",
-  routine: "usage.history.byRoutine",
 };
 
 function CostCell({ group, strong = false }: { group: UsageGroup; strong?: boolean }) {

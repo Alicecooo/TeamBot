@@ -6,7 +6,6 @@ import type { Coordinator } from "../teams/coordinator.ts";
 import type { Handoffs } from "../agent/delta-context.ts";
 import type { hostedModelPolicy } from "../deployment/hosted-models.ts";
 import type { RequestAuth } from "../auth/request-auth.ts";
-import type { RoutineManager } from "../automation/routines.ts";
 import type { SkillReview } from "../skills/skill-review.ts";
 import { isProjectEmoji, type BotRecord, type Store, type TaskRecord } from "../storage/store.ts";
 import type { ThreadStarters } from "../agent/thread-starters.ts";
@@ -30,7 +29,6 @@ export interface TaskRouteDeps {
   hostedWorkspace: boolean;
   hostedFullAccessRefusal: string;
   hostedModels: Pick<HostedModels, "resetTask"> | null;
-  routines(): Pick<RoutineManager, "isActiveThread"> | null;
   coordinator: Pick<Coordinator, "cancelDirect">;
   handoffs: Pick<Handoffs, "forget">;
   skillReview: Pick<SkillReview, "dropThread">;
@@ -75,7 +73,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteHandler {
     
     
     
-    if (threadBusy(botId, threadId) || deps.routines()!.isActiveThread(threadId)) {
+    if (threadBusy(botId, threadId)) {
       return { status: 409, error: "this task is running — stop it first" };
     }
     return null;
@@ -144,7 +142,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteHandler {
 
     m = path.match(/^\/api\/bots\/([\w-]+)\/tasks$/);
     if (m && method === "POST") {
-      return json(res, 410, { error: "Bots have one conversation; routine executions create internal tasks automatically." });
+      return json(res, 410, { error: "Bots have one conversation; this endpoint no longer creates tasks." });
     }
     m = path.match(/^\/api\/bots\/([\w-]+)\/tasks\/delete$/);
     if (m && method === "POST") {

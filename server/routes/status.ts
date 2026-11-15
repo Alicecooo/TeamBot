@@ -1,10 +1,9 @@
 import { DEFAULT_OUTBOUND_POLICY } from "../../shared/outbound.ts";
 import { readBotActivity } from "../agent/activity.ts";
-import { activityCsv, activityEntries, parseActivityWhat, readAdminActivityRange } from "../observability/admin-activity.ts";
 import { loadBrand } from "../deployment/brand.ts";
 
 import { DATA_DIR, EVENTS_DIR, NATIVE_DIR, instanceConfigs, type AppConfig } from "../config/config.ts";
-import { boundRetentionDays, decisionsCsv, readDecisionRange, readDecisions } from "../observability/decision-log.ts";
+import { decisionsCsv, readDecisionRange, readDecisions } from "../observability/decision-log.ts";
 import { editionForMembers, editionStatus, entitled } from "../deployment/enterprise.ts";
 import { fleetAvailable, fleetRequest, fleetSocketPath } from "../deployment/fleet-client.ts";
 import type { OutboundCounts } from "../usage/outbound-counts.ts";
@@ -21,7 +20,6 @@ export interface StatusRouteDeps {
   outboundCounts: Pick<OutboundCounts, "today">;
   staticDir: string | null;
   sharedWorkspaceFullAccessEnabled(): boolean;
-  adminActivityRecording(): boolean;
   configStatus(): ConfigStatus;
   broadcast(payload: Record<string, unknown>): void;
 
@@ -29,7 +27,7 @@ export interface StatusRouteDeps {
 
 export function createStatusRoutes(deps: StatusRouteDeps): RouteHandler {
   const {
-    store, cfg, outboundCounts, staticDir: STATIC_DIR, sharedWorkspaceFullAccessEnabled, adminActivityRecording,
+    store, cfg, outboundCounts, staticDir: STATIC_DIR, sharedWorkspaceFullAccessEnabled,
 
   } = deps;
   return async ({ req, res, url, path, method, auth, json, readBody }) => {
@@ -106,38 +104,6 @@ export function createStatusRoutes(deps: StatusRouteDeps): RouteHandler {
         return json(res, 400, { error: "limit must be a positive whole number" });
       }
       return json(res, 200, { decisions: readDecisions(DATA_DIR, parsedLimit ?? 200) });
-    }
-    if (method === "GET" && (path === "/api/admin-activity" || path === "/api/admin-activity.csv")) {
-      const fromParam = url.searchParams.get("from") || new Date(Date.now() - 29 * 24 * 60 * 60_000).toISOString().slice(0, 10);
-      const range = parseUsageRange(fromParam, url.searchParams.get("to"));
-      if (!range) return json(res, 400, { error: "from and to must be dates (YYYY-MM-DD), from no later than to, at most a year apart" });
-      const what = parseActivityWhat(url.searchParams.get("what"));
-      if (!what) return json(res, 400, { error: "what must be all, approvals, decisions, config, people, session, mcp, engine, bot, budget or visibility" });
-      const entries = activityEntries(readDecisionRange(DATA_DIR, range), readAdminActivityRange(DATA_DIR, range), {
-        what,
-        who: (url.searchParams.get("who") ?? "").slice(0, 200),
-      });
-      if (path.endsWith(".csv")) {
-        const stamp = (date: Date) => date.toISOString().slice(0, 10);
-        res.writeHead(200, {
-          "content-type": "text/csv; charset=utf-8",
-          "content-disposition": `attachment; filename="activity-${stamp(range.from)}-${stamp(range.to)}.csv"`,
-          "cache-control": "no-store",
-        });
-        res.end(activityCsv(entries));
-        return;
-      }
-      const rawLimit = Number(url.searchParams.get("limit") ?? 500);
-      const limit = Number.isInteger(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 5_000) : 500;
-      res.setHeader("cache-control", "no-store");
-      return json(res, 200, {
-        entries: entries.slice(0, limit),
-        total: entries.length,
-        from: range.from.toISOString(),
-        to: range.to.toISOString(),
-        retentionDays: boundRetentionDays(),
-        recording: adminActivityRecording(),
-      });
     }
     if (method === "GET" && path === "/api/decisions.csv") {
       const range = parseUsageRange(url.searchParams.get("from"), url.searchParams.get("to"));

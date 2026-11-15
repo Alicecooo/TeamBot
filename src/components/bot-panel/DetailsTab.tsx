@@ -1,12 +1,8 @@
 import { useState } from "react";
-import { FileText, Plus } from "lucide-react";
 
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { friendlyEffort, simpleEffortLevels } from "@/lib/model-friendly";
-import type { Routine } from "@/lib/routines";
-import { routineFinished, routineNextLabel } from "@/lib/routine-display";
-import { scheduleLabel } from "@/lib/schedule-label";
 import { currentTaskBot, useStore, type Bot } from "@/state/store";
 import type { ApprovalMode } from "../../../shared/approval-mode";
 import type { EffortLevel } from "../../../shared/wire";
@@ -15,13 +11,12 @@ import { LocalComputerAutoWarning } from "../LocalComputerAutoWarning";
 import { OutboundControl } from "../bot-settings/PermissionsSection";
 import { useBotEditor } from "../bot-settings/BotEditorContext";
 import { ModelPicker } from "../ModelPicker";
-import { RoutineEditor } from "../RoutinesPage";
 import { ThreadModelsLine } from "../ThreadModelsLine";
 import { useBotApps } from "../bot-settings/useBotApps";
 import type { BotPatch, useBotSettingsDerived } from "../bot-settings/useBotSettingsDerived";
 import { AppsCard } from "./apps-and-logins";
 import type { PageId } from "./page-registry";
-import { BotSwitch, buttonCls, Card, ColRow, LabelAction, LinkRow, NoteRow, rowCls, Segmented, SegmentedRow } from "./rows";
+import { Card, ColRow, rowCls, Segmented, SegmentedRow } from "./rows";
 
 type Derived = ReturnType<typeof useBotSettingsDerived>;
 
@@ -30,10 +25,9 @@ export function DetailsTab({ bot, derived, onOpen }: {
   derived: Derived;
   onOpen: (page: PageId) => void;
 }) {
-  const { state, dispatch } = useStore();
+  const { dispatch } = useStore();
   const { draft } = useBotEditor();
   const [localAutoWarning, setLocalAutoWarning] = useState<{ botId: string; patch: BotPatch } | null>(null);
-  const [editingRoutine, setEditingRoutine] = useState<Routine | "new" | null>(null);
   const apps = useBotApps(bot);
   const { patch, approvalMode, engine, trustedModesAvailable } = derived;
 
@@ -60,8 +54,6 @@ export function DetailsTab({ bot, derived, onOpen }: {
     dispatch({ type: "setModel", botId: bot.id, selection: { ...bot.modelSelection, effort: level } });
   };
 
-  const routines = [...derived.botRoutines].sort((a, b) =>
-    Number(b.enabled) - Number(a.enabled) || (a.nextRunAt ?? Infinity) - (b.nextRunAt ?? Infinity) || a.name.localeCompare(b.name));
   return (
     <div data-panel-tabpanel="details">
       <Card label={t("model.simple.model")} anchor="model">
@@ -105,69 +97,7 @@ export function DetailsTab({ bot, derived, onOpen }: {
         {!draft && displayedApprovalMode === "auto" && <OutboundControl key={bot.id} bot={bot} onChange={(outbound) => patch({ outbound })} embedded />}
       </Card>
 
-      <Card
-        label={t("botSettings.simple.routines")}
-        anchor="routines"
-        action={routines.length > 0 ? (
-          <LabelAction data-panel-action="routines" aria-label={t("botPanel.allRoutines")} onClick={() => onOpen("routines")}>
-            {routines.length}
-          </LabelAction>
-        ) : undefined}
-      >
-        {routines.length === 0 ? (
-          <NoteRow>{t("botSettings.simple.routinesEmpty", { name: bot.name })}</NoteRow>
-        ) : routines.map((routine) => (
-          <div key={routine.id} data-simple-routine={routine.id} className={rowCls}>
-            <button type="button" onClick={() => setEditingRoutine(routine)} className="min-w-0 flex-1 text-left">
-              <div className="truncate text-[13.5px] font-medium text-ink">{routine.name}</div>
-              <div className="mt-px truncate text-[12.5px] text-ink-secondary">
-                {scheduleLabel(routine.schedule)} · {routineNextLabel(routine)}
-              </div>
-            </button>
-            {!routineFinished(routine) && (
-              <BotSwitch
-                color={bot.color}
-                checked={routine.enabled}
-                aria-label={t("routines.toggle", { name: routine.name })}
-                onClick={() => dispatch({ type: "updateRoutine", routineId: routine.id, patch: { enabled: !routine.enabled } })}
-              />
-            )}
-          </div>
-        ))}
-        <div className={cn(rowCls, "flex-wrap gap-2")}>
-          <button type="button" data-panel-action="new-routine" onClick={() => setEditingRoutine("new")} className={buttonCls}>
-            <Plus size={14} aria-hidden="true" />
-            {t("computer.routines.create")}
-          </button>
-          <button
-            type="button"
-            data-panel-action="routine-logs"
-            onClick={() => dispatch({ type: "showRoutines", section: "logs", botId: bot.id })}
-            className={buttonCls}
-          >
-            <FileText size={13} aria-hidden="true" />
-            {t("routines.logs")}
-          </button>
-        </div>
-        <LinkRow
-          data-panel-link="schedules"
-          onClick={() => dispatch({ type: "showRoutines", section: "schedule", view: "list", botId: bot.id })}
-        >
-          {t("computer.routines.openTitle")}
-        </LinkRow>
-      </Card>
-
       <AppsCard bot={bot} derived={derived} apps={apps} onOpenAccess={() => onOpen("apps")} />
-
-      {editingRoutine && (
-        <RoutineEditor
-          key={bot.id}
-          routine={editingRoutine === "new" ? undefined : editingRoutine}
-          bots={[bot]}
-          lockedBotId={bot.id}
-          onClose={() => setEditingRoutine(null)}
-        />
-      )}
       <LocalComputerAutoWarning
         open={localAutoWarning !== null}
         onCancel={() => setLocalAutoWarning(null)}
@@ -178,7 +108,6 @@ export function DetailsTab({ bot, derived, onOpen }: {
           dispatch({ type: "updateBot", botId: target.botId, patch: target.patch });
         }}
       />
-      {state.routinesLoadState === "error" && <p role="alert" className="mx-1 mt-2 text-[12px] text-danger">{t("routines.loadError")}</p>}
     </div>
   );
 }

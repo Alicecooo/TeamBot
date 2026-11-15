@@ -122,7 +122,7 @@
   /* onboarding: a spotlight card or a first-sight hint scaling in from its
      anchor. Never from zero; nothing appears from nothing. */
   --animate-spot-in: spot-in 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
-  /* onboarding: a surface reacting once to an event (a routine firing) */
+  /* onboarding: a surface reacting once to an event */
   --animate-ripple: ripple 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
   /* onboarding motion */
   --animate-bolt: bolt 0.9s cubic-bezier(0.77, 0, 0.175, 1) infinite;

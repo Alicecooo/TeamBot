@@ -2,13 +2,13 @@ import { createContext, memo, useCallback, useContext, useEffect, useLayoutEffec
 import { ThreadLinkContext } from "@/components/ThreadLinkMenu";
 import { useShowThreads } from "@/lib/thread-preferences";
 import { useCopyFeedback } from "@/lib/copy-text";
-import { AlertTriangle, Check, ChevronLeft, ChevronRight, Copy, Crown, MessagesSquare, Pin, RefreshCw, Square, Reply, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronLeft, ChevronRight, Copy, Crown, Pin, RefreshCw, Square, Reply, X } from "lucide-react";
 import { WorkingDots } from "@/components/WorkingIndicator";
 import { ACTION_ICON, MESSAGE_ROW, MessageActions, messageActionClass } from "@/components/MessageActions";
 import { useBotMessageMenu, userMessageMenu } from "@/components/message-menu";
 import { computerStartLine } from "@/lib/computer-start";
 import { useCaptionChrome, useDesktopCapabilities } from "@/components/DesktopCapabilities";
-import { currentTaskBot, useStore, formatTime, openNotificationTarget, visibleMessages, type Action, type Bot, type InstanceInfo, type Message, type AppState, awayFromMainThread, openBot } from "@/state/store";
+import { currentTaskBot, useStore, formatTime, visibleMessages, type Action, type Bot, type InstanceInfo, type Message, type AppState, awayFromMainThread, openBot } from "@/state/store";
 import { EngineSetup } from "./EngineSetup";
 import { CHATGPT_USAGE_URL, ManageUsageLink } from "./ChatGptPlanStatus";
 import { CODEX_USAGE_URL, codexUsageLimitReached } from "../../shared/codex-usage-limit";
@@ -53,7 +53,6 @@ import { ReplyQuote } from "./ReplyQuote";
 import { ConnectorCard } from "./ConnectorCard";
 import { SecretRequestCard } from "./SecretRequestCard";
 import { SignInRequestCard } from "./SignInRequestCard";
-import { hasRoutineExecutionTask, RoutineRunCard } from "./RoutineRunCard";
 import { AttachmentGallery, collectMessageFiles, replyAttachmentGroup, splitMessageAttachments } from "./AttachmentGallery";
 import { ScreenFrame } from "./ScreenFrame";
 import { CompactionChip, DigestChip } from "./DigestChip";
@@ -596,26 +595,9 @@ function PeerLabel({ peer }: { peer: PeerLine }) {
 const ActivityChip = memo(function ActivityChip({ message, place = "auto" }: { message: Message; place?: EffectivePlace }) {
   const tool = message.tool;
   if (!tool) return null;
-  if (message.threadRef || message.privateChatRef) return <ThreadChip message={message} />;
+  if (message.threadRef) return <ThreadChip message={message} />;
   return <ToolActivity tool={tool} place={toolPlace(tool.name, place)} />;
 });
-
-function RoutineRunRow({ message, botId }: { message: Message; botId: string }) {
-  const { state, dispatch } = useStore();
-  const showThreads = useShowThreads();
-  const executionThreadId = message.routineRun?.executionThreadId;
-  const canOpen = executionThreadId && state.bots.some((candidate) =>
-    candidate.threadId === executionThreadId || hasRoutineExecutionTask(candidate.tasks, executionThreadId)
-  );
-  return (
-    <RoutineRunCard
-      message={message}
-      onOpen={canOpen && executionThreadId
-        ? () => openNotificationTarget(dispatch, { botId, threadId: executionThreadId }, state, showThreads)
-        : undefined}
-    />
-  );
-}
 
 function EmptyChat({ bot }: { bot: Bot }) {
   return (
@@ -755,8 +737,6 @@ const MessagesList = memo(function MessagesList({
               return optionsCardRow({ message: m, transcript, botId, botName, threadId });
             case "widget":
               return <MessageBoundary fallbackText={m.text ?? ""}><WidgetMessage botId={botId} threadId={threadId} message={m} /></MessageBoundary>;
-            case "routine.run":
-              return <RoutineRunRow message={m} botId={botId} />;
             case "activity": {
               if (isStatusActivity(m)) return <StatusActivityRow message={m} />;
               if (m.tool && failedTurnCause(m.tool.name) !== null) {
@@ -770,7 +750,7 @@ const MessagesList = memo(function MessagesList({
                   />
                 );
               }
-              if (!showToolCalls && !m.threadRef && !m.privateChatRef) return null;
+              if (!showToolCalls && !m.threadRef) return null;
               return <ActivityChip message={m} place={place} />;
             }
             case "digest":
@@ -1029,10 +1009,6 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
   const currentLink = profile.tasks?.find((task) => task.threadId === bot.threadId)?.link;
   const threadLink = useMemo(() => ({ link: currentLink, assign: (link: string | null) => dispatch({ type: "updateTask", botId: bot.id, threadId: bot.threadId, patch: { link } }) }), [canWrite, currentLink, bot.id, bot.threadId, dispatch]);
 
-  const routineExecution = state.routineRuns.find((run) => run.target === "bot" && run.botId === bot.id && run.threadId === bot.threadId);
-  const resultsThreadId = routineExecution?.resultsThreadId ?? routineExecution?.sourceThreadId;
-  const canOpenResults = resultsThreadId && state.bots.some((owner) => owner.threadId === resultsThreadId || owner.tasks?.some((task) => task.threadId === resultsThreadId));
-
   return (
     <ThreadLinkContext value={threadLink}>
     <main className="relative flex h-full min-w-0 flex-1 flex-col bg-app">
@@ -1093,26 +1069,12 @@ export function ChatView({ bot: profile }: { bot: Bot }) {
               <span className="@max-4xl/chathead:hidden">{t("chat.stop")}</span>
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => dispatch({ type: "openPrivateChats", botId: bot.id })}
-            aria-label={t("privateChats.title")}
-            title={t("privateChats.title")}
-            className={cn(CHATHEAD_PILL, "size-9 justify-center text-ink-secondary hover:bg-raised-hover hover:text-ink")}
-          >
-            <MessagesSquare size={15} />
-          </button>
           <ThreadContextWarning bot={bot} messages={messages} />
           {<ChatHeaderMenu key={`menu:${bot.threadId}`} bot={bot} />}
         </div>
         </div>
       </div>
 
-      {routineExecution && <div className="mx-5 mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[11.5px] text-ink-secondary">
-        <span className="min-w-0 flex-1 truncate">{t("routines.executionDetails", { name: routineExecution.routineName })}</span>
-        {canOpenResults && resultsThreadId && <button type="button" onClick={() => openNotificationTarget(dispatch, { botId: bot.id, threadId: resultsThreadId }, state, showThreads)} className="rounded px-2 py-1 text-accent hover:bg-raised">{t("routines.results.back")}</button>}
-        <button type="button" onClick={() => dispatch({ type: "showRoutines", section: "logs", routineId: routineExecution.routineId, botId: bot.id })} className="rounded px-2 py-1 hover:bg-raised hover:text-ink">{t("routines.logs")}</button>
-      </div>}
       <ChatErrorBanner message={state.error} onDismiss={() => dispatch({ type: "error", message: null })} />
       <ChatNotice notice={state.notice} />
 

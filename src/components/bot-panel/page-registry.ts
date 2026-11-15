@@ -11,7 +11,7 @@ export const TAB_LABEL: Record<PanelTab, LocaleKey> = {
 };
 
 export type PageId =
-  | "model" | "always" | "routines" | "apps"
+  | "model" | "always" | "apps"
   | "memory" | "skills"
   | "folder"
   | "notifications" | "mcp" | "tools" | "slack"
@@ -26,7 +26,6 @@ export interface PageMeta {
 
 export const PAGES: Record<PageId, PageMeta> = {
   model: { title: "model.simple.model", home: "details", where: "botPanel.where.model", keywords: "engine provider effort reasoning default model" },
-  routines: { title: "botSettings.simple.routines", home: "details", where: "botPanel.where.routines", keywords: "schedule routines cron tasks run logs" },
   apps: { title: "botPanel.page.apps", home: "details", where: "botPanel.where.apps", keywords: "composio connected apps per-app tools grants gmail calendar read write limit vault" },
   memory: { title: "botSettings.simple.memory", home: "library", where: "botPanel.where.memories", keywords: "memory notes remember obsidian upkeep tidy topic daily logs undo" },
   skills: { title: "botSettings.simple.skills", home: "library", where: "botPanel.where.skills", keywords: "skills import command learned procedures organization library teach" },
@@ -52,7 +51,6 @@ const SECTION_TARGET: Record<BotSettingsSection, PanelTarget> = {
   slack: { tab: "settings", page: "slack" },
   skills: { tab: "library", page: "skills" },
   memory: { tab: "library", page: "memory" },
-  routines: { tab: "details", page: "routines" },
   access: { tab: "settings", page: "folder" },
   model: { tab: "details", page: "model" },
   permissions: { tab: "details", anchor: "approval" },

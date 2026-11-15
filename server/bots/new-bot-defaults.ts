@@ -2,13 +2,9 @@ import { z } from "zod";
 import { profilePatchSchema, fitsOnOneLine } from "./bot-profile.ts";
 import { EFFORT_LEVELS } from "../../shared/wire.ts";
 import { isModelVariant } from "../harness/contracts.ts";
-import { normalizeCronSchedule } from "../../shared/routine-schedule.ts";
 import { parseToolScope, type ToolScope } from "../../shared/tool-scope.ts";
 
 const strings = (max: number, length: number) => z.array(z.string().max(length)).max(max);
-const clock = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/);
-const weekdays = z.array(z.number().int().min(0).max(6)).min(1).max(7);
-const timestamp = z.number().int().nonnegative().max(8_640_000_000_000_000);
 
 export const botDefaultModelSchema = z.object({
   instanceId: z.string().trim().min(1).max(200),
@@ -48,42 +44,6 @@ export const botDefaultsProfileSchema = profilePatchSchema.extend({
   return profile;
 });
 
-const scheduleSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("once"), at: timestamp }).strict(),
-  z.object({ type: z.literal("daily"), time: clock, weekdays }).strict(),
-  z.object({
-    type: z.literal("interval"), everyMinutes: z.number().int().min(5).max(1440), anchorAt: timestamp,
-    weekdays: weekdays.nullable().optional(),
-    window: z.object({ start: clock, end: clock }).strict().nullable().optional(),
-    endsAt: timestamp.nullable().optional(),
-  }).strict(),
-  z.object({ type: z.literal("cron"), expression: z.string().max(256), timeZone: z.string().max(128) }).strict(),
-]).superRefine((value, ctx) => {
-  if (value.type === "cron") {
-    try { normalizeCronSchedule(value); }
-    catch (error) { ctx.addIssue({ code: "custom", message: String(error) }); }
-  }
-  if (value.type === "interval" && value.window) {
-    const minutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
-    if (minutes(value.window.end) - minutes(value.window.start) < value.everyMinutes) {
-      ctx.addIssue({ code: "custom", message: "The interval must fit inside its time window" });
-    }
-  }
-});
-
-export const botRoutineTemplateSchema = z.object({
-  name: z.string().trim().min(1).max(80), prompt: z.string().trim().min(1).max(20_000),
-  schedule: scheduleSchema, enabled: z.boolean().optional(),
-  runOn: z.enum(["maus", "cloud"]).optional(),
-  durationMinutes: z.number().int().min(5).max(240).optional(),
-  timeoutMinutes: z.number().min(1).max(1440).nullable().optional(),
-  overlap: z.enum(["skip", "queue"]).optional(),
-  attachments: z.array(z.object({
-    id: z.string().min(1).max(200), kind: z.enum(["file", "image"]),
-    name: z.string().min(1).max(255), path: z.string().min(1).max(4096), size: z.number().nonnegative(),
-  }).strict()).max(50).optional(),
-}).strict();
-
 export const botSkillTemplateSchema = z.object({
   name: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(64),
   description: z.string().max(1024),
@@ -99,13 +59,11 @@ export const newBotDefaultsSchema = z.object({
     z.string().refine(value => Buffer.byteLength(value, "utf8") <= 262_144, "Memory file exceeds 256 KiB"))
     .refine(value => Object.keys(value).length <= 100, "At most 100 memory files").default({}),
   skills: z.array(botSkillTemplateSchema).max(100).default([]),
-  routines: z.array(botRoutineTemplateSchema).max(100).default([]),
 }).strict().refine(value => Buffer.byteLength(JSON.stringify(value), "utf8") <= 900_000,
   "Bot defaults must fit within 900 KB");
 
 export type NewBotDefaults = z.infer<typeof newBotDefaultsSchema>;
 export type BotDefaultsProfile = NewBotDefaults["profile"];
-export type BotRoutineTemplate = NewBotDefaults["routines"][number];
 export type BotSkillTemplate = NewBotDefaults["skills"][number];
 
 export function resolveBotCreationDefaults(saved: NewBotDefaults | undefined, body: Record<string, unknown>) {

@@ -1,6 +1,6 @@
 
 export interface FeatureFlagConfig {
-  features?: { skillAuthoring?: boolean; showToolCalls?: boolean; sharedComputers?: boolean; claudeUserMcp?: boolean; claudeUserSkills?: boolean; routinesInConversation?: boolean; llmThreadTitles?: boolean; skillsLibrary?: boolean; shareLearnedSkills?: "off" | "ask" | "auto" };
+  features?: { skillAuthoring?: boolean; showToolCalls?: boolean; sharedComputers?: boolean; claudeUserMcp?: boolean; claudeUserSkills?: boolean; llmThreadTitles?: boolean; skillsLibrary?: boolean; shareLearnedSkills?: "off" | "ask" | "auto" };
 
 }
 export function skillAuthoringEnabled(config: FeatureFlagConfig | null | undefined): boolean {
@@ -9,10 +9,6 @@ export function skillAuthoringEnabled(config: FeatureFlagConfig | null | undefin
 
 export function showToolCallsEnabled(config: FeatureFlagConfig | null | undefined): boolean {
   return config?.features?.showToolCalls === true;
-}
-
-export function routinesInConversationEnabled(config: FeatureFlagConfig | null | undefined): boolean {
-  return config?.features?.routinesInConversation === true;
 }
 
 export function sharedComputersEnabled(config: FeatureFlagConfig | null | undefined): boolean {

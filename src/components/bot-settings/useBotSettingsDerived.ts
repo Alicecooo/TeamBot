@@ -62,9 +62,6 @@ export function useBotSettingsDerived(bot: Bot) {
       candidate.chiefOfStaff &&
       (candidate.section?.trim() || "") === (bot.section?.trim() || ""),
   );
-  const botRoutines = state.routines.filter((routine) => routine.botId === bot.id);
-  const activeBotRoutines = botRoutines.filter((routine) => routine.enabled).length;
-
   return {
     patch,
     engine,
@@ -78,7 +75,5 @@ export function useBotSettingsDerived(bot: Bot) {
 
     sectionName,
     currentChief,
-    botRoutines,
-    activeBotRoutines,
   };
 }

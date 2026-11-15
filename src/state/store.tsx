@@ -19,11 +19,8 @@ import { sameModelSelection } from "../../shared/thread-model";
 import type { QuestionRequestCardData } from "../../shared/ask-question";
 import type { ProfileRequestCardData } from "../../shared/profile-request";
 import type { ModelRequestCardData } from "../../shared/model-request";
-import type { RoutineRequestCardData } from "../../shared/routine-request";
-import type { RoutineRunCardData } from "../../shared/routine-run";
 import type { PlaceRow } from "../../shared/place-view";
 import { reviewedSkillSha256, skillRequestBehavior, type SkillRequestCardData } from "../../shared/skill-request";
-import type { Routine, RoutineInput, RoutineRun, RoutineRunStatusFilter } from "@/lib/routines";
 import { restrictedCopyRequest } from "@/lib/bot-duplicate";
 import { botShowsUnread } from "@/lib/bot-unread";
 import { firstUnreadMessageId, threadOpensUnread, threadReadCursor } from "@/lib/unread-divider";
@@ -40,27 +37,7 @@ import { createBotPatchQueue, type BotUpdatePatch } from "./bot-patch-queue";
 import { useChatErrorClear } from "./chat-error";
 import { openLiveEvents, publishLiveFrame, publishMissedFrames } from "@/lib/live-events";
 
-const MAX_ROUTINE_RUNS = 2_000;
-const ACTIVE_ROUTINE_RUN_STATUSES = new Set<RoutineRun["status"]>(["queued", "running", "waiting"]);
-
-function trimRoutineRuns(runs: readonly RoutineRun[]): RoutineRun[] {
-  const sorted = [...runs].sort((a, b) => b.scheduledFor - a.scheduledFor);
-  if (sorted.length <= MAX_ROUTINE_RUNS) return sorted;
-  const activeCount = sorted.reduce(
-    (count, run) => count + (ACTIVE_ROUTINE_RUN_STATUSES.has(run.status) ? 1 : 0),
-    0,
-  );
-  let terminalSlots = Math.max(0, MAX_ROUTINE_RUNS - activeCount);
-  return sorted.filter((run) => {
-    if (ACTIVE_ROUTINE_RUN_STATUSES.has(run.status)) return true;
-    if (terminalSlots === 0) return false;
-    terminalSlots -= 1;
-    return true;
-  });
-}
-
 export type { MausColor } from "@/lib/bot-appearance";
-export type { RoutineRunCardData } from "../../shared/routine-run";
 
 export interface OptionCardData extends Pick<WireOptionCard, "fixedOptions"> {
   title: string;
@@ -83,7 +60,6 @@ export interface OptionCardData extends Pick<WireOptionCard, "fixedOptions"> {
   approvalScope?: "local-computer";
   autoApplied?: boolean;
   undone?: boolean;
-  routineRequest?: RoutineRequestCardData;
   skillRequest?: SkillRequestCardData;
   outboundRequest?: { tool: string; app: string | null; calls?: Array<{ app: string | null; label: string }> };
   teamMemoryRequest?: { section: string; entryId: string; kind: string; revision?: string };
@@ -123,10 +99,10 @@ export interface SecretRequestCardData {
 
 export type ComputerControlState = { held: boolean; helpReason: string | null; help?: import("../../shared/wire").ComputerHelpRef | null };
 
-export interface Message extends Pick<import("../../shared/wire").WireMessage, "widget" | "quickModel" | "privateChatRef"> {
+export interface Message extends Pick<import("../../shared/wire").WireMessage, "widget" | "quickModel"> {
   id: string;
   role: "bot" | "user";
-  kind: "text" | "options" | "activity" | "screen" | "connector" | "secret" | "signin" | "routine.run" | "digest" | "compaction" | "widget";
+  kind: "text" | "options" | "activity" | "screen" | "connector" | "secret" | "signin" | "digest" | "compaction" | "widget";
   text?: string;
   digest?: TurnDigest;
   compaction?: import("../../shared/wire").WireMessage["compaction"];
@@ -135,7 +111,6 @@ export interface Message extends Pick<import("../../shared/wire").WireMessage, "
   connector?: ConnectorCardData;
   secret?: SecretRequestCardData;
   signIn?: import("../../shared/wire").SignInRequestCardData;
-  routineRun?: RoutineRunCardData;
   tool?: { name: string; ok?: boolean; setup?: boolean; claudeUpdate?: boolean; place?: PlaceRow; summary?: string; input?: string; output?: string ; itemId?: string; outputPath?: string; fullResult?: boolean };
   steered?: boolean;
   via?: "api";
@@ -176,10 +151,8 @@ export interface Group {
 }
 
 export interface Task {
-  privateChatRef?: import("../../shared/private-chats").PrivateChatRef;
   waitingForTeammates?: boolean;
   threadId: string;
-  routineRunId?: string;
   projectId?: string;
   title: string;
   createdAt: number;
@@ -477,7 +450,6 @@ export type BotSettingsSection =
   | "slack"
   | "skills"
   | "memory"
-  | "routines"
   | "access"
   | "model"
   | "permissions"
@@ -501,11 +473,7 @@ export interface AppState {
   modelVariantSessions: Record<string, ModelVariantSession>;
   config: ConfigStatus | null;
   selectedId: string;
-  activeView: "chat" | "routines";
-  routines: Routine[];
-  routineRuns: RoutineRun[];
-  routinesLoadState: "loading" | "ready" | "error";
-  routinesFocus: { section?: "schedule" | "logs"; view?: "calendar" | "list"; botId?: string; routineId?: string; runStatus?: RoutineRunStatusFilter; nonce: number };
+  activeView: "chat";
   settingsOpen: boolean;
   pluginsOpen: boolean;
   pluginsSurface: "apps" | "mcp";
@@ -513,9 +481,6 @@ export interface AppState {
   botCreationPending: boolean;
   inspectorOpen: boolean;
   activityOpen: boolean;
-  privateChatsOpen: boolean;
-  privateChatsBotId: string | null;
-  privateChatId: string | null;
   /** Cross-bot, so a bot switch leaves it open; pinned, opening another side panel leaves it open too. */
   notificationsOpen: boolean;
   notificationsPinned: boolean;
@@ -625,25 +590,10 @@ export type Action =
  | { type: "botQueues"; queues: AppState["pendingQueued"] }
  | { type: "sections"; sections: string[] }
  | { type: "sectionDeleted"; section: string; sections: string[] }
- | { type: "showRoutines"; section?: "schedule" | "logs"; view?: "calendar" | "list"; botId?: string; routineId?: string; runStatus?: RoutineRunStatusFilter }
  | { type: "showChat" }
- | { type: "openPrivateChats"; botId: string; chatId?: string }
- | { type: "closePrivateChats" }
- | { type: "routinesHydrated"; routines: Routine[]; runs: RoutineRun[] }
- | { type: "routinesLoadFailed" }
- | { type: "routinePatched"; routine: Routine }
- | { type: "routineDeleted"; routineId: string }
- | { type: "routineRunPatched"; run: RoutineRun }
  | NotificationFeedAction
  | { type: "toggleNotifications"; open?: boolean }
  | { type: "toggleNotificationsPinned"; pinned?: boolean }
- | { type: "createRoutine"; input: RoutineInput }
- | { type: "updateRoutine"; routineId: string; patch: Partial<RoutineInput> }
- | { type: "deleteRoutine"; routineId: string }
- | { type: "runRoutine"; routineId: string; onStarted?: (run: RoutineRun) => void; onError?: (error: unknown) => void; onSettled?: () => void }
- | { type: "cancelRoutineRun"; runId: string }
- | { type: "markRoutineRunSeen"; runId: string }
- | { type: "markAllRoutineRunsSeen" }
  | { type: "groupPatched"; group: Partial<Group> & { id: string } }
  | { type: "groupDeleted"; groupId: string }
  | { type: "createGroup"; memberIds: string[]; name?: string; section?: string }
@@ -895,62 +845,8 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, sections: action.sections };
     case "botQueues":
       return reconcileSnapshotQueues(replaceBotQueues(state, action.queues), state.bots);
-    case "showRoutines":
-      return {
-        ...state,
-        activeView: "routines",
-        routinesFocus: { section: action.section, view: action.view, botId: action.botId, routineId: action.routineId, runStatus: action.runStatus, nonce: state.routinesFocus.nonce + 1 },
-        settingsOpen: false,
-        inspectorOpen: false,
-        activityOpen: false,
-        privateChatsOpen: false,
-        notificationsOpen: false,
-        appSettingsOpen: false,
-        pluginsOpen: false,
-      };
     case "showChat":
       return state.activeView === "chat" ? state : { ...state, activeView: "chat" };
-    case "openPrivateChats":
-      return {
-        ...state,
-        activeView: "chat",
-        selectedId: action.botId,
-        privateChatsOpen: true,
-        privateChatsBotId: action.botId,
-        privateChatId: action.chatId ?? null,
-        settingsOpen: false,
-        inspectorOpen: false,
-        activityOpen: false,
-        notificationsOpen: false,
-        appSettingsOpen: false,
-      };
-    case "closePrivateChats":
-      return { ...state, privateChatsOpen: false };
-    case "routinesHydrated":
-      return { ...state, routines: action.routines, routineRuns: trimRoutineRuns(action.runs), routinesLoadState: "ready" };
-    case "routinesLoadFailed":
-      return { ...state, routinesLoadState: "error" };
-    case "routinePatched": {
-      const exists = state.routines.some((routine) => routine.id === action.routine.id);
-      return {
-        ...state,
-        routines: exists
-          ? state.routines.map((routine) => (routine.id === action.routine.id ? action.routine : routine))
-          : [action.routine, ...state.routines],
-      };
-    }
-    case "routineDeleted":
-      return { ...state, routines: state.routines.filter((routine) => routine.id !== action.routineId) };
-    case "routineRunPatched": {
-      const exists = state.routineRuns.some((run) => run.id === action.run.id);
-      const runs = exists
-        ? state.routineRuns.map((run) => (run.id === action.run.id ? action.run : run))
-        : [action.run, ...state.routineRuns];
-      return {
-        ...state,
-        routineRuns: trimRoutineRuns(runs),
-      };
-    }
     case "groupPatched": {
       const exists = state.groups.some((g) => g.id === action.group.id);
       const normalized = {
@@ -987,7 +883,6 @@ export function reducer(state: AppState, action: Action): AppState {
               : state.unreadDivider,
             activeView: "chat",
             selectedId: action.id,
-            privateChatsOpen: false,
           },
         action.id,
         (b) => ({ ...b, unread: Boolean(b.tasks?.some((task) => task.threadId !== b.threadId && task.unread)), tasks: b.tasks?.map((task) => task.threadId === b.threadId ? { ...task, unread: false } : task) }),
@@ -1010,7 +905,7 @@ export function reducer(state: AppState, action: Action): AppState {
         ...state,
         // The HTTP response and its SSE broadcast race; fold both without showing the bot twice.
         bots: [action.bot, ...state.bots.filter((bot) => bot.id !== action.bot.id)],
-        ...(action.preserveSelection ? {} : { activeView: "chat" as const, selectedId: action.bot.id, privateChatsOpen: false }),
+        ...(action.preserveSelection ? {} : { activeView: "chat" as const, selectedId: action.bot.id }),
       };
     case "deleteBot": {
       const bots = state.bots.filter((b) => b.id !== action.botId);
@@ -1219,7 +1114,6 @@ export function reducer(state: AppState, action: Action): AppState {
         selectedId,
         settingsOpen: open,
         activityOpen: open ? false : state.activityOpen,
-        privateChatsOpen: open ? false : state.privateChatsOpen,
         botSettingsSection: action.section ?? state.botSettingsSection,
         botSettingsExpandAccordion: open ? named || (freshOpen && state.botSettingsSectionStored) : false,
         botSettingsExpandRemembered: open ? !named && freshOpen && state.botSettingsSectionStored : false,
@@ -1279,7 +1173,6 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         inspectorOpen: open,
-        privateChatsOpen: open ? false : state.privateChatsOpen,
         settingsOpen: open ? false : state.settingsOpen,
         activityOpen: open ? false : state.activityOpen,
         appSettingsOpen: open ? false : state.appSettingsOpen,
@@ -1291,7 +1184,6 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         activityOpen: open,
-        privateChatsOpen: open ? false : state.privateChatsOpen,
         settingsOpen: open ? false : state.settingsOpen,
         inspectorOpen: open ? false : state.inspectorOpen,
         appSettingsOpen: open ? false : state.appSettingsOpen,
@@ -1303,7 +1195,6 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         notificationsOpen: open,
-        privateChatsOpen: open ? false : state.privateChatsOpen,
         settingsOpen: open ? false : state.settingsOpen,
         inspectorOpen: open ? false : state.inspectorOpen,
         activityOpen: open ? false : state.activityOpen,
@@ -1322,7 +1213,6 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         appSettingsOpen: open,
-        privateChatsOpen: open ? false : state.privateChatsOpen,
         activityOpen: open ? false : state.activityOpen,
         appSettingsSection: action.section ?? state.appSettingsSection,
         appSettingsCloudLink: action.cloudLink && open ? state.appSettingsCloudLink + 1 : 0,
@@ -1482,7 +1372,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return action.cwd !== undefined ? state : { ...state, selectedId: action.botId, activeView: "chat" };
     case "switchTask": {
       const { [action.threadId]: _old, ...backgroundThreadEvents } = state.backgroundThreadEvents;
-      return updateBot({ ...state, backgroundThreadEvents, selectedId: action.botId, activeView: "chat", privateChatsOpen: false }, action.botId,
+      return updateBot({ ...state, backgroundThreadEvents, selectedId: action.botId, activeView: "chat" }, action.botId,
         (bot) => ({ ...bot, switchingTo: action.threadId }));
     }
     case "switchTaskFailed":
@@ -1512,7 +1402,7 @@ export function reducer(state: AppState, action: Action): AppState {
       if (opened && opened.id === switched.selectedId) {
         switched = { ...switched, unreadDivider: openedUnreadDivider(switched, opened.threadId, threadOpensUnread(opened), visibleMessages(opened), threadReadCursor(opened)) };
         // The snapshot predates the switch's own announcement and must not put the unread dot back.
-        if (switched.activeView === "chat" && !switched.privateChatsOpen) switched = updateBot(switched, opened.id, (bot) => ({ ...bot,
+        if (switched.activeView === "chat") switched = updateBot(switched, opened.id, (bot) => ({ ...bot,
           unread: Boolean(bot.tasks?.some((task) => task.threadId !== bot.threadId && task.unread)),
           tasks: bot.tasks?.map((task) => task.threadId === bot.threadId ? { ...task, unread: false } : task) }));
       }
@@ -1527,13 +1417,6 @@ export function reducer(state: AppState, action: Action): AppState {
     case "interrupt":
     case "createGroup":
     case "deleteGroup":
-    case "createRoutine":
-    case "updateRoutine":
-    case "deleteRoutine":
-    case "runRoutine":
-    case "cancelRoutineRun":
-    case "markRoutineRunSeen":
-    case "markAllRoutineRunsSeen":
     case "refreshTaskPermissions":
     case "followBotModel":
       return state;
@@ -1552,10 +1435,6 @@ export const initialState: AppState = {
   config: null,
   selectedId: "",
   activeView: "chat",
-  routines: [],
-  routineRuns: [],
-  routinesLoadState: "loading",
-  routinesFocus: { nonce: 0 },
   settingsOpen: false,
   pluginsOpen: false,
   pluginsSurface: "apps",
@@ -1563,9 +1442,6 @@ export const initialState: AppState = {
   botCreationPending: false,
   inspectorOpen: false,
   activityOpen: false,
-  privateChatsOpen: false,
-  privateChatsBotId: null,
-  privateChatId: null,
   notificationsOpen: false,
   notificationsPinned: false,
   notifications: [],
@@ -1965,7 +1841,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
 
     const wrapped: React.Dispatch<Action> = (action) => {
-      if (["select", "newTask", "switchTask", "showChat", "showRoutines", "openPrivateChats", "closePrivateChats"].includes(action.type)) selectionRevision++;
+      if (["select", "newTask", "switchTask", "showChat"].includes(action.type)) selectionRevision++;
       // Pin before any await or optimistic state change.
       action = pinBotThreadAction(action, stateRef.current.bots);
       if (action.type === "taskSwitched") action = { ...action, bot: withTaskWrites(action.bot) as Bot };
@@ -1997,11 +1873,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }
           const grantBot = stateRef.current.bots.find((bot) => bot.id === action.alwaysAllow?.botId);
           return grantBot ? [...bots, grantBot] : bots;
-        }
-        if (action.type === "runRoutine") {
-          const routine = stateRef.current.routines.find((candidate) => candidate.id === action.routineId);
-          if (!routine) return [];
-          return stateRef.current.bots.filter((candidate) => candidate.id === routine.botId);
         }
         return [];
       })();
@@ -2046,37 +1917,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
         case "notice":
           if (action.notice) setTimeout(() => rawDispatch({ type: "notice", notice: null }), 6000);
-          break;
-        case "createRoutine":
-          api("/api/routines", { method: "POST", body: JSON.stringify(action.input) }).catch(showError);
-          break;
-        case "updateRoutine":
-          api(`/api/routines/${action.routineId}`, {
-            method: "PATCH",
-            body: JSON.stringify(action.patch),
-          }).catch(showError);
-          break;
-        case "deleteRoutine":
-          api(`/api/routines/${action.routineId}`, { method: "DELETE" }).catch(showError);
-          break;
-        case "runRoutine":
-          void waitForExecutionSettings(executionBotsBeforeAction)
-            .then(() => api(`/api/routines/${action.routineId}/run`, { method: "POST" }))
-            .then(({ run }) => action.onStarted?.(run))
-            .catch((error) => {
-              if (action.onError) action.onError(error);
-              else showError(error);
-            })
-            .finally(() => action.onSettled?.());
-          break;
-        case "cancelRoutineRun":
-          api(`/api/routine-runs/${action.runId}/cancel`, { method: "POST" }).catch(showError);
-          break;
-        case "markRoutineRunSeen":
-          api(`/api/routine-runs/${action.runId}/seen`, { method: "POST" }).catch(showError);
-          break;
-        case "markAllRoutineRunsSeen":
-          api("/api/routine-runs/seen-all", { method: "POST" }).catch(showError);
           break;
         case "cancelQueued":
           void api(`/api/bots/${action.botId}/queue/${action.queueId}`, { method: "DELETE", body: JSON.stringify({ threadId: action.threadId }) })
@@ -2491,7 +2331,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let alive = true;
-    type PeripheralKey = "instances" | "config" | "routines" | "notifications";
+    type PeripheralKey = "instances" | "config" | "notifications";
     type PeripheralPart = {
       key: PeripheralKey;
       request: () => Promise<() => void>;
@@ -2527,13 +2367,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         },
       },
       {
-        key: "routines",
-        request: async () => {
-          const { routines, runs } = await api("/api/routines");
-          return () => rawDispatch({ type: "routinesHydrated", routines, runs });
-        },
-      },
-      {
         key: "notifications",
         request: async () => {
           const { notifications } = await api("/api/notifications");
@@ -2547,7 +2380,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const refresh = refreshState(part.key);
       if (refresh.timer) return;
       if (error !== undefined) {
-        if (part.key === "routines") rawDispatch({ type: "routinesLoadFailed" });
         console.warn(`snapshot: ${part.key} refresh failed; retrying`, error);
       }
       const delay = Math.min(30_000, 1_000 * 2 ** Math.min(refresh.attempt, 5));
@@ -2654,9 +2486,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     handleFrame = (frame) => {
       if (frame.kind === "config") bumpPeripheralVersion("config", "instances");
-      else if (frame.kind === "routine" || frame.kind === "routine.deleted" || frame.kind === "routine.run") {
-        bumpPeripheralVersion("routines");
-      }
       switch (frame.kind) {
         case "sections":
           rawDispatch({ type: "sections", sections: frame.sections });
@@ -2686,7 +2515,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const selected = stateRef.current.bots.find((candidate) => candidate.id === bot.id);
           const shown = selected?.switchingTo ?? selected?.threadId;
           const selectedTask = bot.tasks?.find((task) => task.threadId === shown);
-          if (bot.id === stateRef.current.selectedId && stateRef.current.activeView === "chat" && !stateRef.current.privateChatsOpen &&
+          if (bot.id === stateRef.current.selectedId && stateRef.current.activeView === "chat" &&
               (selectedTask?.unread || (!bot.tasks && bot.unread))) {
             if (selectedTask) selectedTask.unread = false;
             bot.unread = botShowsUnread(bot);
@@ -2712,15 +2541,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             visibleNotificationThread(stateRef.current),
           );
           rawDispatch({ type: "notificationReceived", entry: frame.notification });
-          break;
-        case "routine":
-          rawDispatch({ type: "routinePatched", routine: frame.routine });
-          break;
-        case "routine.deleted":
-          rawDispatch({ type: "routineDeleted", routineId: frame.routineId });
-          break;
-        case "routine.run":
-          rawDispatch({ type: "routineRunPatched", run: frame.run });
           break;
         case "runtime": {
           const action = runtimeFrameAction(frame.event);

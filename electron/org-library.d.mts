@@ -12,7 +12,7 @@ export interface OrgLibraryEntry {
   mode: "required" | "available" | "off"; offAction: "keep" | "remove";
   release: OrgLibraryRelease | null;
   withdrawnReleases: Array<{ version: string; sha256: string }>;
-  contents: { bots: number; skills: number; presets: number; rooms: number; routines: number; connections: number; botNames: string[] };
+  contents: { bots: number; skills: number; presets: number; rooms: number; connections: number; botNames: string[] };
   scanFindings: number;
 }
 export interface OrgLibraryCatalog {

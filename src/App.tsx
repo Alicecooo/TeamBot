@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Menu } from "lucide-react";
 import { openBot, StoreProvider, useStore } from "@/state/store";
 import { useShowThreads } from "@/lib/thread-preferences";
@@ -6,11 +6,9 @@ import { ThreadRefsProvider } from "@/components/ThreadRefs";
 import { initAnalytics } from "@/lib/analytics";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatView } from "@/components/ChatView";
-import { PrivateChatsPanel } from "@/components/PrivateChatsPanel";
 import { SIDEBAR_AND_PANEL_FIT, TWO_SIDE_PANELS_FIT, useMediaQuery } from "@/lib/use-media-query";
 import { PluginsPanel, preloadConnectedApps } from "@/components/PluginsPanel";
-import { ActivityPanel, BotSettingsDialog, InspectorPanel, NewBotDialog, preloadScreens, SettingsModal, TriggersPage } from "@/components/lazy-screens";
-import { WorkspaceBackupRecovery } from "@/components/WorkspaceBackupSettings";
+import { ActivityPanel, BotSettingsDialog, InspectorPanel, NewBotDialog, preloadScreens, SettingsModal } from "@/components/lazy-screens";
 import { NotificationRail, NotificationsPanel } from "@/components/NotificationsPanel";
 import { useNotificationFeed } from "@/lib/notification-preferences";
 import { DesktopCapabilitiesProvider, useCaptionChrome, useDesktopCapabilities, WindowDragStrip } from "@/components/DesktopCapabilities";
@@ -49,8 +47,6 @@ function Shell() {
   const notificationFeed = useNotificationFeed() && !remoteClient;
   const sidePanelOpen = (Boolean(bot) && (state.settingsOpen || state.inspectorOpen || state.activityOpen)) || (notificationFeed && state.notificationsOpen);
   const collapseSidebar = sidePanelOpen && !sidebarAndPanelFit;
-  const calendarFocus = state.activeView === "routines" && state.routinesFocus.view === "calendar";
-
   const noEngines =
     state.connected &&
     state.instances.length > 0 &&
@@ -99,17 +95,7 @@ function Shell() {
 
   useEffect(() => {
     setDrawerOpen(false);
-  }, [state.selectedId, bot?.threadId, state.activeView, state.pluginsOpen, state.settingsOpen, state.privateChatsOpen, state.privateChatId]);
-
-  useEffect(() => {
-    if (state.privateChatsOpen && state.hydrated && !state.bots.some((candidate) => candidate.id === state.privateChatsBotId && !candidate.hidden)) {
-      dispatch({ type: "closePrivateChats" });
-    }
-  }, [state.privateChatsOpen, state.privateChatsBotId, state.bots, state.hydrated, dispatch]);
-
-  const closeCalendar = useCallback(() => {
-    dispatch({ type: "select", id: state.selectedId });
-  }, [dispatch, state.selectedId]);
+  }, [state.selectedId, bot?.threadId, state.activeView, state.pluginsOpen, state.settingsOpen]);
 
   useEffect(() => window.ogb?.onOpenAppSettings?.(() => dispatch({ type: "toggleAppSettings", open: true })), [dispatch]);
 
@@ -117,7 +103,7 @@ function Shell() {
     <div className="flex h-full flex-col">
       
       <div className="relative flex min-h-0 flex-1">
-      {!calendarFocus && <button
+      <button
         type="button"
         ref={menuButtonRef}
         aria-label={t("sidebar.openBotList")}
@@ -126,27 +112,23 @@ function Shell() {
         className="absolute left-3 top-3 z-30 rounded-md p-1.5 text-ink-secondary hover:bg-raised hover:text-ink md:hidden"
       >
         <Menu size={18} />
-      </button>}
-      {drawerOpen && !calendarFocus && (
+      </button>
+      {drawerOpen && (
         <div
           aria-hidden
           onMouseDown={(e) => e.target === e.currentTarget && setDrawerOpen(false)}
           className="absolute inset-0 z-30 bg-black/50 md:hidden"
         />
       )}
-      {!calendarFocus && <Sidebar
+      <Sidebar
         collapseToIcons={collapseSidebar}
         open={drawerOpen}
         onClose={() => {
           setDrawerOpen(false);
           menuButtonRef.current?.focus();
         }}
-      />}
-      {state.activeView === "routines" ? (
-        <TriggersPage onBack={closeCalendar} />
-      ) : state.privateChatsOpen && state.privateChatsBotId ? (
-        <PrivateChatsPanel botId={state.privateChatsBotId} chatId={state.privateChatId} />
-      ) : noEngines ? (
+      />
+      {noEngines ? (
         <NoEngines />
       ) : bot ? (
         <ChatView bot={bot} />
@@ -171,8 +153,8 @@ function Shell() {
       )}
       {state.inspectorOpen && bot && <InspectorPanel key={bot.threadId} bot={bot} />}
       {state.activityOpen && bot && <ActivityPanel key={`activity:${bot.id}`} bot={bot} />}
-      {notificationFeed && !calendarFocus && state.notificationsOpen && <NotificationsPanel />}
-      {notificationFeed && !calendarFocus && <NotificationRail />}
+      {notificationFeed && state.notificationsOpen && <NotificationsPanel />}
+      {notificationFeed && <NotificationRail />}
       {state.appSettingsOpen && <SettingsModal />}
 
       {state.pluginsOpen && <PluginsPanel />}
@@ -181,12 +163,12 @@ function Shell() {
       {/* After the modals: same z-50 tier, so DOM order keeps the palette on top. */}
       <CommandPalette />
       {/* Blink resolves -webkit-app-region in DOM order, so this no-drag twin after the headers cuts the drawer button back out. */}
-      {!calendarFocus && <span
+      <span
         aria-hidden
         data-drawer-button-no-drag
         style={captionChrome.noDragStyle}
         className="pointer-events-none absolute left-3 top-3 size-[30px] md:hidden"
-      />}
+      />
       </div>
       
       {/* Last child on purpose: Blink resolves -webkit-app-region in DOM order, so no-drag buttons must follow every drag region. */}
@@ -213,5 +195,5 @@ function Application() {
 }
 
 export default function App() {
-  return <WorkspaceBackupRecovery><Application /></WorkspaceBackupRecovery>;
+  return <Application />;
 }

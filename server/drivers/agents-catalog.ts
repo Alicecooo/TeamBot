@@ -29,138 +29,6 @@ export function catalogProfileFromEnv(env: NodeJS.ProcessEnv): CatalogProfile {
     escalations: env.OMB_ESCALATIONS === "1"};
 }
 
-export const WEEKDAYS = [
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-  "sunday",
-] as const;
-
-// One flat object without oneOf/const/format: several agent CLIs flatten or drop JSON-Schema
-// composition when converting MCP tools, and a model that never saw the branches guesses shapes.
-const ROUTINE_SCHEDULE_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  description:
-    'Use {"type":"cron","expression":"0 9 1 * *","timeZone":"Asia/Kolkata"} for 09:00 on the first of each month, once with at for one future run, weekly with time + weekdays, daily with time, or interval with every_minutes for elapsed-time repetition. Intervals can optionally be limited with weekdays, window_start + window_end, and ends_at.',
-  properties: {
-    type: {
-      type: "string",
-      enum: ["once", "weekly", "daily", "interval", "cron"],
-      description: "once = a single future run; weekly = chosen weekdays; daily = every day; interval = every N elapsed minutes; cron = a calendar rule in an explicit timezone.",
-    },
-    expression: {
-      type: "string",
-      maxLength: 256,
-      description: "Only for cron: five fields, minute hour day-of-month month weekday. Examples: 0 9 1 * * = monthly on day 1 at 09:00; 0 9 L * * = last day of each month; 0 9 * * MON#2 = second Monday of each month. Lists, ranges and steps are supported. No seconds, year, or @ macros. Never substitute daily AI date checks for a calendar rule.",
-    },
-    timeZone: {
-      type: "string",
-      maxLength: 128,
-      description: "Required for cron: explicit IANA timezone, for example Asia/Kolkata, America/New_York, or UTC. Use the user's requested zone; resolve ambiguity before proposing. Do not send a numeric offset or local-time abbreviation.",
-    },
-    at: {
-      type: "string",
-      description:
-        "Only for type once: future RFC3339 date-time with an explicit timezone offset, for example 2026-09-01T09:00:00+05:30 or 2026-09-01T03:30:00Z.",
-    },
-    time: {
-      type: "string",
-      description: "For type weekly or daily: local computer time in 24-hour HH:MM format, for example 09:00.",
-    },
-    weekdays: {
-      type: "array",
-      items: { type: "string", enum: WEEKDAYS },
-      description:
-        "For type weekly: required run days. For type interval: optional allowed days. Values use the computer's local timezone.",
-    },
-    every_minutes: {
-      type: "integer",
-      minimum: 5,
-      maximum: 1_440,
-      description: "Only for type interval: whole minutes between runs, from 5 to 1440.",
-    },
-    starts_at: {
-      type: "string",
-      description:
-        "Optional for type interval: RFC3339 date-time with an explicit timezone offset that anchors the cadence. Omit to start one interval after the routine is applied.",
-    },
-    window_start: {
-      type: "string",
-      description:
-        "Optional for type interval, together with window_end: local 24-hour HH:MM when runs may begin, inclusive.",
-    },
-    window_end: {
-      type: "string",
-      description:
-        "Optional for type interval, together with window_start: local 24-hour HH:MM when the allowed window ends, exclusive. It must be later on the same day.",
-    },
-    ends_at: {
-      type: "string",
-      description:
-        "Optional for type interval: inclusive RFC3339 date-time cutoff with an explicit timezone offset.",
-    },
-    every_day: {
-      type: "boolean",
-      description: "Only for an interval update: true removes an existing weekday restriction.",
-    },
-    all_day: {
-      type: "boolean",
-      description: "Only for an interval update: true removes an existing time-window restriction.",
-    },
-    never_ends: {
-      type: "boolean",
-      description: "Only for an interval update: true removes an existing end cutoff.",
-    },
-  },
-  required: ["type"],
-} as const;
-
-// Written out in full on each tool: $ref/$defs do not survive provider conversions.
-const TRIGGER_FIELDS_SCHEMA = {
-  name: { type: "string", minLength: 1, maxLength: 80, description: "Short name shown on the automation's card and the Automations page." },
-  instructions: {
-    type: "string",
-    minLength: 1,
-    maxLength: 20_000,
-    description: "Complete steps for each run, which does NOT see this conversation. Put judgement here, e.g. \"if it is not about an order, stop\".",
-  },
-  schedule: { ...ROUTINE_SCHEDULE_SCHEMA, description: `Only for when=schedule. ${ROUTINE_SCHEDULE_SCHEMA.description}` },
-  run_on: {
-    type: "string",
-    // "box" is Boat's historical run_on destination id (agents wire contract).
-    enum: ["maus", "box"],
-    description: "Default maus keeps the bot's selected model and configured computer. Omit this field normally. box runs on the bot's cloud computer with the same model; it requires cloud computers to be set up. Legacy cloud values from list_triggers also mean box.",
-  },
-  timeout_minutes: {
-    type: "integer",
-    minimum: 5,
-    maximum: 240,
-    description:
-      "Schedules only: optional safety limit for active work, from 5 to 240 minutes. Omit for no limit.",
-  },
-  clear_timeout: {
-    type: "boolean",
-    description: "Only for updates: set true to remove an existing safety limit. Do not combine with timeout_minutes.",
-  },
-  continuity: {
-    type: "boolean",
-    description: "Schedules only: opt in to using the latest completed run's bounded report as historical context. Use it for recurring work that builds on last time, such as QA passes, monitoring or follow-ups. Defaults to false; set false in an update to start fresh again.",
-  },
-  overlap: {
-    type: "string",
-    enum: ["skip", "queue"],
-    description: "Schedules only: while a run is still working, skip scheduled occurrences (default) or queue at most one run. Queue skips further occurrences until the pending run starts; it never builds an unlimited backlog.",
-  },
-  run_on_startup: {
-    type: "boolean",
-    description: "Repeating schedules only: also run once each time OpenMausBot starts, besides the schedule, for a computer often off when it is due. Defaults to false.",
-  },
-} as const;
-
 const CHIEF_PROFILE_TARGET = " A Chief of Staff may pass for_bot_id (from list_bots) for a requested change to another bot in its section.";
 const APPLIES_OUTCOME = " Read the result: it applies immediately at every access level, and the person sees it with an Undo where possible. If applied, continue the work without another confirmation. Only a pending result (a Cloud conversation its owner did not drive) means ending the turn to wait for the owner. Never claim success without an applied result; report failures honestly. This does not elevate another bot's execution permissions.";
 
@@ -214,12 +82,14 @@ const TOOL_DEFINITIONS = [
   },
   {
     name: "coordinate_bots",
-    description: "Ask existing OpenMausBot teammates a question or assign them concrete work in your persistent private chat with each teammate. Requests and replies stay in that pair's shared exchange, which people can view read-only; a new assignment never opens another personal conversation. Give 1-4 bot_ids from list_bots or your roster; a unique teammate name also resolves. Each teammate uses its own model, tools, folder and permissions. Results return here and resume you automatically, so after sending all assignments END your turn: do not poll or wait. consult true asks for advice without taking action; reply \"none\" sends a one-way notice. Include exact shared file paths, constraints and what must be verified (done_when). Review the actual returned result before reporting completion, and use rework true only for concrete corrections or a retry. Never target whoever assigned you this work or anyone above it: end your turn to return your result or question. Never send acknowledgements as new work or repeat a refused call unchanged.",
+    description: "The one way to hand work on: ask existing OpenMausBot teammates a question or assign them concrete work. Everything you send a teammate from this conversation goes to one standing work thread with them and runs after anything still running there; thread \"new\" opens a fresh thread on them instead. Give 1-4 bot_ids — teammate ids as list_bots or your roster prints them; a unique teammate name also resolves: they see only what you send them and use their own model, tools and permissions. They can consult their own specialists; every result returns here and resumes you automatically, so after sending all assignments END your turn: do not poll or wait, and never call assignment_status in the same turn. consult true asks a question the teammate answers from what it knows, acting on nothing; reply \"none\" is a one-way notice nothing comes back from. Include exact file paths, constraints and what must be verified (done_when). On return, resolve tradeoffs, verify the requested outcome and request concrete corrections with rework true if necessary before giving one final answer. Never target whoever assigned you this work or anyone above it: to ask or report back, end your turn and your reply resumes them. Never thank or approve a finished teammate; its result already returned. Never repeat a refused call unchanged.",
     inputSchema: { type: "object", additionalProperties: false, properties: {
       bot_ids: { type: "array", items: { type: "string", description: "A teammate's id exactly as list_bots or your roster prints it ([id: …]). A teammate's unique display name also resolves; a name shared by two reachable teammates is refused." }, minItems: 1, maxItems: 4, uniqueItems: true },
       message: { type: "string", minLength: 1, maxLength: 4000, description: "Question or task for these teammates; later requests in the same conversation can build on earlier ones. Send separate requests when responsibilities differ." },
       reason: { type: "string", maxLength: 200, description: "Optional one line for the person about why this goes to them (shown as a chip)." },
       rework: { type: "boolean", description: "True only to send concrete work again to someone whose request already finished or failed: a correction, a re-check or a retry." },
+      thread: { type: "string", enum: ["standing", "new"], description: "standing (default): this conversation's one work thread with each teammate. new: a new thread on the teammate, its own history and run (in_my_folder: in your folder); its result still returns here." },
+      in_my_folder: { type: "boolean" },
       reply: { type: "string", enum: ["resume", "none"], description: "resume (default): the result resumes you. none: a one-way notice that is never awaited; nothing comes back and nothing resumes you." },
       consult: { type: "boolean", description: "True for a question: the teammate answers from what it knows, acting on nothing, and you are resumed with the answer. Leave out for work." },
       done_when: { type: "string", maxLength: 1000, description: "Optional: what must be true for this to count as done, in one or two sentences; the teammate is held to it." },
@@ -249,7 +119,7 @@ const TOOL_DEFINITIONS = [
   {
     name: "select_computer",
     description:
-      "Choose where this conversation does computer work. Call with no arguments to inspect actual available choices and the current place. For a task needing computer interaction, select the requested place, or auto to choose a suitable configured computer without asking the user to use menus. OpenMausBot reuses an existing computer first; with a configured provider it can start or provision one when needed. Do not provision for ordinary chat or just to inspect availability. A pending result means end this turn immediately: OpenMausBot updates the conversation selector and resumes the original request with that computer's real tools. Do not use the old tools after requesting a switch, repeat the task, or claim the action is done. This cannot change permissions, override Off, or switch a teammate/routine/channel.",
+      "Choose where this conversation does computer work. Call with no arguments to inspect actual available choices and the current place. For a task needing computer interaction, select the requested place, or auto to choose a suitable configured computer without asking the user to use menus. OpenMausBot reuses an existing computer first; with a configured provider it can start or provision one when needed. Do not provision for ordinary chat or just to inspect availability. A pending result means end this turn immediately: OpenMausBot updates the conversation selector and resumes the original request with that computer's real tools. Do not use the old tools after requesting a switch, repeat the task, or claim the action is done. This cannot change permissions, override Off, or switch a teammate or channel.",
     inputSchema: { type: "object", additionalProperties: false, properties: {
       surface: { type: "string", enum: ["auto", "cloud", "local"],
         description: "auto = suitable configured computer, cloud = the bot's cloud computer, local = user's own desktop, browser = built-in browser. Omit to list." },
@@ -448,70 +318,6 @@ const TOOL_DEFINITIONS = [
         message_id: { type: "string", description: "The message id from the session_search hit." },
       },
       required: ["thread_id", "message_id"],
-    },
-  },
-  {
-    name: "list_triggers",
-    description:
-      "List this bot's scheduled routines: ids, when they fire, on or paused, and next run. trigger_id: one trigger with its last 10 fires. Includes the computer's authoritative current time and timezone.",
-    inputSchema: {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        trigger_id: { type: "string", description: "Optional: one trigger's details and recent fires." },
-        for_bot_id: { type: "string", description: "Only for ANOTHER bot in your section, from list_bots: list that bot's triggers." },
-      },
-    },
-  },
-  {
-    name: "create_trigger",
-    description:
-      "Set up scheduled work: a bot does <instructions> on a time rule. Call it in this turn whenever the person describes recurring work (\"every morning send me…\"); never ask for confirmation first. It applies at once and the person sees a card with Edit, Pause and Undo. Call list_triggers first for relative dates: it has the authoritative time and timezone. Something to do once, now, is not a trigger. for_bot_id: a trigger for ANOTHER bot in your section, which keeps that bot's engine and permissions.",
-    inputSchema: {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        when: {
-          type: "string",
-          enum: ["schedule"],
-          description: "schedule = on a time rule (give schedule).",
-        },
-        ...TRIGGER_FIELDS_SCHEMA,
-        for_bot_id: {
-          type: "string",
-          description:
-            "Only when the trigger should belong to ANOTHER bot in your section: that bot's id from list_bots. Omit for yourself.",
-        },
-      },
-      required: ["when", "name", "instructions"],
-    },
-  },
-  {
-    name: "manage_trigger",
-    description:
-      "Change one of this bot's scheduled routines: update, pause, resume, run once now or delete. Get the id from list_triggers. It applies at once, with an Undo where possible. for_bot_id: ANOTHER bot's trigger in your section.",
-    inputSchema: {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        trigger_id: { type: "string", minLength: 1, description: "Trigger id from list_triggers." },
-        action: {
-          type: "string",
-          enum: ["update", "pause", "resume", "run_now", "delete"],
-          description: "The change. Supply changes only for update.",
-        },
-        changes: {
-          type: "object",
-          additionalProperties: false,
-          properties: TRIGGER_FIELDS_SCHEMA,
-          description: "Fields to change when action is update. Omit for every other action.",
-        },
-        for_bot_id: {
-          type: "string",
-          description: "Only when the trigger belongs to ANOTHER bot in your section: that bot's id from list_bots.",
-        },
-      },
-      required: ["trigger_id", "action"],
     },
   },
   {

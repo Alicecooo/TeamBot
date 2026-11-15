@@ -1,5 +1,4 @@
 import type { WireBot } from "./wire";
-import type { RoutineInput } from "./routines";
 import type { ToolScope } from "./tool-scope";
 
 /** Data shared by the default template and an individual creation draft. */
@@ -16,7 +15,6 @@ export type BotDefaultsProfile = Partial<Pick<WireBot, "name" | "title" | "descr
   helperModel?: boolean;
 };
 
-export type BotRoutineTemplate = Omit<RoutineInput, "botId" | "target" | "resultsThreadId">;
 export interface BotSkillTemplate {
   name: string;
   description: string;
@@ -29,5 +27,4 @@ export interface NewBotDefaults {
   profile: BotDefaultsProfile;
   memory: Record<string, string>;
   skills: BotSkillTemplate[];
-  routines: BotRoutineTemplate[];
 }

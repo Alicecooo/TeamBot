@@ -24,11 +24,6 @@ export interface Pending {
   heldCode?: string;
 }
 
-/** Security: the persisted payload is the marker; provider-authored tool names can collide with ours. */
-export function isRoutineApproval(pending: Pending): boolean {
-  return Boolean(pending.message.card?.routineRequest);
-}
-
 export function isSkillApproval(pending: Pending): boolean {
   return Boolean(pending.message.card?.skillRequest);
 }
@@ -39,8 +34,8 @@ export function isProfileApproval(pending: Pending): boolean {
 
 export function pendingApprovals(messages: Message[]): Pending[] {
   return messages
-    // A routine card left open from before Triggers v2 can't be confirmed: trigger changes apply on their own.
-    .filter((m) => m.kind === "options" && m.card?.requestId && m.card.tool && !m.card.answered && !m.card.dismissed && !m.card.expired && !m.card.routineRequest)
+    // Ignore legacy routine cards so removed automation requests cannot be confirmed.
+    .filter((m) => m.kind === "options" && m.card?.requestId && m.card.tool && !m.card.answered && !m.card.dismissed && !m.card.expired && !("routineRequest" in m.card))
     .map((m) => ({
       message: m,
       requestId: m.card!.requestId!,
@@ -130,11 +125,9 @@ export const PendingApprovalPanel = memo(function PendingApprovalPanel({
       aria-label={
         isSkillApproval(pending)
           ? t("approval.aria.pendingSkill")
-          : isRoutineApproval(pending)
-            ? t("approval.aria.pendingRoutine")
-            : isProfileApproval(pending)
-              ? t("approval.aria.pendingProfile")
-              : t("approval.aria.pending")
+          : isProfileApproval(pending)
+            ? t("approval.aria.pendingProfile")
+            : t("approval.aria.pending")
       }
       className="px-3 py-2"
     >
@@ -188,11 +181,9 @@ export const PendingApprovalPanel = memo(function PendingApprovalPanel({
           aria-label={
             isSkillApproval(pending)
               ? t("approval.aria.reviewSkill")
-              : isRoutineApproval(pending)
-                ? t("approval.aria.reviewRoutine")
-                : isProfileApproval(pending)
-                  ? t("approval.aria.reviewProfile")
-                  : t("approval.aria.reviewDetails")
+              : isProfileApproval(pending)
+                ? t("approval.aria.reviewProfile")
+                : t("approval.aria.reviewDetails")
           }
           className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-3xl bg-inset px-4 py-3 font-mono text-[12px] leading-relaxed text-ink"
         >
@@ -222,12 +213,11 @@ export function PendingApprovalActions({
   part?: "primary" | "more";
 }) {
   const { dispatch } = useStore();
-  const isRoutineRequest = isRoutineApproval(pending);
   const isSkillRequest = isSkillApproval(pending);
   const isProfileRequest = isProfileApproval(pending);
   const isTeamSetup = Boolean(pending.message.card?.teamSetupRequest);
   const isSuggestion = Boolean(pending.message.card?.teamSetupRequest?.suggestion);
-  const durableRequest = isRoutineRequest || isSkillRequest || isProfileRequest || isTeamSetup;
+  const durableRequest = isSkillRequest || isProfileRequest || isTeamSetup;
   const reviewedSha256 = pending.message.card?.skillRequest
     ? reviewedSkillSha256(pending.message.card.skillRequest)
     : undefined;
@@ -264,7 +254,7 @@ export function PendingApprovalActions({
       autoFocus={isTeamSetup}
       className={cn(APPROVAL_CONTROL, "bg-ink/[0.07] text-danger hover:bg-danger/15")}
     >
-      {isSuggestion ? t("approval.action.notNow") : isRoutineRequest || isProfileRequest || isTeamSetup ? t("approval.action.cancel") : t("approval.action.deny")}
+      {isSuggestion ? t("approval.action.notNow") : isProfileRequest || isTeamSetup ? t("approval.action.cancel") : t("approval.action.deny")}
     </button>,
     always && (
       <button
@@ -289,7 +279,7 @@ export function PendingApprovalActions({
         ? pending.message.card?.skillRequest?.action === "update"
           ? t("approval.action.update")
           : t("approval.action.enable")
-        : isRoutineRequest || isProfileRequest
+        : isProfileRequest
           ? t("approval.action.confirm")
           : t("approval.action.allowOnce")}
     </button>,

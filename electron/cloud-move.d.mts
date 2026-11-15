@@ -1,8 +1,8 @@
-import type { WorkspaceLeftBehind } from "../shared/workspace-backup.ts";
+import type { WorkspaceLeftBehind } from "../shared/workspace-move.ts";
 export interface MoveContents { bots: number; rooms: number; chats: number }
 /** Which server answered: null from a server from before it said. */
 export interface ServerIdentity { appVersion: string | null; environmentId: string | null }
-export interface MoveEstimate extends MoveContents, Partial<ServerIdentity> { bytes: number; files: number; /** Switched on here; they arrive paused. */ routines?: number }
+export interface MoveEstimate extends MoveContents, Partial<ServerIdentity> { bytes: number; files: number }
 /** Where a copy goes: a server saved in this app, or the person's Cloud. */
 export interface MoveDestination { id: string | null; name: string; origin: string | null; kind: "cloud" | "server" }
 /** main's destination: how it proves the owner there, and (the Cloud only) its plan's disk. */
@@ -57,8 +57,6 @@ export interface CloudMoveState {
   resumable?: boolean;
   moved?: MoveContents;
   previous?: boolean;
-  /** Routines that were on here and arrived paused on the Cloud. */
-  routines?: number;
   leftBehind?: WorkspaceLeftBehind;
   brought?: BroughtChats;
 }

@@ -120,7 +120,7 @@ function namesList(names: readonly string[], maxChars: number): string {
   return shown < names.length ? `${text}${shown ? ", " : ""}… and ${names.length - shown} more.` : `${text}.`;
 }
 
-const FIND_USAGE = `${FIND_TOOL} needs { "query": "what you want to do, in a few words" }, for example "schedule a routine", or a tool's exact name.`;
+const FIND_USAGE = `${FIND_TOOL} needs { "query": "what you want to do, in a few words" }, or a tool's exact name.`;
 const USE_USAGE = `${USE_TOOL} needs { "name": "the tool's exact name", "arguments": { ... } }, with arguments a JSON object as the tool's input schema describes it. Find the name and the schema with ${FIND_TOOL}.`;
 const HOW_TO_RUN = `Run one with ${USE_TOOL}({ "name": "...", "arguments": { ... } }), with arguments that fit its inputSchema. Follow its description as you would for a tool in your list.`;
 

@@ -23,14 +23,14 @@ const assignmentSchema = z.object({
   parentId: z.string().min(1).optional(),
   depth: z.number().int().nonnegative(),
   origin: z.object({
-    kind: z.enum(["person", "routine", "outside"]),
-    source: z.enum(["chat", "routine", "relay", "external_runtime", "guest", "peer", "api"]),
+    kind: z.enum(["person", "outside"]),
+    source: z.enum(["chat", "relay", "external_runtime", "guest", "peer", "api"]),
     ref: z.string().optional(),
     quote: z.string().optional(),
     onBehalfOf: z.string().optional(),
   }),
   requester: z.object({
-    kind: z.enum(["person", "bot_turn", "routine_run", "external_runtime"]),
+    kind: z.enum(["person", "bot_turn", "external_runtime"]),
     botId: z.string().optional(),
     threadId: z.string().optional(),
     runId: z.string().optional(),

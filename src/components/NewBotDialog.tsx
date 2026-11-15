@@ -10,7 +10,6 @@ import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import type { LocaleKey } from "@/locales";
 import { botCreated } from "@/lib/product-events";
-import type { Routine } from "@/lib/routines";
 import { IdentitySection } from "./bot-settings/IdentitySection";
 import { SkillsSection } from "./bot-settings/SkillsSection";
 import { AccessSection } from "./bot-settings/AccessSection";
@@ -20,14 +19,13 @@ import { NotificationsSection } from "./bot-settings/NotificationsSection";
 import { useBotSettingsDerived } from "./bot-settings/useBotSettingsDerived";
 import { BotEditorContext } from "./bot-settings/BotEditorContext";
 import { inputCls } from "./bot-settings/field";
-import { RoutineEditor } from "./RoutinesPage";
 import { LocalComputerAutoWarning } from "./LocalComputerAutoWarning";
 import { Select } from "./Select";
-const SECTIONS = ["Identity", "Skills", "Memory", "Routines", "Access", "Model", "Permissions", "Notifications"] as const;
+const SECTIONS = ["Identity", "Skills", "Memory", "Access", "Model", "Permissions", "Notifications"] as const;
 type Section = typeof SECTIONS[number];
 const SECTION_KEYS: Record<Section, LocaleKey> = {
   Identity: "botSettings.sections.identity", Skills: "botSettings.sections.skills",
-  Memory: "botSettings.sections.memory", Routines: "botSettings.sections.routines", Access: "botSettings.sections.access",
+  Memory: "botSettings.sections.memory", Access: "botSettings.sections.access",
   Model: "botSettings.sections.model", Permissions: "botSettings.sections.permissions", "Notifications": "notifications.title",
 };
 
@@ -151,15 +149,14 @@ export function LocalNewBotDialog({ onClose, section, onCreated, preserveSelecti
   const bot = draft.bot;
   const scopedStore: ReturnType<typeof useStore> = {
     ...parent,
-    state: { ...parent.state, bots: [bot, ...parent.state.bots], routines: draft.routines, routineRuns: [], routinesLoadState: "ready" },
+    state: { ...parent.state, bots: [bot, ...parent.state.bots] },
     flushBotPatches: async () => bot,
     dispatch: action => {
       if (action.type === "updateBot" && action.botId === draft.id) draft.patch(action.patch);
       else if (action.type === "setModel" && action.botId === draft.id) {
         draft.setModel(action.selection);
         if (action.resetApprovalToAsk) draft.patch({ approvalMode: "ask" });
-      } else if (action.type === "routinePatched") {}
-      else if (action.type === "toggleSettings") {}
+      } else if (action.type === "toggleSettings") {}
       else parent.dispatch(action);
     },
   };
@@ -198,7 +195,6 @@ export function LocalNewBotDialog({ onClose, section, onCreated, preserveSelecti
     </div>
   </div>;
 }
-
 function DraftSection({ active, draft }: { active: Section; draft: BotCreationDraft }) {
   const bot = draft.bot;
   const { state } = useStore();
@@ -215,7 +211,6 @@ function DraftSection({ active, draft }: { active: Section; draft: BotCreationDr
   </div>;
   if (active === "Skills") return <SkillsSection bot={bot} />;
   if (active === "Memory") return <DraftMemory draft={draft} />;
-  if (active === "Routines") return <DraftRoutines draft={draft} />;
   if (active === "Access") return <AccessSection bot={bot} derived={derived} />;
   if (active === "Model") return <ModelSection bot={bot} />;
   if (active === "Permissions") return <PermissionsSection bot={bot} derived={derived} />;
@@ -304,17 +299,3 @@ function DraftMemory({ draft }: { draft: BotCreationDraft }) {
     </div>
   </div>;
 }
-
-function DraftRoutines({ draft }: { draft: BotCreationDraft }) {
-  const [editing, setEditing] = useState<Routine | "new" | null>(null);
-  return <div className="space-y-3">
-    <button type="button" className="rounded-lg bg-accent px-3 py-2 text-[13px] text-white" onClick={() => setEditing("new")}>{t("computer.routines.create")}</button>
-    {draft.routines.map(routine => <div key={routine.id} className="flex items-center gap-2 rounded-lg bg-card p-3">
-      <button type="button" className="min-w-0 flex-1 text-left text-[13px]" onClick={() => setEditing(routine)}>{routine.name}</button>
-      <label className="flex items-center gap-1.5 text-[12px] text-ink-secondary"><input type="checkbox" checked={routine.enabled} onChange={event => draft.setRoutineEnabled(routine.id, event.target.checked)} />{t("newBot.enabled")}</label>
-      <button type="button" aria-label={t("newBot.removeRoutine", { name: routine.name })} onClick={() => draft.removeRoutine(routine.id)} className="rounded p-1.5 hover:bg-control"><Trash2 size={15} /></button>
-    </div>)}
-    {editing && <RoutineEditor routine={editing === "new" ? undefined : editing} bots={[draft.bot]} lockedBotId={draft.id} onClose={() => setEditing(null)} />}
-  </div>;
-}
-

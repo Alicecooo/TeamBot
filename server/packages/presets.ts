@@ -395,7 +395,7 @@ function isPortableSource(value: string): boolean {
   return !/^(?:[a-z]:[\\/]|[\\/]|\\\\|file:)/i.test(value);
 }
 
-/** The defaults reduced to the preset allowlist: never the model, folder, computer, approval level, apps, MCP servers, browser, peers, Chief or routines. */
+/** The defaults reduced to the preset allowlist: never the model, folder, computer, approval level, apps, MCP servers, browser, peers or Chief. */
 export function presetFromDefaults(defaults: NewBotDefaults | undefined, options: {
   name?: string;
   description?: string;

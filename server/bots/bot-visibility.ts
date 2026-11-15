@@ -35,7 +35,6 @@ export function parseVisibility(value: unknown):
   }
   return { ok: true, visibility: people.length ? { people } : "admins" };
 }
-
 /** Anything unrecognised fails closed to admins only: a hand-edited or damaged field must never widen access. */
 export function storedVisibility(value: unknown): BotVisibility {
   if (value === undefined || value === null || value === "everyone") return "everyone";
@@ -117,7 +116,7 @@ export interface VisibilityGroup {
   section?: string;
 }
 
-export type ThreadOwner = { bot: string; botIds?: readonly string[] };
+export type ThreadOwner = { bot: string };
 
 export class VisibleSet {
   readonly everything: boolean;
@@ -166,7 +165,7 @@ export class VisibleSet {
   thread(threadId: string): boolean {
     if (this.everything) return true;
     const owner = this.ownerOf(threadId);
-    return owner ? (owner.botIds ?? [owner.bot]).every(id => this.bot(id)) : false;
+    return owner ? this.bot(owner.bot) : false;
   }
 
   private indexedOwner(threadId: string): ThreadOwner | undefined {
@@ -209,13 +208,10 @@ export class VisibleSet {
     return !referenced;
   }
 }
-
 export type PathSubject =
   | { kind: "bot"; id: string }
   | { kind: "thread"; id: string }
   | { kind: "group"; id: string }
-  | { kind: "routine"; id: string }
-  | { kind: "routine-run"; id: string }
   | { kind: "attachment"; name: string };
 
 export function pathSubject(path: string): PathSubject | null {
@@ -225,10 +221,6 @@ export function pathSubject(path: string): PathSubject | null {
   if (m) return { kind: "thread", id: m[1]! };
   m = /^\/api\/groups\/([\w-]+)(?:\/|$)/.exec(path);
   if (m) return { kind: "group", id: m[1]! };
-  m = /^\/api\/routines\/([\w-]+)(?:\/|$)/.exec(path);
-  if (m && m[1] !== "wake") return { kind: "routine", id: m[1]! };
-  m = /^\/api\/routine-runs\/([\w-]+)\//.exec(path);
-  if (m && m[1] !== "seen-all") return { kind: "routine-run", id: m[1]! };
   m = /^\/api\/attachments\/([\w.-]+)$/.exec(path);
   if (m) return { kind: "attachment", name: m[1]! };
   return null;
@@ -240,8 +232,6 @@ export function notFoundFor(subject: PathSubject): string {
     case "bot": return "no such bot";
     case "thread": return "no such conversation";
     case "group": return "no such channel";
-    case "routine": return "no such routine";
-    case "routine-run": return "no such active run";
     case "attachment": return "no such attachment";
   }
 }
@@ -259,36 +249,12 @@ export interface FrameContext {
   freshGroup: (groupId: string) => Record<string, unknown> | undefined;
 }
 
-function privateChatVisible(record: Record<string, unknown>, visible: VisibleSet): boolean {
-  if (record.privateChatRef === undefined) return true;
-  const chat = record.privateChatRef;
-  if (!chat || typeof chat !== "object" || Array.isArray(chat)) return false;
-  const ids = (chat as Record<string, unknown>).botIds;
-  return Array.isArray(ids) && ids.length === 2 && ids.every(id => typeof id === "string" && visible.bot(id));
-}
-
-/** A private-chat link must never name a teammate this member cannot see. */
-function memberMessage<T extends object>(message: T, visible: VisibleSet): T {
-  if (privateChatVisible(message as Record<string, unknown>, visible)) return message;
-  const { privateChatRef: _privateChatRef, threadRef, from, ...rest } = message as T & {
-    privateChatRef?: unknown; threadRef?: { threadId?: string }; from?: { botId?: string };
-  };
-  return { ...rest,
-    ...(threadRef?.threadId && visible.thread(threadRef.threadId) ? { threadRef } : {}),
-    ...(from?.botId && visible.bot(from.botId) ? { from } : {}),
-  } as T;
-}
-
 /** No audience list (who else may see a bot is an admin's business) and no teammate ids the member cannot see. */
 export function memberBot<T extends object>(bot: T, visible: VisibleSet): T {
   if (visible.everything) return bot;
-  const { visibility: _visibility, ...rest } = bot as T & { visibility?: unknown; peers?: unknown; tasks?: unknown; messages?: unknown };
+  const { visibility: _visibility, ...rest } = bot as T & { visibility?: unknown; peers?: unknown };
   const peers = Array.isArray(rest.peers) ? (rest.peers as unknown[]).filter((id): id is string => typeof id === "string" && visible.bot(id)) : undefined;
-  const tasks = Array.isArray(rest.tasks) ? rest.tasks.filter(task =>
-    task && typeof task === "object" && privateChatVisible(task as Record<string, unknown>, visible)) : undefined;
-  const messages = Array.isArray(rest.messages) ? rest.messages.map(message =>
-    message && typeof message === "object" ? memberMessage(message as object, visible) : message) : undefined;
-  return { ...rest, ...(peers ? { peers } : {}), ...(tasks ? { tasks } : {}), ...(messages ? { messages } : {}) } as T;
+  return { ...rest, ...(peers ? { peers } : {}) } as T;
 }
 
 export function memberBody(body: unknown, visible: VisibleSet): unknown {
@@ -302,8 +268,6 @@ export function memberBody(body: unknown, visible: VisibleSet): unknown {
       if (key === "bot" && child && typeof child === "object" && !Array.isArray(child)) next = memberBot(child, visible);
       else if (key === "bots" && Array.isArray(child)) {
         next = child.map((bot) => (bot && typeof bot === "object" ? memberBot(bot as object, visible) : bot));
-      } else if (key === "messages" && Array.isArray(child)) {
-        next = child.map(message => message && typeof message === "object" ? memberMessage(message as object, visible) : message);
       } else if (depth > 0 && key !== "messages" && child && typeof child === "object" && !Array.isArray(child)) next = narrow(child, depth - 1);
       if (next !== child) (out ??= { ...record })[key] = next;
     }
@@ -328,11 +292,7 @@ export function frameForMember(payload: Record<string, unknown>, ctx: FrameConte
       return { ...payload, queues: Object.fromEntries(Object.entries(queues).filter(([threadId]) => visible.thread(threadId))) };
     }
     case "message":
-    case "message.patch": {
-      if (!visible.thread(str(payload.threadId))) return undefined;
-      const message = memberMessage(field("message"), visible);
-      return message === payload.message ? payload : { ...payload, message };
-    }
+    case "message.patch":
     case "thread":
       return visible.thread(str(payload.threadId)) ? payload : undefined;
     case "bot": {
@@ -371,14 +331,6 @@ export function frameForMember(payload: Record<string, unknown>, ctx: FrameConte
       const notification = field("notification");
       return visible.thread(str(notification.threadId)) && (!notification.botId || visible.bot(str(notification.botId))) ? payload : undefined;
     }
-    case "routine": {
-      const routine = field("routine");
-      return routineVisible(routine, visible) ? payload : undefined;
-    }
-    case "routine.run": {
-      const run = field("run");
-      return routineVisible(run, visible) ? payload : undefined;
-    }
     case "runtime":
       return visible.thread(str(field("event").threadId)) ? payload : undefined;
     case "screen":
@@ -387,7 +339,6 @@ export function frameForMember(payload: Record<string, unknown>, ctx: FrameConte
     case "computer-control":
       return visible.bot(str(payload.botId)) ? payload : undefined;
     case "config":
-    case "routine.deleted":
       return payload;
     default:
       // A frame kind added later is sent only when it names nothing hidden.
@@ -407,10 +358,4 @@ export function noteSeen(payload: Record<string, unknown>, seen: StreamSeen): vo
     case "group": if (id(payload.group)) seen.groups.add(id(payload.group)); break;
     case "group.deleted": if (typeof payload.groupId === "string") seen.groups.delete(payload.groupId); break;
   }
-}
-
-export function routineVisible(value: { botId?: unknown; groupId?: unknown }, visible: VisibleSet): boolean {
-  if (visible.everything) return true;
-  if (typeof value.groupId === "string" && value.groupId) return visible.group(value.groupId);
-  return typeof value.botId === "string" && visible.bot(value.botId);
 }

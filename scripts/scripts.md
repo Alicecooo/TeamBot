@@ -25,7 +25,6 @@
 | `pnpm dev:desktop` | 启动桌面程序 |
 | `pnpm generate:portrait-preview` | 生成人物头像与表情总览 |
 | `pnpm generate:translations <语言代码>` | 生成翻译草稿；需要本机 Claude CLI 登录 |
-| `pnpm prepare:server-runtime` | 准备桌面服务运行依赖 |
 | `pnpm prepare:https-tunnel` | 准备 HTTPS 隧道工具 |
 | `pnpm prepare:windows-desktop-control` | 准备 Windows 桌面控制依赖 |
 | `pnpm prepare:linux-desktop-control` | 准备 Linux 桌面控制依赖 |

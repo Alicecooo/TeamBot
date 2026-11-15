@@ -6,7 +6,6 @@ import { writeFileAtomic } from "../storage/atomic.ts";
 import { importPackageDocument, orgInstallId, PackageImportError, type OrgInstallIndex, type PackageImportDeps, type PackageImportResult } from "../packages/package-import.ts";
 import { pair, partHash, sha256Hex, type PartPair, type TeamPart } from "../packages/package-parts.ts";
 import { storedPresetObject, type StoredPreset } from "../packages/presets.ts";
-import type { RoutineManager } from "../automation/routines.ts";
 import type { SkillListing, SkillPackageStamp } from "./skills.ts";
 import { sectionKey, type InstalledPackageMetadata, type Store, type StoreChange } from "../storage/store.ts";
 import { PACKAGE_MAX_BYTES, PACKAGE_VERSION, PackageFormatError, parsePackageDocument, type PackageDocument } from "../../shared/package-format.ts";
@@ -49,7 +48,7 @@ const entrySchema = z.object({
   }).nullable(),
   withdrawnReleases: z.array(z.object({ version: z.string().regex(SEMVER), sha256: z.string().regex(HEX64) })).max(50),
   contents: z.object({
-    bots: count, skills: count, presets: count, routines: count, connections: count,
+    bots: count, skills: count, presets: count, connections: count,
     botNames: z.array(safeText(100)).max(12),
   }),
   scanFindings: count,
@@ -143,7 +142,6 @@ const installSchema = z.object({
   section: z.string().max(60),
   team: z.object({ parts: z.object({ name: partPair.optional(), brief: partPair.optional(), leader: partPair.optional() }) }),
   bots: z.record(z.string(), z.string()),
-  routines: z.record(z.string(), z.string()),
   connections: z.record(z.string(), z.object({ name: z.string(), r: z.string().regex(HEX64), w: z.string().regex(HEX64) })),
   presets: z.record(z.string(), z.object({ presetId: z.string(), r: z.string().regex(HEX64) })),
   removedLocally: z.array(z.string()).max(1_000),
@@ -162,7 +160,7 @@ const addingSchema = z.object({
   release: z.string().regex(SEMVER),
   sha256: z.string().regex(HEX64),
   startedAt: count,
-  expect: z.object({ bots: partKeys, routines: partKeys, leader: z.string().min(1).max(64).nullable() }),
+  expect: z.object({ bots: partKeys, leader: z.string().min(1).max(64).nullable() }),
 });
 export type OrgPendingAdd = z.output<typeof addingSchema>;
 
@@ -188,22 +186,20 @@ function emptyState(): OrgLibraryStateFile {
 
 interface LiveRecords {
   bots: Record<string, string>;
-  routines: Record<string, string>;
   skills: number;
   sections: string[];
   meta?: InstalledPackageMetadata;
 }
 
 function teamAlive(live: LiveRecords | undefined): boolean {
-  return Boolean(live && (Object.keys(live.bots).length || Object.keys(live.routines).length));
+  return Boolean(live && Object.keys(live.bots).length);
 }
 
-function noteRemovedParts(install: OrgInstall, next: Pick<LiveRecords, "bots" | "routines">): boolean {
+function noteRemovedParts(install: OrgInstall, next: Pick<LiveRecords, "bots">): boolean {
   const removed = new Set(install.removedLocally);
   const present = new Set<string>();
   for (const [kind, was, now] of [
     ["agent", install.bots, next.bots],
-    ["routine", install.routines, next.routines],
   ] as const) {
     for (const key of Object.keys(was)) if (!Object.hasOwn(now, key)) removed.add(`${kind}:${key}`);
     for (const key of Object.keys(now)) present.add(`${kind}:${key}`);
@@ -218,7 +214,6 @@ function noteRemovedParts(install: OrgInstall, next: Pick<LiveRecords, "bots" | 
 export interface OrgLibraryDeps {
   dataDir: string;
   store: Store;
-  routines: Pick<RoutineManager, "packageStamps" | "update" | "listRoutines" | "remove">;
   skills: {
     list(botId: string): SkillListing[];
     stamps(botId: string): Array<{ name: string; enabled: boolean; stamp: SkillPackageStamp }>;
@@ -374,7 +369,7 @@ export class OrgLibrary {
     const entry = (installId: string) => {
       let value = found.get(installId);
       if (!value) {
-        value = { bots: {}, routines: {}, skills: 0, sections: [] };
+        value = { bots: {}, skills: 0, sections: [] };
         found.set(installId, value);
       }
       return value;
@@ -390,9 +385,6 @@ export class OrgLibrary {
       if (stamp?.presetKey) continue;
       for (const skill of this.deps.skills.stamps(bot.id)) entry(skill.stamp.installId).skills += 1;
     }
-    for (const routine of this.deps.routines.packageStamps()) {
-      if (store.bot(routine.botId)) entry(routine.stamp.installId).routines[routine.stamp.key] = routine.routineId;
-    }
     return found;
   }
 
@@ -400,7 +392,6 @@ export class OrgLibrary {
     return Object.keys(this.state.installs).length > 0 ||
       Object.keys(this.state.adding).length > 0 ||
       this.deps.store.bots.some((bot) => bot.installedPackage?.source === "org") ||
-      this.deps.routines.packageStamps().length > 0 ||
       this.orgPresetRows().length > 0;
   }
 
@@ -417,10 +408,9 @@ export class OrgLibrary {
       const live = records.get(installId);
       if (!teamAlive(live)) {
         if (install.kind === "team" && install.status !== "removed") {
-          noteRemovedParts(install, { bots: {}, routines: {} });
+          noteRemovedParts(install, { bots: {} });
           install.status = "removed";
           install.bots = {};
-          install.routines = {};
           install.updatedAt = now;
           changed = true;
         }
@@ -428,13 +418,12 @@ export class OrgLibrary {
       }
       const next = {
         bots: live!.bots,
-        routines: live!.routines,
         section: mostCommon(live!.sections) ?? install.section,
         status: install.status === "removed" ? "installed" as const : install.status,
       };
       const noted = noteRemovedParts(install, next);
-      if (noted || JSON.stringify([install.bots, install.routines, install.section, install.status]) !==
-        JSON.stringify([next.bots, next.routines, next.section, next.status])) {
+      if (noted || JSON.stringify([install.bots, install.section, install.status]) !==
+        JSON.stringify([next.bots, next.section, next.status])) {
         Object.assign(install, next, { updatedAt: now });
         changed = true;
       }
@@ -458,7 +447,6 @@ export class OrgLibrary {
         section: mostCommon(live.sections) ?? "",
         team: { parts: {} },
         bots: live.bots,
-        routines: live.routines,
         connections: {},
         presets: {},
         removedLocally: [],
@@ -489,7 +477,7 @@ export class OrgLibrary {
           release: row.release,
           sha256: row.sha256 ?? entry.release?.sha256,
           status: "installed", kind: "library", name: entry.name, section: "", team: { parts: {} },
-          bots: {}, routines: {}, connections: {}, presets: {}, removedLocally: [], addedAt: now, updatedAt: now,
+          bots: {}, connections: {}, presets: {}, removedLocally: [], addedAt: now, updatedAt: now,
         });
         if (!adopted.success) continue;
         install = this.state.installs[installId] = adopted.data;
@@ -514,7 +502,7 @@ export class OrgLibrary {
         this.state.installs[installId] = {
           packageId: add.packageId, ref: add.ref, publisher: { ...add.publisher }, release: add.release, sha256: add.sha256,
           status: "installed", kind: "team", name: add.name, section: mostCommon(live.sections) ?? "",
-          team: { parts: {} }, bots: live.bots, routines: live.routines, connections: {}, presets: {},
+          team: { parts: {} }, bots: live.bots, connections: {}, presets: {},
           removedLocally: [], addedAt: previous?.addedAt ?? add.startedAt, updatedAt: now,
         };
       } else {
@@ -529,16 +517,12 @@ export class OrgLibrary {
   private finished(add: OrgPendingAdd, live: LiveRecords): boolean {
     const { store } = this.deps;
     return add.expect.bots.every((key) => Boolean(live.bots[key] && store.bot(live.bots[key]!)?.packageBase)) &&
-      add.expect.routines.every((key) => Boolean(live.routines[key])) &&
       (add.expect.leader === null || store.bot(live.bots[add.expect.leader] ?? "")?.chiefOfStaff === true);
   }
 
   private discardPartial(_installId: string, live: LiveRecords): void {
-    const { store, routines } = this.deps;
+    const { store } = this.deps;
     const botIds = new Set(Object.values(live.bots));
-    for (const routine of routines.listRoutines()) {
-      if (botIds.has(routine.botId)) routines.remove(routine.id);
-    }
     const section = mostCommon(live.sections);
     for (const id of botIds) store.deleteBot(id);
     if (section && store.sections.includes(section)) store.changeEmptySection(section, null);
@@ -578,14 +562,6 @@ export class OrgLibrary {
         if (skill.source !== source || !skill.enabled) continue;
         const result = this.deps.skills.setEnabled(bot.id, skill.name, false);
         if ("error" in result) console.warn(`[org-library] could not switch off ${skill.name}: ${result.error}`);
-      }
-    }
-    for (const routine of this.deps.routines.packageStamps()) {
-      if (routine.stamp.installId !== installId || !routine.enabled) continue;
-      try {
-        this.deps.routines.update(routine.routineId, { enabled: false });
-      } catch (error) {
-        console.warn(`[org-library] could not pause a routine: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
   }
@@ -679,7 +655,7 @@ export class OrgLibrary {
         adding,
       };
     } catch {
-      console.warn("[org-library] state.json could not be read; rebuilding it from your bots and routines");
+      console.warn("[org-library] state.json could not be read; rebuilding it from your bots");
       return emptyState();
     }
   }
@@ -830,7 +806,6 @@ export class OrgLibrary {
         startedAt: this.deps.now?.() ?? Date.now(),
         expect: {
           bots: pkg.agents.map((agent) => agent.key),
-          routines: (pkg.routines ?? []).map((routine) => routine.key),
           leader: pkg.team?.leader ?? null,
         },
       };
@@ -881,7 +856,6 @@ export class OrgLibrary {
       section: index.section,
       team: { parts: index.team.parts as Partial<Record<TeamPart, PartPair>> },
       bots: index.bots,
-      routines: index.routines,
       connections: index.connections,
       presets: Object.fromEntries((result.presets ?? []).flatMap((preset) => {
         const released = document.value.package.presets?.find((candidate) => candidate.key === preset.key);

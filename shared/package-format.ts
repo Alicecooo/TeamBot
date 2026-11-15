@@ -1,6 +1,6 @@
 // The OpenMausBot package file ("openmaus.package"), v1 or v2; every reader
 // returns v2. The single validation gate for the server, the renderer and the
-// Admin upload, so it imports only zod, yaml, croner and pure shared modules
+// Admin upload, so it imports only zod, yaml and pure shared modules
 // (no Buffer, no node:*). The schema has no field for chat history, secrets,
 // model choices, computers, visibility or personal settings, and unknown
 // fields are stripped.
@@ -9,7 +9,6 @@ import { z } from "zod";
 
 import { fitsOnOneLine } from "./bot-profile.ts";
 import { redactSecretsInText } from "./redact.ts";
-import { normalizeCronSchedule } from "./routine-schedule.ts";
 import { isSkillName, parseSkillMd, scanSkillText, SKILL_FILE_MAX_BYTES } from "./skill-md.ts";
 
 export const PACKAGE_FORMAT = "openmaus.package";
@@ -71,7 +70,6 @@ const optionalLine = (max: number) =>
 const key = requiredText(64).regex(/^[a-z0-9][a-z0-9_-]*$/, {
   message: "may only contain lowercase letters, numbers, - and _",
 });
-const MAX_DATE_MS = 8_640_000_000_000_000;
 const skillName = requiredText(64).refine(isSkillName, { message: "must be a lowercase skill name" });
 const portableSource = optionalText(2_000).refine(
   (value) => value === undefined || !/^(?:[a-z]:[\\/]|[\\/]|\\\\|file:)/i.test(value),
@@ -90,60 +88,6 @@ const portableSkillSchema = z.object({
   license: optionalText(200),
   compatibility: optionalText(200),
   instructions: skillInstructions,
-});
-const CLOCK_TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
-const intervalWeekdays = z.array(z.number().int().min(0).max(6)).min(1).max(7).refine(
-  (weekdays) => new Set(weekdays).size === weekdays.length,
-  "must contain unique weekdays",
-);
-const intervalWindow = z.object({
-  start: z.string().regex(CLOCK_TIME, { message: "must use HH:MM" }),
-  end: z.string().regex(CLOCK_TIME, { message: "must use HH:MM" }),
-}).strict().refine(({ start, end }) => start < end, {
-  message: "must end later on the same day",
-});
-export const packageRoutineScheduleSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("cron"), expression: requiredText(256), timeZone: requiredText(100) }).strict(),
-  z.object({ type: z.literal("once"), at: z.number().int() }),
-  z.object({
-    type: z.literal("daily"),
-    time: requiredText(5).regex(CLOCK_TIME, { message: "must use HH:MM" }),
-    weekdays: z.array(z.number().int().min(0).max(6)).min(1).max(7),
-  }),
-  z.object({
-    type: z.literal("interval"),
-    everyMinutes: z.number().int().min(5).max(1_440),
-    anchorAt: z.number().int().nonnegative().max(MAX_DATE_MS),
-    weekdays: intervalWeekdays.optional(),
-    window: intervalWindow.optional(),
-    endsAt: z.number().int().nonnegative().max(MAX_DATE_MS).optional(),
-  }),
-]).superRefine((schedule, context) => {
-  if (schedule.type === "cron") {
-    try { normalizeCronSchedule(schedule); }
-    catch (error) { context.addIssue({ code: "custom", message: error instanceof Error ? error.message : "Invalid cron schedule" }); }
-    return;
-  }
-  if (schedule.type !== "interval") return;
-  if (schedule.window) {
-    const [startHour, startMinute] = schedule.window.start.split(":").map(Number);
-    const [endHour, endMinute] = schedule.window.end.split(":").map(Number);
-    const windowMinutes = endHour! * 60 + endMinute! - (startHour! * 60 + startMinute!);
-    if (windowMinutes < schedule.everyMinutes) {
-      context.addIssue({
-        code: "custom",
-        message: "must be at least as long as the interval cadence",
-        path: ["window"],
-      });
-    }
-  }
-  if (schedule.endsAt !== undefined && schedule.endsAt < schedule.anchorAt) {
-    context.addIssue({
-      code: "custom",
-      message: "must not be before the interval anchor",
-      path: ["endsAt"],
-    });
-  }
 });
 const playbookSchema = z.object({
   key,
@@ -199,18 +143,6 @@ const packageDocumentV1Schema = z.object({
       skills: z.array(skillName).max(PACKAGE_V1_MAX_SKILLS).optional(),
     })).min(1).max(200),
     chiefOfStaff: key.optional(),
-    routines: z.array(z.object({
-      key,
-      name: requiredText(80),
-      agent: key,
-      prompt: requiredText(20_000),
-      runOn: z.enum(["maus", "cloud"]),
-      schedule: packageRoutineScheduleSchema,
-      durationMinutes: z.number().int().min(5).max(240),
-      timeoutMinutes: z.number().int().min(5).max(240).optional(),
-      overlap: z.enum(["skip", "queue"]).optional(),
-      enabledAfterInstall: z.literal(false),
-    })).max(50).optional(),
     playbooks: z.array(playbookSchema).max(80).optional(),
     skills: z.object({
       version: z.literal(1),
@@ -321,23 +253,6 @@ const agentSchema = z.object({
   seed: seedSchema.optional(),
 });
 
-const routineSchema = z.object({
-  key,
-  name: requiredText(80),
-  agent: key,
-  prompt: requiredText(20_000),
-  runOn: z.enum(["maus", "cloud"]),
-  schedule: packageRoutineScheduleSchema,
-  durationMinutes: z.number().int().min(5).max(240),
-  timeoutMinutes: z.number().int().min(1).max(1_440).optional(),
-  overlap: z.enum(["skip", "queue"]).optional(),
-  continuity: z.boolean().optional(),
-  /** Also run once each time OpenMausBot starts. Repeating routines only. */
-  runOnStartup: z.boolean().optional(),
-  /** The publisher's intent. File imports always arrive paused. */
-  enabledAfterInstall: z.boolean(),
-});
-
 /** Preset bots: an allowlist. No approval, computer, browser, MCP, apps or model. */
 const presetSchema = z.object({
   key,
@@ -418,7 +333,6 @@ export const packageDocumentSchema = z.object({
       leader: key.optional(),
     }).optional(),
     agents: z.array(agentSchema).max(200).default([]),
-    routines: z.array(routineSchema).max(50).optional(),
     playbooks: z.array(playbookSchema).max(80).optional(),
     skills: z.object({
       version: z.literal(1),
@@ -433,17 +347,15 @@ export const packageDocumentSchema = z.object({
 export type PackageDocument = z.output<typeof packageDocumentSchema>;
 export type PackageDefinition = PackageDocument["package"];
 export type PackageAgent = PackageDefinition["agents"][number];
-export type PackageRoutine = NonNullable<PackageDefinition["routines"]>[number];
 export type PackagePlaybook = NonNullable<PackageDefinition["playbooks"]>[number];
 export type PackageSkill = NonNullable<PackageDefinition["skills"]>["entries"][number];
 export type PackagePreset = NonNullable<PackageDefinition["presets"]>[number];
 export type PackageConnection = NonNullable<PackageDefinition["connections"]>[number];
 export type PackageAvatar = NonNullable<PackageAgent["appearance"]["avatar"]>;
-export type PackageRoutineSchedule = PackageRoutine["schedule"];
 
 
 /** Lists whose items are named by `key` in part paths. */
-const KEYED_LISTS = new Set(["agents", "routines", "playbooks", "presets", "connections"]);
+const KEYED_LISTS = new Set(["agents", "playbooks", "presets", "connections"]);
 
 function segmentsAfter(head: string, rest: ReadonlyArray<PropertyKey>): string {
   let out = head;
@@ -551,7 +463,6 @@ function checkV1References(pkg: PackageDocumentV1["package"]): void {
   const agents = uniqueKeys(pkg.agents.map((agent) => agent.key), "agent");
   const playbooks = uniqueKeys((pkg.playbooks ?? []).map((playbook) => playbook.key), "playbook");
   const skills = uniqueKeys((pkg.skills?.entries ?? []).map((skill) => skill.name), "skill");
-  uniqueKeys((pkg.routines ?? []).map((routine) => routine.key), "routine");
   if (pkg.chiefOfStaff && !agents.has(pkg.chiefOfStaff)) throw invalid(`Unknown Chief of Staff: ${pkg.chiefOfStaff}`);
   for (const agent of pkg.agents) {
     for (const playbook of agent.playbooks ?? []) {
@@ -566,24 +477,20 @@ function checkV1References(pkg: PackageDocumentV1["package"]): void {
   for (const skill of pkg.skills?.entries ?? []) {
     if (!referenced.has(skill.name)) throw invalid(`Skill ${skill.name} is not referenced by an agent`);
   }
-  for (const routine of pkg.routines ?? []) {
-    if (!agents.has(routine.agent)) throw invalid(`Routine ${routine.key} references unknown agent: ${routine.agent}`);
-  }
 }
 
 function checkV2References(pkg: PackageDefinition): void {
   const isTeam = pkg.agents.length > 0;
   if (isTeam && !pkg.team) throw invalid("A package with bots needs a team");
   if (!isTeam) {
-    if (pkg.team || pkg.routines?.length) {
-      throw invalid("A package without bots cannot have a team or routines");
+    if (pkg.team) {
+      throw invalid("A package without bots cannot have a team");
     }
     if (!pkg.skills?.entries.length && !pkg.presets?.length) {
       throw invalid("A package without bots needs at least one skill or preset");
     }
   }
   const agents = uniqueKeys(pkg.agents.map((agent) => agent.key), "agent");
-  uniqueKeys((pkg.routines ?? []).map((routine) => routine.key), "routine");
   const playbooks = uniqueKeys((pkg.playbooks ?? []).map((playbook) => playbook.key), "playbook");
   uniqueKeys((pkg.presets ?? []).map((preset) => preset.key), "preset");
   const connections = uniqueKeys((pkg.connections ?? []).map((connection) => connection.key), "connection");
@@ -606,9 +513,6 @@ function checkV2References(pkg: PackageDefinition): void {
   }
   for (const preset of pkg.presets ?? []) checkAssignments(`Preset ${preset.key}`, preset);
   checkSkillEntries(pkg.skills?.entries ?? []);
-  for (const routine of pkg.routines ?? []) {
-    if (!agents.has(routine.agent)) throw invalid(`Routine ${routine.key} references unknown agent: ${routine.agent}`);
-  }
 }
 
 
@@ -663,8 +567,7 @@ function normalizedRelease(release: string): string {
   return release.split(".").map((part) => String(Number.parseInt(part, 10))).join(".");
 }
 
-/** v1 → v2: chiefOfStaff becomes team.leader, the team is named after the
- * package, routines stay paused. Everything else is copied as it is. */
+/** v1 → v2: chiefOfStaff becomes team.leader and the team is named after the package. */
 export function upgradeV1(document: PackageDocumentV1): PackageDocument {
   const { chiefOfStaff, ...pkg } = document.package;
   return validateV2({
@@ -674,7 +577,6 @@ export function upgradeV1(document: PackageDocumentV1): PackageDocument {
       ...pkg,
       release: normalizedRelease(pkg.release),
       team: { name: pkg.name.slice(0, 60).trim(), ...(chiefOfStaff ? { leader: chiefOfStaff } : {}) },
-      ...(pkg.routines ? { routines: pkg.routines.map((routine) => ({ ...routine, enabledAfterInstall: false })) } : {}),
     },
   });
 }
@@ -722,9 +624,6 @@ export function downgradeToV1(document: PackageDocument):
   }
   const crowded = pkg.agents.find((agent) => (agent.skills?.length ?? 0) > PACKAGE_V1_MAX_SKILLS);
   if (crowded) return { error: `Older versions of OpenMausBot accept at most ${PACKAGE_V1_MAX_SKILLS} skills per bot (${crowded.key} has more).` };
-  const outOfRange = (pkg.routines ?? []).find((routine) => routine.timeoutMinutes !== undefined && (routine.timeoutMinutes < 5 || routine.timeoutMinutes > 240));
-  if (outOfRange) return { error: `Older versions of OpenMausBot accept run limits from 5 to 240 minutes (${outOfRange.key} has ${outOfRange.timeoutMinutes}).` };
-
   const dropped: string[] = [];
   if (pkg.publisher) dropped.push("package.publisher");
   if (pkg.notes !== undefined) dropped.push("package.notes");
@@ -742,21 +641,14 @@ export function downgradeToV1(document: PackageDocument):
     if (seed) dropped.push(`agents[${agent.key}].seed`);
     return { ...kept, appearance: look };
   });
-  const routines = (pkg.routines ?? []).map((routine) => {
-    const { continuity, runOnStartup, ...kept } = routine;
-    if (continuity !== undefined) dropped.push(`routines[${routine.key}].continuity`);
-    if (runOnStartup !== undefined) dropped.push(`routines[${routine.key}].runOnStartup`);
-    return { ...kept, enabledAfterInstall: false as const };
-  });
   const {
     team, publisher: _publisher, notes: _notes, presets: _presets, connections: _connections,
-    skills: _skills, agents: _agents, routines: _routines, ...rest
+    skills: _skills, agents: _agents, ...rest
   } = pkg;
   const v1: Record<string, unknown> = {
     ...rest,
     agents,
     ...(team.leader ? { chiefOfStaff: team.leader } : {}),
-    ...(routines.length ? { routines } : {}),
     ...(skills.length ? { skills: { version: 1, entries: skills } } : {}),
   };
   try {
@@ -857,7 +749,6 @@ export function packageKeys(document: PackageDocument): string[] {
   const pkg = document.package;
   return [
     ...pkg.agents.map((agent) => `agents:${agent.key}`),
-    ...(pkg.routines ?? []).map((routine) => `routines:${routine.key}`),
     ...(pkg.skills?.entries ?? []).map((skill) => `skills:${skill.name}`),
     ...(pkg.presets ?? []).map((preset) => `presets:${preset.key}`),
     ...(pkg.connections ?? []).map((connection) => `connections:${connection.key}`),
@@ -869,7 +760,7 @@ export interface PackageSummary {
   kind: "team" | "library";
   name: string;
   tagline: string;
-  counts: { bots: number; skills: number; presets: number; routines: number; connections: number; playbooks: number };
+  counts: { bots: number; skills: number; presets: number; connections: number; playbooks: number };
   botNames: string[];
   skillNames: string[];
   presetNames: string[];
@@ -887,7 +778,6 @@ export function packageSummary(document: PackageDocument): PackageSummary {
       bots: pkg.agents.length,
       skills: pkg.skills?.entries.length ?? 0,
       presets: pkg.presets?.length ?? 0,
-      routines: pkg.routines?.length ?? 0,
       connections: pkg.connections?.length ?? 0,
       playbooks: pkg.playbooks?.length ?? 0,
     },

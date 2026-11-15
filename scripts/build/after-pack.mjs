@@ -2,10 +2,6 @@ import { chmod, lstat, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { LICENSE_FILES } from "./linux-desktop-release-files.mjs";
 import { executableTarget, verifyCloudflaredExecutable } from "../setup/prepare-https-tunnel.mjs";
-import { fileURLToPath } from "node:url";
-import { pinnedOnePasswordVersion, verifyServerRuntime } from "../setup/prepare-server-runtime.mjs";
-
-const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 async function requireRealDirectory(directory, mode = 0o755) {
   const details = await lstat(directory);
@@ -65,19 +61,6 @@ async function validateCloudflared(resources, platform, required) {
   );
 }
 
-async function validateServerRuntime(resources, required) {
-  const runtime = path.join(resources, "server-runtime");
-  const present = await lstat(runtime).then(() => true, (error) => {
-    if (error?.code === "ENOENT") return false;
-    throw error;
-  });
-  // Unit fixtures carry only the resources they test; a real build fails
-  // closed because electron-builder only warns about a missing `from`.
-  if (!present && !required) return;
-  await requireRealDirectory(runtime);
-  await verifyServerRuntime(runtime, pinnedOnePasswordVersion(root));
-}
-
 // electron-builder normalizes copied resource directories to 0775. That is
 // unsafe for a root-owned executable path after DEB/AppImage installation, so
 // repair and revalidate the exact tree after resources are copied and before
@@ -87,7 +70,6 @@ export default async function afterPack(context) {
     path.join(context.appOutDir, "resources")
   );
   await validateCloudflared(resources, context.electronPlatformName, Boolean(context.packager));
-  await validateServerRuntime(resources, Boolean(context.packager));
   
 
   if (context.electronPlatformName !== "linux") return;

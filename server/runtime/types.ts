@@ -2,14 +2,14 @@
 import type { ApprovalMode } from "../../shared/approval-mode.ts";
 
 /** Where the work ultimately started. Immutable down the whole tree. */
-export type OriginKind = "person" | "routine" | "outside";
+export type OriginKind = "person" | "outside";
 /** The concrete source behind an outside origin. */
-export type OriginSource = "chat" | "routine" | "relay" | "external_runtime" | "guest" | "peer" | "api";
+export type OriginSource = "chat" | "relay" | "external_runtime" | "guest" | "peer" | "api";
 
 export interface Origin {
   kind: OriginKind;
   source: OriginSource;
-  /** The thread or routine the work came from, when known. */
+  /** The thread the work came from, when known. */
   ref?: string;
   /** The person's own request, harness-quoted (at most 400 characters), when kind is "person". Never model text. */
   quote?: string;
@@ -17,7 +17,7 @@ export interface Origin {
   onBehalfOf?: string;
 }
 
-export type RequesterKind = "person" | "bot_turn" | "routine_run" | "external_runtime";
+export type RequesterKind = "person" | "bot_turn" | "external_runtime";
 
 export interface Requester {
   kind: RequesterKind;
@@ -25,7 +25,7 @@ export interface Requester {
   botId?: string;
   /** The conversation the result returns to (absent for an external runtime). */
   threadId?: string;
-  /** The routine run or the external runtime's own reference. */
+  /** The external runtime's own reference. */
   runId?: string;
   /** The requester is a Chief of Staff conversation: its level may flow down. */
   chief?: boolean;
@@ -226,7 +226,7 @@ export interface RunInput {
 
 export type RunResult =
   | { kind: "completed"; text: string; evidence?: TurnEvidence }
-  | { kind: "failed"; outcome: Exclude<Outcome, "done" | "needs_input">; text: string; evidence?: TurnEvidence; terminal?: boolean }
+  | { kind: "failed"; outcome: Exclude<Outcome, "done" | "needs_input">; text: string; evidence?: TurnEvidence }
   | { kind: "needs_input"; question: string; cards?: string[]; evidence?: TurnEvidence }
   /** The turn stopped short (a step cap, a seat it could not get) and the
    * same node continues in place with its next execution. */
@@ -236,8 +236,6 @@ export type RunResult =
 export interface EndResult {
   ok: boolean;
   text: string;
-  /** End this assignment and its descendants rather than waiting for children and resuming. */
-  terminalFailure?: boolean;
   evidence?: TurnEvidence;
   /** The turn left the person something to act on: it parks until they do. */
   needsInput?: { question: string; cards?: string[] };

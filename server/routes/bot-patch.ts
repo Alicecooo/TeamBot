@@ -18,7 +18,6 @@ import type { hostedModelPolicy } from "../deployment/hosted-models.ts";
 import { MAX_MCP_SERVERS, mcpServerNameError } from "../mcp/mcp-registry.ts";
 import type { MemoryUpkeep } from "../memory/memory-upkeep.ts";
 import { clientBotPatchViolation, requestSource } from "../auth/request-auth.ts";
-import type { RoutineManager } from "../automation/routines.ts";
 import type { SessionRegistry } from "../auth/sessions.ts";
 import { parseConnectorTools } from "../integrations/connector-tools.ts";
 import { sectionKey, type BotRecord, type Store } from "../storage/store.ts";
@@ -36,7 +35,6 @@ export interface BotPatchRouteDeps {
   cacheKeepWarm: Pick<CacheKeepWarm, "refresh">;
   hostedModels: ReturnType<typeof hostedModelPolicy>;
   supportsApprovalMode: ReturnType<typeof createApprovalModeSupport>;
-  routines(): RoutineManager | null;
   /** Full access comes only from the workspace policy. */
   hostedWorkspace: boolean;
   hostedFullAccessRefusal: string;
@@ -58,7 +56,6 @@ export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
   const pinnedClientThread = pinnedClientThreadGuard(store);
   return async ({ req, res, path, method, auth, json, readBody }) => {
     let m: RegExpMatchArray | null = null;
-    const routines = deps.routines();
     const requirePinnedClientThread = pinnedClientThread(auth, req);
     m = path.match(/^\/api\/bots\/([\w-]+)$/);
     if (m && method === "PATCH") {
@@ -471,8 +468,6 @@ export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
       }
       if (existingBot?.computer === "local" && computerSpecified && requestedComputer !== "local") {
         await interruptAllDirectThreads(existingBot.id);
-        const routine = routines!.activeBotRunForBot(existingBot.id);
-        if (routine) await routines!.cancelRun(routine.id);
       }
       const chiefMovedSections =
         Boolean(existingBot?.chiefOfStaff) &&

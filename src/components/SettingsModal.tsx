@@ -1,16 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { Archive, Coins, LockKeyhole, Monitor, Palette, Plug, ScrollText, Search, Terminal, User, X, Building2, BookOpen } from "lucide-react";
+import { Coins, Monitor, Palette, Plug, Search, Terminal, User, X, Building2, BookOpen } from "lucide-react";
 import { api, useStore, type AppSettingsSection, type ConfigStatus } from "@/state/store";
-import { routinesInConversationEnabled, showToolCallsEnabled, skillsLibraryEnabled } from "@/lib/feature-flags";
+import { showToolCallsEnabled, skillsLibraryEnabled } from "@/lib/feature-flags";
 import { localeChoices, type LocaleKey } from "@/locales";
 import { t } from "@/lib/i18n";
 import { AppConnectionSettings } from "./ConnectionSettings";
 import { EnginesSettings } from "./EnginesSettings";
-import { ActivitySection } from "./ActivitySection";
-import { useOwnerOrAdmin } from "@/lib/use-owner-or-admin";
 import { CustomDomainSettings } from "./CustomDomainSettings";
 
-import { LoginsSettings } from "./LoginsSettings";
 import { ConnectedWorkspacesSettings } from "./ConnectedWorkspacesSettings";
 import { OrganizationSettings } from "./OrganizationSettings";
 import { Card, SettingRow, Switch } from "./SettingsPrimitives";
@@ -26,8 +23,6 @@ import { McpCallTimeoutSettings } from "./McpCallTimeoutSettings";
 import { ThreadConcurrencySettings } from "./ThreadConcurrencySettings";
 import { AutomaticRecoverySettings } from "./AutomaticRecoverySettings";
 import { ThreadCleanupSettings } from "./ThreadCleanupSettings";
-import { WorkspaceBackupSettings } from "./WorkspaceBackupSettings";
-import { CompanyBackupSettings } from "./CompanyBackupSettings";
 import { cn } from "@/lib/cn";
 import { glassPopupFrameStyle } from "@/lib/glass-popup";
 import { NotificationRows } from "./NotificationSettingsRows";
@@ -55,18 +50,15 @@ export const SECTIONS: Array<{
   icon: typeof User;
   keywords: string[];
 }> = [
-  { id: "general", group: "you", labelKey: "settings.section.general", icon: User, keywords: ["profile", "name", "email", "about me", "about", "suggestions", "suggested", "memory", "analytics", "updates", "effort", "new bots", "reasoning", "threads", "parallel", "concurrency", "cleanup", "retention", "event log", "event-log", "log size", "automatic recovery", "backup model", "fallback", "routines", "conversation", "schedule"] },
+  { id: "general", group: "you", labelKey: "settings.section.general", icon: User, keywords: ["profile", "name", "email", "about me", "about", "suggestions", "suggested", "memory", "analytics", "updates", "effort", "new bots", "reasoning", "threads", "parallel", "concurrency", "cleanup", "retention", "event log", "event-log", "log size", "automatic recovery", "backup model", "fallback"] },
   { id: "appearance", group: "you", labelKey: "settings.section.appearance", icon: Palette, keywords: ["skin", "theme", "appearance", "chat width", "width", "wide", "full width", "bubble", "bubbles", "tools", "tool calls", "threads", "show threads", "hide threads", "sidebar", "density", "compact", "comfortable", "avatars", "display", "run", "this run", "run card", "commands", "notifications", "sound", "sounds", "mute", "silent", "chime", "pinned", "circles", "universal", "groups", "top", "send", "enter", "return", "shift+enter", "ctrl+enter", "cmd+enter", "⌘+enter", "new line", "keyboard", "ime", "japanese", "message color", "my messages"] },
   { id: "companion", group: "you", labelKey: "settings.section.server", icon: Monitor, keywords: ["server", "https", "domain", "dns", "self-hosted", "caddy"] },
   { id: "engines", group: "ai", labelKey: "settings.section.engines", icon: Terminal, keywords: ["models", "engines", "claude", "codex", "pi", "omp", "antigravity", "cursor", "grok", "cli", "模型", "检测"] },
   { id: "appConnections", group: "ai", labelKey: "settings.section.appConnections", icon: Plug, keywords: ["apps", "connections", "composio", "mcp", "tools", "servers", "gmail", "github", "slack", "notion", "应用", "连接", "工具", "連線", "應用"] },
   { id: "skills", group: "ai", labelKey: "settings.section.skills", icon: BookOpen, keywords: ["skills", "library", "assign", "agent skills", "skill md"] },
   { id: "desktopWorkspaces", group: "computers", labelKey: "settings.section.desktopWorkspaces", icon: Building2, keywords: ["workspace", "cloud", "hosted", "server", "servers", "connect", "pair", "switch", "local"] },
-  { id: "logins", group: "computers", labelKey: "settings.section.logins", icon: LockKeyhole, keywords: ["logins", "login", "passwords", "password", "sign in", "2fa", "one-time code", "totp", "1password", "vault"] },
   { id: "organization", group: "account", labelKey: "settings.section.organization", icon: Building2, keywords: ["company", "organization", "organisation", "sign in", "enroll", "managed", "models", "disconnect"] },
   { id: "usage", group: "account", labelKey: "settings.section.usage", icon: Coins, keywords: ["tokens", "cost", "billing", "plan", "quota", "remaining", "weekly", "5-hour", "model", "used"] },
-  { id: "backups", group: "account", labelKey: "settings.section.backups", icon: Archive, keywords: ["export", "import", "restore", "full backup", "password", "recovery"] },
-  { id: "activity", group: "account", labelKey: "settings.section.activity", icon: ScrollText, keywords: ["activity", "audit", "log", "history", "who changed", "approvals", "decisions", "admin"] },
   { id: "workspaces", group: "account", labelKey: "settings.section.workspaces", icon: Building2, keywords: ["clients", "tenants", "fleet", "workspaces", "installation", "installations"] },
 ];
 
@@ -232,46 +224,6 @@ function UniversalPinsRow() {
   );
 }
 
-function RoutinesInConversationRow() {
-  const { state, dispatch } = useStore();
-  const enabled = routinesInConversationEnabled(state.config);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const toggle = async () => {
-    if (saving) return;
-    setSaving(true);
-    setError("");
-    try {
-      const config: ConfigStatus = await api("/api/config", {
-        method: "PATCH",
-        body: JSON.stringify({ features: { routinesInConversation: !enabled } }),
-      });
-      dispatch({ type: "configStatus", config });
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : t("settings.routinesInConversation.error"));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <SettingRow
-      title={t("settings.routinesInConversation.title")}
-      subtitle={t("settings.routinesInConversation.subtitle")}
-      message={error ? <p role="alert" className="text-danger">{error}</p> : null}
-    >
-      <Switch
-        checked={enabled}
-        aria-label={t("settings.routinesInConversation.aria")}
-        disabled={saving}
-        onClick={() => void toggle()}
-        className="disabled:cursor-wait disabled:opacity-50"
-      />
-    </SettingRow>
-  );
-}
-
 function ToolCallsRow() {
   const { state, dispatch } = useStore();
   const enabled = showToolCallsEnabled(state.config);
@@ -327,13 +279,11 @@ export function SettingsModal() {
   useEffect(() => window.ogb?.environments?.onOpenSettings?.(() => setQuery("")), []);
   useEffect(() => window.ogb?.onOpenAppSettings?.(() => setQuery("")), []);
   const q = query.trim().toLowerCase();
-  const ownerOrAdmin = useOwnerOrAdmin();
   const baseSections = SECTIONS.filter((entry) => !remoteActive || entry.id === "companion" || entry.id === "appearance" || entry.id === "desktopWorkspaces")
     .filter((entry) => entry.id !== "desktopWorkspaces" || Boolean(window.ogb?.environments))
     .filter((entry) => entry.id !== "organization" || Boolean(window.ogb?.organization))
 
-    .filter((entry) => entry.id !== "workspaces" || workspacesAvailable(state.config))
-    .filter((entry) => entry.id !== "activity" || (!window.ogb && ownerOrAdmin === true));
+    .filter((entry) => entry.id !== "workspaces" || workspacesAvailable(state.config));
   const availableSections = baseSections.filter((entry) => entry.id !== "skills" || skillsLibraryEnabled(state.config));
   const visibleSections = availableSections.filter((entry) => sectionMatches(entry, q));
 
@@ -417,8 +367,6 @@ export function SettingsModal() {
             </Card>
             <ThreadConcurrencySettings />
 
-            {!remoteActive && <RoutinesInConversationRow />}
-
             <AutomaticRecoverySettings />
             <ThreadCleanupSettings />
 
@@ -446,17 +394,11 @@ export function SettingsModal() {
         return <AppConnectionSettings />;
       case "engines":
         return <EnginesSettings />;
-      case "backups":
-        return <><WorkspaceBackupSettings /><CompanyBackupSettings /></>;
       case "companion": return <CustomDomainSettings />;
-      case "logins":
-        return <LoginsSettings />;
       case "usage":
         return <UsageSection />;
       case "skills":
         return skillsLibraryEnabled(state.config) ? <SkillsSection /> : null;
-      case "activity":
-        return <ActivitySection />;
       case "workspaces":
         return <WorkspacesSection />;
       default:

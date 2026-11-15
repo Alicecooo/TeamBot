@@ -4,8 +4,8 @@ import { CONNECTOR_SLUG_PATTERN, CONNECTOR_TOOL_NAME_PATTERN } from "./wire.ts";
 import { parseToolScope, type ToolScope } from "./tool-scope.ts";
 
 export const MAX_TEAM_BACKUP_BYTES = 50 * 1024 * 1024;
-export const TEAM_BACKUP_CONTENTS = "Bot profiles, instructions, sections, groups, playbooks, routines, each bot's memory (MEMORY.md, topic notes and daily logs) and each bot's conversation text.";
-export const TEAM_BACKUP_EXCLUSIONS = "Group conversations and group runtime settings are not included. Files, images, custom avatars, account connections, model settings and permissions are not included. Action cards are saved as text. Memory is saved with secrets removed. Imported routines start paused.";
+export const TEAM_BACKUP_CONTENTS = "Bot profiles, instructions, sections, groups, playbooks, each bot's memory (MEMORY.md, topic notes and daily logs) and each bot's conversation text.";
+export const TEAM_BACKUP_EXCLUSIONS = "Group conversations and group runtime settings are not included. Files, images, custom avatars, account connections, model settings and permissions are not included. Action cards are saved as text. Memory is saved with secrets removed.";
 
 const key = z.string().min(1).max(200);
 const name = z.string().trim().min(1).max(200);
@@ -46,11 +46,6 @@ const playbook = z.object({
   triggers: z.array(z.string().max(2_000)).max(100),
   instructions: z.string().max(200_000),
 });
-const schedule = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("once"), at: timestamp }),
-  z.object({ type: z.literal("daily"), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), weekdays: z.array(z.number().int().min(0).max(6)).min(1).max(7) }),
-  z.object({ type: z.literal("interval"), everyMinutes: z.number().int().min(5).max(1440), anchorAt: z.number().int().min(0).max(8_640_000_000_000_000) }),
-]);
 // A bot's memory travels with it, in the same plain markdown it lives in:
 // the person's accumulated corrections are part of who the bot is. The
 // name gates match the server's (one plain segment ending in .md; a day
@@ -100,13 +95,6 @@ const backupSchema = z.object({
     section: z.string().max(200).optional(),
     memberIds: z.array(key).max(200),
   })).max(2_000),
-  routines: z.array(z.object({
-    name, prompt: z.string().trim().min(1).max(200_000),
-    target: z.literal("bot"), botId: key,
-    runOn: z.enum(["maus", "cloud"]), schedule,
-    durationMinutes: z.number().finite().positive(),
-    timeoutMinutes: z.number().int().min(5).max(240).optional(),
-  })).max(2_000),
 });
 
 export type TeamBackup = z.infer<typeof backupSchema>;
@@ -139,9 +127,6 @@ export function parseTeamBackup(input: unknown): TeamBackup {
   for (const group of backup.groups) {
     if (group.memberIds.some((id) => !bots.has(id))) throw new Error("Invalid backup: unknown group member");
     unique(group.memberIds, "group member");
-  }
-  for (const routine of backup.routines) {
-    if (!bots.has(routine.botId)) throw new Error("Invalid backup: unknown routine bot");
   }
   for (const entry of backup.bots) {
     const tasks = unique(entry.tasks.map((task) => task.key), "task key");

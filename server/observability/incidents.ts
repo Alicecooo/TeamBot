@@ -2,7 +2,7 @@ import type { WireMessage as Message } from "../../shared/wire.ts";
 import { withoutDeliveredNote } from "../teams/peer-provenance.ts";
 import { canAccessTeam } from "../teams/peer-roster.ts";
 
-export type IncidentKind = "failed" | "stalled" | "could-not-start" | "routine-failed";
+export type IncidentKind = "failed" | "stalled" | "could-not-start";
 
 export interface IncidentBot {
   id: string;
@@ -98,8 +98,6 @@ function whatHappened(incident: Incident): string {
       return `${incident.bot.name}'s run ${where} stopped after showing no activity${detail}`;
     case "could-not-start":
       return `${incident.bot.name}'s run ${where} could not start${detail}`;
-    case "routine-failed":
-      return `${incident.bot.name}'s scheduled routine ${where} failed${detail}`;
     default:
       return `${incident.bot.name}'s run ${where} failed${detail}`;
   }

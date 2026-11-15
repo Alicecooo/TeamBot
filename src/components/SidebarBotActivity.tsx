@@ -14,7 +14,6 @@ export function sidebarBotActivityTasks(bot: Bot, queued: Record<string, unknown
     waitingForTeammates: bot.waitingForTeammates,
   }];
   return tasks.map((task) => ({ ...task, queued: Boolean(queued[task.threadId]?.length) }))
-    .filter((task) => !task.routineRunId)
     .filter((task) => !isArchived(task) || (archivedApprovals && task.activity === "waiting-on-you"))
     .filter((task) => task.activity === "waiting-on-you" || task.activity === "working" || task.busy || task.waitingForTeammates === true || task.queued || task.unread);
 }
@@ -23,7 +22,7 @@ export function threadsWhenTreeHidden(bot: Bot, queued: Record<string, unknown[]
   const attention = sidebarBotActivityTasks(bot, queued);
   const seen = new Set(attention.map((task) => task.threadId));
   const pinned = (bot.tasks ?? [])
-    .filter((task) => task.pinned === true && !task.routineRunId && !seen.has(task.threadId))
+    .filter((task) => task.pinned === true && !seen.has(task.threadId))
     .map((task) => ({ ...task, queued: Boolean(queued[task.threadId]?.length) }));
   return orderedThreadList([...attention, ...pinned]);
 }
@@ -84,7 +83,7 @@ export function crossBotPinnedThreads(bots: Bot[], queued: Record<string, unknow
     ...bots
       .filter((bot) => !bot.hidden)
       .flatMap((bot): FlatAttentionEntry[] => (bot.tasks ?? [])
-        .filter((task) => task.pinned === true && !task.routineRunId)
+        .filter((task) => task.pinned === true)
         .map((task) => ({ ...task, queued: Boolean(queued[task.threadId]?.length), botId: bot.id, botName: bot.name }))),
   ];
   return orderedThreadList(flat).map(({ botId, botName, ...task }): AttentionThread => ({ kind: "bot", botId: botId!, botName: botName!, task }));

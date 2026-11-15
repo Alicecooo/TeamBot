@@ -9,9 +9,9 @@ import { billableFor, type PriceList } from "./prices.ts";
 export type UsageTrigger =
   | { kind: "user"; email?: string; label?: string }
   | { kind: "owner" }
-  | { kind: "routine"; routineId?: string; label?: string }
   | { kind: "bot"; botId?: string }
-  | { kind: "helper"; botId?: string; job?: string };
+  | { kind: "helper"; botId?: string; job?: string }
+  | { kind: "legacy-automated" };
 
 export interface UsageRow {
   at: string;
@@ -30,8 +30,8 @@ export interface UsageRow {
   trigger: UsageTrigger;
 }
 
-export type UsageGroupBy = "bot" | "model" | "user" | "day" | "engine" | "routine";
-export const USAGE_GROUPINGS: readonly UsageGroupBy[] = ["bot", "model", "user", "day", "engine", "routine"];
+export type UsageGroupBy = "bot" | "model" | "user" | "day" | "engine";
+export const USAGE_GROUPINGS: readonly UsageGroupBy[] = ["bot", "model", "user", "day", "engine"];
 
 export interface UsageGroup {
   key: string;
@@ -118,10 +118,16 @@ export async function flushUsageLedger(dataDir: string): Promise<void> {
   await writeQueues.get(dataDir);
 }
 
-const isTrigger = (value: unknown): value is UsageTrigger =>
-  typeof value === "object" && value !== null && typeof (value as UsageTrigger).kind === "string";
+const isTrigger = (value: unknown): value is UsageTrigger => {
+  if (typeof value !== "object" || value === null) return false;
+  const kind = (value as { kind?: unknown }).kind;
+  return kind === "user" || kind === "owner" || kind === "bot" || kind === "helper" || kind === "legacy-automated";
+};
 
-const isUsageRow = (value: unknown): value is UsageRow =>
+type LegacyUsageTrigger = { kind: "routine"; routineId?: string; label?: string };
+type StoredUsageRow = Omit<UsageRow, "trigger"> & { trigger: UsageTrigger | LegacyUsageTrigger };
+
+const isUsageRow = (value: unknown): value is StoredUsageRow =>
   typeof value === "object" &&
   value !== null &&
   typeof (value as UsageRow).at === "string" &&
@@ -129,7 +135,8 @@ const isUsageRow = (value: unknown): value is UsageRow =>
   typeof (value as UsageRow).model === "string" &&
   typeof (value as UsageRow).input === "number" &&
   typeof (value as UsageRow).output === "number" &&
-  isTrigger((value as UsageRow).trigger);
+  (isTrigger((value as UsageRow).trigger) ||
+    (typeof (value as StoredUsageRow).trigger === "object" && (value as StoredUsageRow).trigger?.kind === "routine"));
 
 function monthsBetween(from: Date, to: Date): string[] {
   const keys: string[] = [];
@@ -158,7 +165,10 @@ export function readUsage(dataDir: string, range: { from: Date; to: Date }): Usa
         const value: unknown = JSON.parse(line);
         if (!isUsageRow(value)) continue;
         const at = Date.parse(value.at);
-        if (at >= from && at <= to) rows.push(value);
+        if (at >= from && at <= to) rows.push({
+          ...value,
+          trigger: value.trigger.kind === "routine" ? { kind: "legacy-automated" } : value.trigger,
+        });
       } catch {
       }
     }
@@ -188,10 +198,10 @@ export function triggerKey(trigger: UsageTrigger): string {
       return `user:${(trigger.email ?? trigger.label ?? "").toLowerCase() || "unknown"}`;
     case "owner":
       return "owner";
-    case "routine":
-      return `routine:${trigger.routineId ?? trigger.label ?? "unknown"}`;
     case "helper":
       return "helper";
+    case "legacy-automated":
+      return "automated";
     default:
       return "bot";
   }
@@ -203,10 +213,10 @@ export function triggerLabel(trigger: UsageTrigger): string {
       return trigger.email ?? trigger.label ?? "Signed-in user";
     case "owner":
       return "This computer";
-    case "routine":
-      return `Routine: ${trigger.label ?? trigger.routineId ?? "unknown"}`;
     case "helper":
       return "Helper model";
+    case "legacy-automated":
+      return "Automated task";
     default:
       return "Bot to bot";
   }
@@ -222,10 +232,6 @@ function groupOf(row: UsageRow, groupBy: UsageGroupBy): { key: string; label: st
       return { key: triggerKey(row.trigger), label: triggerLabel(row.trigger) };
     case "day":
       return { key: `day:${row.at.slice(0, 10)}`, label: row.at.slice(0, 10) };
-    case "routine":
-      return row.trigger.kind === "routine"
-        ? { key: triggerKey(row.trigger), label: row.trigger.label ?? row.trigger.routineId ?? "unknown" }
-        : { key: "manual", label: "Not from a routine" };
     default:
       return { key: `engine:${row.driverKind}`, label: row.driverKind };
   }

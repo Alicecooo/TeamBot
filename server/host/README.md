@@ -20,9 +20,8 @@
    `bus.subscribe` registrations keep their order there: a moved fold is a
    function index.ts registers at the same point it used to live.
 5. **Late-bound singletons are constructor order, not hoisting.** A `let` that
-   index.ts assigned far from its declaration (`routines`, `calendarCalls`,
-   `orgLibrary`, `workspaceAccess`…) becomes a small getter in deps
-   (`deps.routines()`), never a reference to a hoisted name.
+   index.ts assigns far from its declaration becomes a small getter in deps,
+   never a reference to a hoisted name.
 6. **End-to-end tests only.** Tests belong in `tests/e2e/` and cover observable
    behaviour through the app or server boundary. Do not add source-text checks
    or isolated unit tests. The previous tests were removed; new end-to-end

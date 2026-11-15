@@ -4,7 +4,6 @@ import { botMascotBody } from "../../shared/mascot-bodies.ts";
 import { MAX_TEAM_BACKUP_BYTES, parseTeamBackup, type BackupTask, type TeamBackup } from "../../shared/team-backup.ts";
 import { helperModelAllowed } from "../../shared/wire.ts";
 import type { BotRecord, GroupRecord, Message, Store, TaskRecord } from "../storage/store.ts";
-import type { Routine, RoutineManager } from "../automation/routines.ts";
 import { redactSecretsInText } from "../security/redact.ts";
 import { listMemoryLogs, listMemoryTopics, readMemoryFile, readMemoryLog, readMemoryTopic, writeMemoryFile, writeMemoryLog, writeMemoryTopic } from "../workspace/workspace.ts";
 
@@ -37,12 +36,11 @@ function messageText(message: Message): string {
   if (message.kind === "connector") parts.push("[Connection card — reconnect in Settings]");
   if (message.kind === "secret") parts.push("[Secret request — not restored]");
   if (message.kind === "signin") parts.push("[Sign-in request — not restored]");
-  if (message.routineRun) parts.push(`[Routine: ${message.routineRun.routineName} — ${message.routineRun.status}]`, message.routineRun.summary ?? "", message.routineRun.error ?? "");
   if (message.kind === "screen" || message.attachments?.length) parts.push("[Image or attachment — file not included in this backup]");
   return parts.filter(Boolean).join("\n");
 }
 
-export function createTeamBackup(store: Store, routines: Routine[], name: string): TeamBackup {
+export function createTeamBackup(store: Store, name: string): TeamBackup {
   const botIds = new Set(store.bots.map((bot) => bot.id));
   const warnings: string[] = [];
   const history = (record: BotRecord): BackupTask[] => {
@@ -73,11 +71,6 @@ export function createTeamBackup(store: Store, routines: Routine[], name: string
       key: group.id, name: group.name, section: group.section, memberIds,
     };
   });
-  const validRoutines = routines.filter((routine) => {
-    const valid = botIds.has(routine.botId);
-    if (!valid) warnings.push(`Routine “${routine.name}” is not included because its bot was deleted.`);
-    return valid;
-  });
   const document = parseTeamBackup({
     format: "openmaus.backup", version: 1, name, exportedAt: Date.now(),
     warnings,
@@ -96,11 +89,6 @@ export function createTeamBackup(store: Store, routines: Routine[], name: string
       activeTask: bot.threadId, tasks: history(bot),
     })),
     groups,
-    routines: validRoutines.map((routine) => ({
-      name: routine.name, prompt: routine.prompt, target: routine.target, botId: routine.botId,
-      runOn: routine.runOn, schedule: routine.schedule,
-      durationMinutes: routine.durationMinutes, timeoutMinutes: routine.timeoutMinutes,
-    })),
   });
   if (Buffer.byteLength(JSON.stringify(document)) > MAX_TEAM_BACKUP_BYTES) {
     throw new Error("This backup exceeds the 50 MB portable-backup limit. Nothing was exported or changed.");
@@ -109,11 +97,10 @@ export function createTeamBackup(store: Store, routines: Routine[], name: string
 }
 
 /** Always additive: rollback owns only the fresh records and cannot touch an existing bot or chat. */
-export function importTeamBackup(store: Store, routines: RoutineManager, input: unknown, selection: ModelSelection) {
+export function importTeamBackup(store: Store, input: unknown, selection: ModelSelection) {
   const backup = parseTeamBackup(input);
   const bots: BotRecord[] = [];
   const groups: GroupRecord[] = [];
-  const createdRoutines: Routine[] = [];
   const existingBotIds = new Set(store.bots.map((bot) => bot.id));
   const existingGroupIds = new Set(store.groups.map((group) => group.id));
   const botIds = new Map<string, string>();
@@ -167,7 +154,7 @@ export function importTeamBackup(store: Store, routines: RoutineManager, input: 
           ...(task.titleFromFirstMessage ? { titleFromFirstMessage: true } : {}),
         };
         const opener = task.openedBy && botIds.get(task.openedBy.botId);
-        if (task.openedBy && opener) record.openedBy = { botId: opener, name: task.openedBy.name, at: task.openedBy.at, ...(task.openedBy.kind ? { kind: task.openedBy.kind } : {}) };
+        if (task.openedBy && opener) record.openedBy = { botId: opener, name: task.openedBy.name, at: task.openedBy.at, ...(task.openedBy.kind === "work" ? { kind: "work" } : {}) };
         const closer = task.closedBy && botIds.get(task.closedBy.botId);
         if (task.closedBy && closer) record.closedBy = { botId: closer, name: task.closedBy.name, at: task.closedBy.at };
         if (task.pinned === true) record.pinned = true;
@@ -184,12 +171,8 @@ export function importTeamBackup(store: Store, routines: RoutineManager, input: 
       groups.push(group);
       store.patchGroup(group.id, { section: sectionFor(source.section) });
     }
-    for (const source of backup.routines) {
-      createdRoutines.push(routines.create({ ...source, botId: botIds.get(source.botId)!, enabled: false }));
-    }
-    return { name: backup.name, bots, groups, routines: createdRoutines };
+    return { name: backup.name, bots, groups };
   } catch (error) {
-    for (const routine of createdRoutines) routines.remove(routine.id);
     // createBot/createGroup can throw after persisting, so every fresh ID is swept.
     for (const group of store.groups) if (!existingGroupIds.has(group.id)) store.deleteGroup(group.id);
     for (const bot of store.bots) if (!existingBotIds.has(bot.id)) store.deleteBot(bot.id);

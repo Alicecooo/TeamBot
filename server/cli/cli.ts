@@ -20,8 +20,6 @@ import { join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { SERVER_ROOT } from "../proxy-paths.ts";
 import { parseAllowList } from "../auth/account-signin.ts";
-import { appendAdminAction, flushAdminActivity, sharedSignIn } from "../observability/admin-activity.ts";
-import { bindDecisionRetention, decisionRetentionDays } from "../observability/decision-log.ts";
 import { hostedWorkspaceConfigured } from "../deployment/enterprise.ts";
 import { resolveLoopbackTrust } from "../auth/request-auth.ts";
 import { restartPolicy } from "../platform/restart.ts";
@@ -350,17 +348,6 @@ export async function runAccess(options: CliOptions, io: CliIo = defaultIo()): P
   const write = async (next: { admins: string[]; members: string[] }) => {
     mkdirSync(options.dataDir, { recursive: true, mode: 0o700 });
     writeFileAtomic(file, `${JSON.stringify({ ...raw, signIn: next }, null, 2)}\n`, { mode: 0o600 });
-    if (!sharedSignIn({ admins, members }) && !sharedSignIn(next) && !hostedWorkspaceConfigured()) return;
-    const decisions = raw.decisions && typeof raw.decisions === "object" ? (raw.decisions as { retentionDays?: unknown }).retentionDays : undefined;
-    bindDecisionRetention(() => decisionRetentionDays(typeof decisions === "number" ? decisions : undefined));
-    const changed = (["admins", "members"] as const).filter((key) => next[key].join(",") !== (key === "admins" ? admins : members).join(","));
-    appendAdminAction(options.dataDir, {
-      category: "people", action: "people.update", target: { kind: "settings" }, actor: { kind: "cli" },
-      changed: changed.map((key) => `signIn.${key}`),
-      before: Object.fromEntries(changed.map((key) => [`signIn.${key}`, key === "admins" ? admins : members])),
-      after: Object.fromEntries(changed.map((key) => [`signIn.${key}`, next[key]])),
-    });
-    await flushAdminActivity(options.dataDir);
   };
   if (options.accessAction === "list") {
     if (!admins.length && !members.length) {

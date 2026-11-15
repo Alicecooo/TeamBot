@@ -12,7 +12,6 @@ import type { Handoffs } from "../agent/delta-context.ts";
 import type { ProviderRegistry } from "../harness/registry.ts";
 import type { ReplyTarget } from "../agent/replies.ts";
 import type { RequestAuth } from "../auth/request-auth.ts";
-import type { RoutineManager } from "../automation/routines.ts";
 import { acceptedSendMatch, parseSendId } from "../agent/send-idempotency.ts";
 import { cancelSteeredMessage, holdSteeredQueue, restoreHeldSteeredQueue, settleHeldSteeredQueue } from "../teams/steer-queue.ts";
 import type { BotRecord, Message, Store } from "../storage/store.ts";
@@ -41,7 +40,6 @@ export interface BotMessageRouteDeps {
     | "activeLeaf" | "appendMessage" | "bot" | "botByThread" | "bots" | "messagesFor"
     | "patchMessage" | "patchTask" | "projectBotForTask" | "setActiveLeaf" | "setTaskAskedAt" | "taskByThread" | "tasks">;
   registry: Pick<ProviderRegistry, "get">;
-  routines(): RoutineManager | null;
   handoffs: Pick<Handoffs, "current" | "steered" | "stoppedByPerson">;
   
   directTurnDispatchClaims: { get(threadId: string): { threadId: string } | undefined };
@@ -81,7 +79,6 @@ export interface BotMessageRouteDeps {
   answeringCardAs(auth: RequestAuth, threadId: string, requestId: string, work: () => Promise<unknown>): Promise<void>;
   resolveAndSendTrust(res: ServerResponse, threadId: string, requestId: string, behavior: Behavior): boolean;
   resolveAndSendTeamSetup(res: ServerResponse, args: { botId: string; threadId: string; requestId: string; behavior: string }, ownerReview: boolean): Promise<boolean>;
-  resolveAndSendRoutine(res: ServerResponse, args: CardAnswer): boolean;
   resolveAndSendProfile(res: ServerResponse, args: CardAnswer): boolean;
   resolveAndSendModel(res: ServerResponse, args: CardAnswer): boolean;
   resolveSkillRequest(args: CardAnswer & { behavior: Behavior; reviewedSha256?: string }): SkillResolution;
@@ -92,8 +89,6 @@ export interface BotMessageRouteDeps {
   ): Promise<RequestOutcome>;
   deliverLateQuestionAnswer(auth: RequestAuth, threadId: string, requestId: string, answer: string, cardMessage: Message, owner: BotRecord): Promise<{ queued: boolean }>;
   interruptDirectThread(botId: string, threadId: string): Promise<void>;
-  cancelDirectTurnDispatch(botId: string, expectedThreadId?: string): unknown;
-  revokeInternalCapabilitiesForThread(threadId: string): void;
   /** The outcome of a card the harness raised itself (a peer approval, a quota-switch offer); undefined for any other card. */
   harnessCardOutcome(threadId: string, requestId: string, behavior: Behavior, message: unknown): Promise<string | undefined>;
 }
@@ -114,14 +109,13 @@ const guardedSendSchema = z.object({
 }).strict();
 
 export function createBotMessageRoutes(deps: BotMessageRouteDeps): RouteHandler {
-  const {store, registry, handoffs, directTurnDispatchClaims, desktopManaged: DESKTOP_MANAGED, cloudHome: CLOUD_HOME, DirectSendRefused, acceptDirectSend, directSendRefusal, startTurn, usageTriggerFor, messageSender, cardAnswerRefusal, requestBehavior, requestedTaskBot, botForThread, threadBusy, botAtThreadCapacity, parksBehindCoordination, runningTurnInstance, engineSteersImages, resolveReplyTarget, turnSelection, policyModelRefusal, clearUnattended, drainQueuedSends, answeringCardAs, resolveAndSendTrust, resolveAndSendTeamSetup, resolveAndSendRoutine, resolveAndSendProfile, resolveAndSendModel, resolveSkillRequest, sendSkillResolution, answerRequest, deliverLateQuestionAnswer, interruptDirectThread, cancelDirectTurnDispatch, revokeInternalCapabilitiesForThread, harnessCardOutcome} = deps;
+  const {store, registry, handoffs, directTurnDispatchClaims, desktopManaged: DESKTOP_MANAGED, cloudHome: CLOUD_HOME, DirectSendRefused, acceptDirectSend, directSendRefusal, startTurn, usageTriggerFor, messageSender, cardAnswerRefusal, requestBehavior, requestedTaskBot, botForThread, threadBusy, botAtThreadCapacity, parksBehindCoordination, runningTurnInstance, engineSteersImages, resolveReplyTarget, turnSelection, policyModelRefusal, clearUnattended, drainQueuedSends, answeringCardAs, resolveAndSendTrust, resolveAndSendTeamSetup, resolveAndSendProfile, resolveAndSendModel, resolveSkillRequest, sendSkillResolution, answerRequest, deliverLateQuestionAnswer, interruptDirectThread, harnessCardOutcome} = deps;
   const pinnedClientThread = pinnedClientThreadGuard(store);
   /** widget -> sendId of a press on its way in: a second tap before acceptance must not send a second answer. */
   const pressesInFlight = new Map<string, string | undefined>();
   return async ({ req, res, path, method, auth, json, readBody }) => {
     let m: RegExpMatchArray | null = null;
     const requirePinnedClientThread = pinnedClientThread(auth, req);
-    const routines = deps.routines();
     m = path.match(/^\/api\/bots\/([\w-]+)\/messages(?:\/(guarded))?$/);
     if (m && method === "POST") {
       const guarded = m[2] === "guarded";
@@ -379,13 +373,6 @@ export function createBotMessageRoutes(deps: BotMessageRouteDeps): RouteHandler 
         if (await resolveAndSendTeamSetup(res, {
           botId: bot.id, threadId: bot.threadId, requestId: String(body.requestId), behavior,
         }, auth.kind === "loopback" ? DESKTOP_MANAGED || Boolean(req.headers.origin) && !store.bots.some((bot) => bot.busy) : auth.scopes.includes("admin"))) return;
-        if (resolveAndSendRoutine(res, {
-          botId: bot.id,
-          botName: bot.name,
-          threadId: bot.threadId,
-          requestId: String(body.requestId),
-          behavior,
-        })) return;
         if (resolveAndSendProfile(res, {
           botId: bot.id,
           botName: bot.name,
@@ -456,22 +443,6 @@ export function createBotMessageRoutes(deps: BotMessageRouteDeps): RouteHandler 
             behavior,
             reviewedSha256,
           }))) return;
-        }
-        const routineCard = store.messagesFor(threadId).find(
-          (message) => message.card?.requestId === requestId && message.card.routineRequest,
-        );
-        if (routineCard?.card?.routineRequest) {
-          // Derive the owner from the conversation, never from the payload being authorized.
-          const routineBotId = routineCard.from?.botId ?? store.botByThread(threadId)?.id;
-          if (!routineBotId) return json(res, 400, { error: "this routine request has no valid owner" });
-          const routineOwner = store.bot(routineBotId);
-          if (resolveAndSendRoutine(res, {
-            botId: routineBotId,
-            botName: routineOwner?.name,
-            threadId,
-            requestId,
-            behavior,
-          })) return;
         }
         const setupCard = store.messagesFor(threadId).find((message) => message.card?.requestId === requestId && message.card.teamSetupRequest);
         if (setupCard) {
@@ -550,27 +521,11 @@ export function createBotMessageRoutes(deps: BotMessageRouteDeps): RouteHandler 
         return json(res, 400, { error: "threadId must be a task id" });
       }
       if (typeof expectedThreadId === "string" && store.taskByThread(bot.id, expectedThreadId)) {
-        const routine = routines!.activeBotRunForBot(bot.id);
-        if (routine?.threadId === expectedThreadId) await routines!.cancelRun(routine.id);
-        else {
-          handoffs.stoppedByPerson(expectedThreadId);
-          await interruptDirectThread(bot.id, expectedThreadId);
-        }
+        handoffs.stoppedByPerson(expectedThreadId);
+        await interruptDirectThread(bot.id, expectedThreadId);
         return json(res, 200, { ok: true });
       }
       const directClaim = directTurnDispatchClaims.get(bot.threadId);
-      const routineRun = routines!.activeBotRunForBot(bot.id);
-      if (routineRun) {
-        if (expectedThreadId !== undefined && routineRun.threadId !== expectedThreadId) {
-          return json(res, 409, { error: "this bot is running a routine in another conversation" });
-        }
-        cancelDirectTurnDispatch(bot.id, routineRun.threadId ?? expectedThreadId);
-        if (routineRun.threadId) {
-          revokeInternalCapabilitiesForThread(routineRun.threadId);
-        }
-        await routines!.cancelRun(routineRun.id);
-        return json(res, 200, { ok: true });
-      }
       if (
         expectedThreadId !== undefined &&
         bot.threadId !== expectedThreadId &&

@@ -37,7 +37,6 @@ export const SERVICE_ALLOW: ReadonlyArray<{ methods: readonly string[]; path: Re
   { methods: ["GET"], path: /^\/api\/edition$/ },
   { methods: ["GET"], path: /^\/api\/brand$/ },
   { methods: ["GET"], path: /^\/api\/bots$/ },
-  { methods: ["GET"], path: /^\/api\/private-chats(?:\/[\w-]+)?$/ },
   { methods: ["GET"], path: /^\/api\/threads\/[\w-]+\/messages$/ },
   { methods: ["GET"], path: /^\/api\/attachments\/[\w.-]+$/ },
   { methods: ["POST"], path: /^\/api\/bots\/[\w-]+\/tasks$/ },
@@ -296,10 +295,7 @@ export const CLIENT_ALLOW: ReadonlyArray<{ methods: readonly string[]; path: Reg
   { methods: ["POST"], path: /^\/api\/threads\/[\w-]+\/respond$/ },
   { methods: ["POST"], path: /^\/api\/threads\/[\w-]+\/undo$/ }, // whoever may answer the card: see the handler
   { methods: ["PATCH"], path: /^\/api\/bots\/[\w-]+\/cards\/[\w-]+$/ },
-  // Save a login: the password goes to the encrypted store, and no client route reads one back.
-  { methods: ["POST"], path: /^\/api\/bots\/[\w-]+\/sign-in-cards\/[\w-]+\/(?:done|cancel|save-login)$/ },
-  // Where a login saved from the card would fill: the host of the bot's open page, which its live view shows anyway.
-  { methods: ["GET"], path: /^\/api\/bots\/[\w-]+\/sign-in-cards\/[\w-]+\/save-login$/ },
+  { methods: ["POST"], path: /^\/api\/bots\/[\w-]+\/sign-in-cards\/[\w-]+\/(?:done|cancel)$/ },
   // A member reaches only the bots shown to them.
   { methods: ["GET"], path: /^\/api\/bots\/[\w-]+\/browser\/live$/ },
   { methods: ["POST"], path: /^\/api\/bots\/[\w-]+\/browser\/action$/ },
@@ -312,13 +308,6 @@ export const CLIENT_ALLOW: ReadonlyArray<{ methods: readonly string[]; path: Reg
   { methods: ["POST"], path: /^\/api\/attachments$/ },
   { methods: ["GET"], path: /^\/api\/attachments\/[\w.-]+$/ },
   { methods: ["POST"], path: /^\/api\/files$/ },
-  // routines: the input carries no cwd or permission field
-  { methods: ["GET"], path: /^\/api\/routines$/ },
-  { methods: ["POST"], path: /^\/api\/routines$/ },
-  { methods: ["PATCH", "DELETE"], path: /^\/api\/routines\/[\w-]+$/ },
-  { methods: ["POST"], path: /^\/api\/routines\/[\w-]+\/run$/ },
-  { methods: ["POST"], path: /^\/api\/routine-runs\/[\w-]+\/(?:cancel|seen)$/ },
-  { methods: ["POST"], path: /^\/api\/routine-runs\/seen-all$/ },
   // configured-or-not booleans; the handler strips the few identifying fields for clients
   { methods: ["GET"], path: /^\/api\/config$/ },
 ];

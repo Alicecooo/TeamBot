@@ -7,7 +7,6 @@ export const BOT_SETTINGS_SECTION_IDS: readonly BotSettingsSection[] = [
   "slack",
   "skills",
   "memory",
-  "routines",
   "access",
   "model",
   "permissions",

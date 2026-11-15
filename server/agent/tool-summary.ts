@@ -1,6 +1,6 @@
 // Redacted before it is cut: a key sliced in half would slip past the shapes redaction knows.
 import { MAX_QUESTION_TEXT } from "../../shared/ask-question.ts";
-import { HELD_SECRET_MASK, redactSecrets, redactSecretsInText } from "../security/redact.ts";
+import { redactSecrets, redactSecretsInText } from "../security/redact.ts";
 
 export function toolDetailPreview(value: unknown): string | undefined {
   if (value === undefined) return undefined;
@@ -46,7 +46,7 @@ const NOT_SHOWN = /\[(?:redacted|(?:binary|large) content omitted|additional (?:
 
 /** Two previews that read the same prove the same call only when neither masked, left out or cut a value. */
 export function previewIsPartial(preview: string): boolean {
-  return NOT_SHOWN.test(preview) || preview.includes(HELD_SECRET_MASK);
+  return NOT_SHOWN.test(preview);
 }
 
 function fieldsOf(input: unknown): Record<string, unknown> | undefined {

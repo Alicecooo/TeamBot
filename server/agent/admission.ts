@@ -4,13 +4,12 @@ export type AdmissionSurface =
   | "direct-busy" // 1:1 send to a thread whose turn is live: steer-first
   | "direct" // 1:1 send on a settled thread: start now or park
   | "guarded" // guarded external send: refuse when anything is busy
-  | "unattended" // routines: busy means a missed run
   | "peer" // delegations and resume drains: slot-aware admission
   | "incident"; // a report to the Chief's incidents thread: never refused
 
 export type AdmissionQueueReason = "capacity";
 
-export type AdmissionRefusalCode = "guarded_busy" | "busy" | "missing";
+export type AdmissionRefusalCode = "guarded_busy" | "busy";
 
 export const DRAIN_COALESCE_WINDOW_MS = 120_000;
 
@@ -47,7 +46,6 @@ export interface AdmissionMessage {
 }
 
 export interface AdmissionState {
-  botPresent?: boolean;
   /** Broader than threadBusy: guarded sends refuse on it, ordinary sends do not. */
   botBusy?: boolean;
   threadBusy?: boolean;
@@ -89,11 +87,6 @@ export function admit(
       if (state.botBusy || state.threadBusy || state.atCapacity || state.parksBehindCoordination) {
         return { action: "refuse", code: "guarded_busy" };
       }
-      return { action: "start" };
-    }
-    case "unattended": {
-      if (state.botPresent === false) return { action: "refuse", code: "missing" };
-      if (state.atCapacity) return { action: "refuse", code: "busy" };
       return { action: "start" };
     }
     case "peer": {

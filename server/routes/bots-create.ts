@@ -9,7 +9,6 @@ import { journalMemoryWrite } from "../memory/memory-journal.ts";
 import { resolveBotCreationDefaults } from "../bots/new-bot-defaults.ts";
 import { PRESET_UNAVAILABLE_MESSAGE, applyPresetToBot, presetOffered, type OrgInstallStatus, type PresetStore } from "../packages/presets.ts";
 import { clientBotPatchViolation, type RequestAuth } from "../auth/request-auth.ts";
-import type { RoutineManager } from "../automation/routines.ts";
 import { installOrgSkill, installSkill, parseSkillMd, setSkillEnabled } from "../skills/skills.ts";
 import type { BotRecord, Store } from "../storage/store.ts";
 import { writeMemoryFile, writeMemoryTopic } from "../workspace/workspace.ts";
@@ -30,7 +29,6 @@ export interface BotCreateRouteDeps {
   
   hostedModels: ReturnType<typeof hostedModelPolicy>;
   
-  routines(): RoutineManager | null;
   storedAvatarExists(avatarUrl: string): boolean;
   defaultSelection(): Promise<ModelSelection>;
   checkedModelSelection(raw: unknown, current?: { selection: ModelSelection; busy: boolean }, requireAvailableModel?: boolean): ModelSelectionCheck;
@@ -41,7 +39,6 @@ export interface BotCreateRouteDeps {
 export function createBotCreateRoutes(deps: BotCreateRouteDeps): RouteHandler {
   const {store, cfg, presetStore, orgInstallStatuses, hostedWorkspace: HOSTED_WORKSPACE, hostedFullAccessRefusal: HOSTED_FULL_ACCESS_REFUSAL, desktopManaged: DESKTOP_MANAGED, maxWorkspaceBots: MAX_WORKSPACE_BOTS, hostedModels, storedAvatarExists, defaultSelection, checkedModelSelection, wireBot}=deps;
   return async ({ req, res, path, method, auth, json, readBody }) => {
-    const routines = deps.routines();
     if (method === "POST" && path === "/api/bots") {
       let body = await readBody(req);
       if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -54,7 +51,7 @@ export function createBotCreateRoutes(deps: BotCreateRouteDeps): RouteHandler {
       const settings = template.profile;
       if (auth.kind === "session" && !auth.scopes.includes("admin")) {
         const field = clientBotPatchViolation(settings);
-        if (field || body.preset !== undefined || template.skills.length || template.routines.length || Object.keys(template.memory).length) {
+        if (field || body.preset !== undefined || template.skills.length || Object.keys(template.memory).length) {
           return json(res, 403, { error: "Creating a bot with these defaults needs the admin scope" });
         }
       }
@@ -124,7 +121,6 @@ export function createBotCreateRoutes(deps: BotCreateRouteDeps): RouteHandler {
       }
       const bot = store.createBot({ ...profile.patch, section, modelSelection: selection,
         toolScope: settings.toolScope ?? undefined });
-      const createdRoutines: Array<{ id: string; enabled: boolean }> = [];
       try {
         const { chiefOfStaff: _chief, managedSections: _managed, toolScope: _toolScope, ...ordinary } = settings;
         store.patchBot(bot.id, {
@@ -161,19 +157,10 @@ export function createBotCreateRoutes(deps: BotCreateRouteDeps): RouteHandler {
             if ("error" in enabled) throw Object.assign(new Error(enabled.error), { status: 422 });
           }
         }
-        // On a Cloud home only the owner's devices create bots: its routines are theirs.
-        
-        for (const routine of template.routines) {
-          const created = routines!.create({ ...routine, botId: bot.id, enabled: false });
-          createdRoutines.push({ id: created.id, enabled: routine.enabled !== false });
-          
-        }
       } catch (error) {
-        for (const routine of createdRoutines) routines!.remove(routine.id);
         store.deleteBot(bot.id);
         throw error;
       }
-      // Creation is complete: activation errors must not invite a duplicate retry or delete a bot whose routine may have run.
       const warnings: string[] = [];
       if (settings.chiefOfStaff) {
         try {
@@ -182,10 +169,6 @@ export function createBotCreateRoutes(deps: BotCreateRouteDeps): RouteHandler {
         } catch {
           warnings.push("Bot created; review its Chief of Staff setting before delegating work.");
         }
-      }
-      for (const routine of createdRoutines) if (routine.enabled) {
-        try { routines!.update(routine.id, { enabled: true }); }
-        catch { warnings.push(`Bot created; routine ${routine.id} could not be activated.`); }
       }
       return json(res, 201, {
         ...(warnings.length ? { warnings } : {}),

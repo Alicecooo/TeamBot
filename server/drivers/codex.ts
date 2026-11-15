@@ -931,7 +931,7 @@ export const CodexDriver: ProviderDriver<CodexConfig> = {
         return stopped;
       });
       let completeStoppedTurn: (() => void) | undefined;
-      // Interrupt over the protocol before any signal: killing first surfaced routine stops as
+      // Interrupt over the protocol before any signal: killing first surfaces an unclean stop as
       // "codex exited null (signal SIGTERM) before turn/completed".
       let interruptRequested = false;
       const stop = async () => {

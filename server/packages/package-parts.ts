@@ -3,14 +3,12 @@ import { createHash } from "node:crypto";
 
 import { canonicalJson, decodeBase64 } from "../../shared/package-format.ts";
 
-import type { PackageAgent, PackageConnection, PackagePlaybook, PackageRoutine } from "../../shared/package-format.ts";
+import type { PackageAgent, PackageConnection, PackagePlaybook } from "../../shared/package-format.ts";
 
 export interface PartPair { r: string; w: string }
 
 export const AGENT_PARTS = ["name", "title", "description", "look", "playbooks", "skills", "connections", "approval"] as const;
 export type AgentPart = typeof AGENT_PARTS[number];
-export const ROUTINE_PARTS = ["name", "prompt", "schedule", "target"] as const;
-export type RoutinePart = typeof ROUTINE_PARTS[number];
 export const TEAM_PARTS = ["name", "brief", "leader"] as const;
 export type TeamPart = typeof TEAM_PARTS[number];
 
@@ -57,34 +55,6 @@ export function agentReleaseValues(agent: PackageAgent, playbooks: ReadonlyMap<s
     approval: agent.approval ?? null,
   };
 }
-
-/** Run on startup appears only when set, so installs from before it keep their hash. */
-export function scheduleValue(routine: {
-  runOn: string;
-  schedule: unknown;
-  durationMinutes: number;
-  timeoutMinutes?: number | null;
-  overlap?: string | null;
-  continuity?: boolean | null;
-  runOnStartup?: boolean | null;
-}) {
-  return {
-    runOn: routine.runOn,
-    schedule: routine.schedule,
-    durationMinutes: routine.durationMinutes,
-    timeoutMinutes: routine.timeoutMinutes ?? null,
-    overlap: routine.overlap ?? "skip",
-    continuity: routine.continuity === true,
-    ...(routine.runOnStartup === true ? { runOnStartup: true } : {}),
-  };
-}
-
-export const routineReleaseValues = (routine: PackageRoutine): Record<RoutinePart, unknown> => ({
-  name: routine.name,
-  prompt: routine.prompt,
-  schedule: scheduleValue(routine),
-  target: { agent: routine.agent },
-});
 
 export const connectionReleaseValue = (connection: PackageConnection) => ({
   transport: connection.mcp.transport,

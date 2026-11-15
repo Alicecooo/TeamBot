@@ -2,7 +2,6 @@
 // per-turn limits are the harness's, since one proxy can serve many turns of a warm engine.
 import { peerName } from "../teams/peer-roster.ts";
 import { callCardTool, CARD_TOOL_NAMES } from "./agents-call-cards.ts";
-import { callTriggerTool, TRIGGER_TOOL_NAMES } from "./agents-call-triggers.ts";
 import { catalogProfileFromEnv, SHARED_COMPUTER_TOOL_NAMES } from "./agents-catalog.ts";
 import { harnessClientFromEnv } from "./agents-client.ts";
 import type { HarnessClient, Json } from "./agents-client.ts";
@@ -108,7 +107,7 @@ function completedProposalResult(r: Json, subject: string): { text: string; isEr
   return { text: `Applied ${subject}.${summary}${details}${attention ? `\n\nNeeds attention: ${attention}` : ""}\n\nNo additional confirmation is needed. Continue the requested work; do not wait for a review card or ask the user to approve this change again.` };
 }
 
-function confirmationResult(r: Json, fallback: string, noun = "routine"): { text: string; isError?: boolean } {
+function confirmationResult(r: Json, fallback: string, noun: string): { text: string; isError?: boolean } {
   const completed = completedProposalResult(r, fallback);
   if (completed) return completed;
   const summary = typeof r.summary === "string" && r.summary.trim() ? `\n\n${r.summary.trim()}` : "";
@@ -145,7 +144,6 @@ export async function callTool(name: string, args: Json, context: ToolCallContex
     return { text: `Attached ${String(body.name ?? "the file")} (${Number(body.bytes ?? 0)} bytes). It now appears in the chat with a preview.` };
   }
   if (CARD_TOOL_NAMES.has(name)) return callCardTool(name, args, context);
-  if (TRIGGER_TOOL_NAMES.has(name)) return callTriggerTool(name, args, context);
   // Second lock: with sharing off the catalog already omits these tools.
   if (SHARED_COMPUTER_TOOL_NAMES.has(name) && !context.sharedComputers) {
     return { text: "Computer sharing is turned off in this workspace. There are no shared computers to use.", isError: true };

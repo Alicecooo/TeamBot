@@ -21,16 +21,13 @@ export type DecisionKind =
   | "review-would-approve"
   | "review-would-deny";
 
-/** `level`: a bot's change applied below Full access with no card; `self`: a bot's own routine applied that way (older rows
- * use it for every own change); `question`: cards a rule may never answer; `auto-fallback`: a card shown after delivery
+/** `level`: a bot's change applied below Full access with no card; `question`: cards a rule may never answer; `auto-fallback`: a card shown after delivery
  * failed; connector-scope: the person pre-decided it by editing a bot's connectorTools. */
 export type DecisionSource =
   | AutoVerdictSource
   | "level"
-  | "self"
   | "question"
   | "auto-fallback"
-  | "routine"
   | "skill"
   | "profile"
   | "model"

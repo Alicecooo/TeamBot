@@ -5,7 +5,6 @@ import { engineReady } from "@/lib/engine-ready";
 import { analyticsEnabled, track } from "@/lib/analytics";
 import { allow, APP, CONNECTORS_MODE, EDITION, engineForDriver, TRIAL_CREDIT, type EventProps, type PropValue } from "@/lib/analytics-allowlist";
 import { hasActiveConnection, type ConnectorStatus } from "@/lib/connector-status";
-import type { Routine } from "@/lib/routines";
 import type { AppState, Bot, ConfigStatus, InstanceInfo } from "@/state/store";
 
 export const SNAPSHOT_CHECK_MS = 60 * 60 * 1_000;
@@ -17,8 +16,6 @@ export interface UsageInput {
   instances: readonly InstanceInfo[];
   bots: ReadonlyArray<Pick<Bot, "computer" | "hidden">>;
   sections?: readonly string[];
-  /** null while the routine list is not loaded. */
-  routines: ReadonlyArray<Pick<Routine, "enabled" | "runOn" | "target" | "schedule">> | null;
   apps: { services: Record<string, ConnectorStatus>; authoritative: boolean } | null;
   sessions: { sessions: ReadonlyArray<{ id?: unknown; email?: unknown }>; current: unknown } | null;
   platform: "desktop" | "browser";
@@ -26,19 +23,6 @@ export interface UsageInput {
 }
 
 const tally = <T,>(items: readonly T[], test: (item: T) => boolean) => items.filter(test).length;
-
-function routineCounts(routines: UsageInput["routines"]): Record<string, number> {
-  if (!routines) return {};
-  return {
-    routines: routines.length,
-    routines_enabled: tally(routines, (routine) => routine.enabled === true),
-    routines_cloud: tally(routines, (routine) => routine.runOn === "cloud"),
-    routines_once: tally(routines, (routine) => routine.schedule.type === "once"),
-    routines_daily: tally(routines, (routine) => routine.schedule.type === "daily"),
-    routines_interval: tally(routines, (routine) => routine.schedule.type === "interval"),
-    routines_cron: tally(routines, (routine) => routine.schedule.type === "cron"),
-  };
-}
 
 function appFacts(apps: UsageInput["apps"]): Record<string, PropValue> {
   if (apps?.authoritative !== true) return {};
@@ -66,7 +50,6 @@ export function buildUsageSnapshot(input: UsageInput): EventProps {
     bots_off: place("off"),
     bots_auto: place(undefined),
     teams: input.sections?.length ?? 0,
-    ...routineCounts(input.routines),
     engines: [...new Set(ready.map((instance) => engineForDriver(instance.driverKind)))].sort(),
     engine_count: ready.length,
     trial_credit: allow(instances.find((instance) => instance.trialCredit !== undefined)?.trialCredit ?? "none", TRIAL_CREDIT),
@@ -84,10 +67,9 @@ export function buildUsageSnapshot(input: UsageInput): EventProps {
 }
 
 export function snapshotReady(
-  state: Pick<AppState, "connected" | "hydrated" | "config" | "routinesLoadState" | "instances">,
+  state: Pick<AppState, "connected" | "hydrated" | "config" | "instances">,
 ): boolean {
-  return state.connected && state.hydrated === true && state.config !== null && state.routinesLoadState !== "loading"
-    && state.instances.length > 0;
+  return state.connected && state.hydrated === true && state.config !== null && state.instances.length > 0;
 }
 
 export interface UsageSources {
@@ -98,7 +80,7 @@ export interface UsageSources {
   remoteClient: boolean;
 }
 
-export type SnapshotState = Pick<AppState, "config" | "instances" | "bots" | "sections" | "routines" | "routinesLoadState">;
+export type SnapshotState = Pick<AppState, "config" | "instances" | "bots" | "sections">;
 
 /** Null when the source fails or does not answer in time. */
 function settle<T>(work: () => Promise<T>): Promise<T | null> {
@@ -142,7 +124,6 @@ export async function sendDailySnapshot(state: SnapshotState, sources: UsageSour
       instances: state.instances,
       bots: state.bots,
       sections: state.sections,
-      routines: state.routinesLoadState === "ready" ? state.routines : null,
       apps,
       sessions: Array.isArray(sessions?.sessions)
         ? { sessions: sessions.sessions.filter((session) => session !== null && typeof session === "object"), current: sessions.current }

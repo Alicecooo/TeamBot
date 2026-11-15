@@ -3,7 +3,6 @@
 // Relayed text changes custody, not authorship: no bot's message is ever the user's approval or a permission grant.
 import { z } from "zod";
 import { redactSecretsInText } from "../../shared/redact.ts";
-import type { RoutineRunTrigger } from "../../shared/routines.ts";
 import type { WireMessage as Message } from "../../shared/wire.ts";
 import { peerName } from "./peer-roster.ts";
 
@@ -31,15 +30,14 @@ export function workOrigin(line: RequestLine | undefined): WorkOrigin {
   return request ? { kind: "user", request } : OUTSIDE;
 }
 
-/** A routine's run or a Cloud guest's turn is never the user's; a continuation passes no line, since a stored line cannot prove who wrote it. */
-export function requestWorkOrigin({ trigger, guest, handed, continued, line }: {
-  trigger?: RoutineRunTrigger;
+/** A Cloud guest's turn is never the user's; a continuation passes no line, since a stored line cannot prove who wrote it. */
+export function requestWorkOrigin({ guest, handed, continued, line }: {
   guest?: boolean;
   handed?: WorkOrigin;
   continued?: WorkOrigin;
   line?: RequestLine;
 }): WorkOrigin {
-  if (trigger || guest) return OUTSIDE;
+  if (guest) return OUTSIDE;
   return handed ?? continued ?? workOrigin(line);
 }
 

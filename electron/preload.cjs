@@ -49,33 +49,6 @@ function savedAnalyticsChoice() {
 let analyticsChoice;
 const remoteKeys = isLocalPage ? REMOTE_SAFE : new Set([...REMOTE_SAFE, ...(updaterOffered() ? ["updater"] : [])]);
 
-// Keep in parity with shared/workspace-backup-client.ts (a sandboxed preload cannot import it).
-const COMPANY_BACKUP_CLIENT_KEYS = [
-  "omb-drafts", "omb-draft-attachments", "omb-draft-send-ids", "omb-draft-channel-modes",
-  "omb-skin", "omb-show-threads", "omb-show-run-card", "omb-send-key", "omb-color-user-bubbles", "omb-chat-width", "openmausbot.sidebarDensity",
-  "openmausbot.sidebarToolsLayout",
-  "openmausbot.sidebarCollapsedSections.v1", "openmausbot.sidebarSectionOrder.v1",
-  "omb-analytics-opt-out",
-];
-if (isLocalPage && !desktopRemoteClient && process.argv.includes("--omb-company-desktop=1")) {
-  ipcRenderer.on("company-backups:collect-client-state", (_event, request) => {
-    if (!request || typeof request.requestId !== "string" || !/^[a-f0-9-]{36}$/.test(request.requestId)) return;
-    try {
-      // Check the origin again; a later navigation must not export remote data.
-      if (!localOrigin || location.origin !== localOrigin) throw new Error("Not the local workspace");
-      const clientState = {};
-      for (const key of COMPANY_BACKUP_CLIENT_KEYS) {
-        const value = localStorage.getItem(key);
-        if (value !== null) clientState[key] = value;
-      }
-      if (new TextEncoder().encode(JSON.stringify(clientState)).byteLength > 2 * 1024 ** 2) throw new Error("Browser state too large");
-      ipcRenderer.send("company-backups:client-state", { requestId: request.requestId, clientState });
-    } catch {
-      ipcRenderer.send("company-backups:client-state", { requestId: request.requestId, unavailable: true });
-    }
-  });
-}
-
 const bridge = {
   platform: process.platform,
   // Safe on a cloud page: the person chooses in a native menu; no direct switching, saved-list reads, host files or secrets.
@@ -92,10 +65,6 @@ const bridge = {
   /** The bearer stays in the main process and is never returned over this bridge. */
 
 
-  routines: {
-    wakeState: () => ipcRenderer.invoke("routines:wake-state"),
-    keepAwake: (enabled) => ipcRenderer.invoke("routines:keep-awake", enabled),
-  },
   /** Secrets stay in the main process; the renderer sees only status and narrow actions. */
 
   /** Full/Custom never go through the loopback API, only the embedded server's private utilityProcess port. */
@@ -231,22 +200,6 @@ const bridge = {
       return () => ipcRenderer.removeListener("organization:state-changed", handler);
     },
   } : undefined,
-  companyBackups: process.argv.includes("--omb-company-desktop=1") ? {
-    state: () => ipcRenderer.invoke("company-backups:state"),
-    list: () => ipcRenderer.invoke("company-backups:list"),
-    create: input => ipcRenderer.invoke("company-backups:create", input),
-    configureSchedule: input => ipcRenderer.invoke("company-backups:configure-schedule", input),
-    prepareRestore: input => ipcRenderer.invoke("company-backups:preview", input),
-    restore: input => ipcRenderer.invoke("company-backups:restore", input),
-    delete: input => ipcRenderer.invoke("company-backups:delete", input),
-    cancel: () => ipcRenderer.invoke("company-backups:cancel"),
-    onState: cb => {
-      const handler = (_event, state) => cb(state);
-      ipcRenderer.on("company-backups:state-changed", handler);
-      return () => ipcRenderer.removeListener("company-backups:state-changed", handler);
-    },
-  } : undefined,
-
   confirm: message => ipcRenderer.invoke("dialog:confirm", message),
   
   desktopAnalytics: {
