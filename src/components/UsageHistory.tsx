@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { api } from "@/state/store";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
@@ -133,7 +133,6 @@ export function UsageHistory({ load = fetchUsage }: { load?: typeof fetchUsage }
   const [summary, setSummary] = useState<UsageSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const range = usagePeriodRange(period);
 
   useEffect(() => {
     let current = true;
@@ -178,13 +177,6 @@ export function UsageHistory({ load = fetchUsage }: { load?: typeof fetchUsage }
             </button>
           ))}
         </div>
-        <a
-          href={usageExportHref(range)}
-          download
-          className="ml-auto flex items-center gap-1.5 rounded-lg border border-hairline/40 px-2.5 py-1 text-[12px] text-ink-secondary hover:bg-raised/50 hover:text-ink"
-        >
-          <Download size={13} />{t("usage.history.export")}
-        </a>
       </div>
       {error && <p role="alert" className="mb-2 text-[12px] text-danger">{error}</p>}
       {loading && !summary ? (

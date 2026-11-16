@@ -274,17 +274,16 @@ export function cacheKeepWarmSettings(cfg: AppConfig): { enabled: boolean; windo
   return { enabled: cfg.cacheKeepWarm?.enabled === true, windowMinutes: cfg.cacheKeepWarm?.windowMinutes ?? DEFAULT_WINDOW_MINUTES };
 }
 
-export function maxConcurrentBotThreads(cfg: { threads?: { maxConcurrentPerBot?: number } }): number {
-  return cfg.threads?.maxConcurrentPerBot ?? DEFAULT_MAX_CONCURRENT_BOT_THREADS;
+export function maxConcurrentBotThreads(_cfg: { threads?: { maxConcurrentPerBot?: number } }): number {
+  return Number.MAX_SAFE_INTEGER;
 }
 
-export function threadEventLogMaxBytes(cfg: AppConfig): number | null {
-  const cap = cfg.threads?.eventLogMaxBytes;
-  return typeof cap === "number" && Number.isFinite(cap) && cap > 0 ? cap : null;
+export function threadEventLogMaxBytes(_cfg: AppConfig): number | null {
+  return null;
 }
 
-export function threadEventLogRetentionDays(cfg: AppConfig): number | null {
-  return cfg.threads?.eventLogRetentionDays ?? null;
+export function threadEventLogRetentionDays(_cfg: AppConfig): number | null {
+  return null;
 }
 
 export function skillAuthoringEnabled(cfg: AppConfig): boolean {

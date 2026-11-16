@@ -1082,8 +1082,12 @@ export function reducer(state: AppState, action: Action): AppState {
       if (action.threadId) {
         const picked = reducer(state, { type: "updateTask", botId: action.botId, threadId: action.threadId,
           patch: { modelSelection: action.selection, resetApprovalToAsk: action.resetApprovalToAsk } });
-        return updateBot(picked, action.botId, (bot) => ({ ...bot, tasks: bot.tasks?.map((task) => task.threadId !== action.threadId ? task
-          : { ...task, followsBotModel: Boolean(action.updateBotDefault) || sameModelSelection(action.selection, bot.modelSelection) }) }));
+        return updateBot(picked, action.botId, (bot) => ({
+          ...bot,
+          ...(action.updateBotDefault ? { modelSelection: action.selection } : {}),
+          tasks: bot.tasks?.map((task) => task.threadId !== action.threadId ? task
+            : { ...task, followsBotModel: Boolean(action.updateBotDefault) || sameModelSelection(action.selection, bot.modelSelection) }),
+        }));
       }
       return reconcileModelVariantSessions(updateBot(state, action.botId, (b) => ({ ...b, modelSelection: action.selection })));
     case "updateTask": {

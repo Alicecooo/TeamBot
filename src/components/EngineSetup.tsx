@@ -16,18 +16,16 @@ export function needsCli(instance: InstanceInfo | undefined): boolean {
   return instance?.snapshot.state !== "available";
 }
 
-export function EngineSetup({ instance, className, unframed = false }: {
+export function EngineSetup({ className, unframed = false }: {
   instance: InstanceInfo;
   className?: string;
   unframed?: boolean;
 }) {
   const { dispatch } = useStore();
-  const status = needsCli(instance) ? t("agentCli.missing") : t("model.ready");
   return (
     <div className={cn("flex items-center justify-between gap-3", !unframed && "rounded-xl border border-hairline/40 bg-control/30 p-3", className)}>
-      <span role="status" className="min-w-0 text-[13px] text-ink">{instance.displayName} · {status}</span>
       <button type="button" className="ui-button shrink-0" onClick={() => dispatch({ type: "toggleAppSettings", open: true, section: "engines" })}>
-        <RotateCw size={13} aria-hidden="true" />{t("agentCli.detectName", { name: instance.displayName })}
+        <RotateCw size={13} aria-hidden="true" />{t("model.detectSwitch")}
       </button>
     </div>
   );

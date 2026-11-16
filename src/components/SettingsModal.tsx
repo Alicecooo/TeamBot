@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Coins, Monitor, Palette, Plug, Search, Terminal, User, X, Building2, BookOpen } from "lucide-react";
+import { Coins, Monitor, Plug, Search, Terminal, User, X, Building2, BookOpen } from "lucide-react";
 import { api, useStore, type AppSettingsSection, type ConfigStatus } from "@/state/store";
 import { showToolCallsEnabled, skillsLibraryEnabled } from "@/lib/feature-flags";
 import { localeChoices, type LocaleKey } from "@/locales";
@@ -18,10 +18,6 @@ import { LicenseExpiryBanner } from "./LicenseExpiryBanner";
 import { SkinPicker } from "./SkinPicker";
 import { ChatWidthRow, FontRow } from "./AppearanceSelectRows";
 import { setColorUserBubbles, useColorUserBubbles } from "@/lib/user-bubble-preference";
-import { McpCallTimeoutSettings } from "./McpCallTimeoutSettings";
-import { ThreadConcurrencySettings } from "./ThreadConcurrencySettings";
-import { AutomaticRecoverySettings } from "./AutomaticRecoverySettings";
-import { ThreadCleanupSettings } from "./ThreadCleanupSettings";
 import { cn } from "@/lib/cn";
 import { glassPopupFrameStyle } from "@/lib/glass-popup";
 import { NotificationRows } from "./NotificationSettingsRows";
@@ -49,8 +45,7 @@ export const SECTIONS: Array<{
   icon: typeof User;
   keywords: string[];
 }> = [
-  { id: "general", group: "you", labelKey: "settings.section.general", icon: User, keywords: ["profile", "name", "email", "about me", "about", "suggestions", "suggested", "memory", "analytics", "updates", "effort", "new bots", "reasoning", "threads", "parallel", "concurrency", "cleanup", "retention", "event log", "event-log", "log size", "automatic recovery", "backup model", "fallback"] },
-  { id: "appearance", group: "you", labelKey: "settings.section.appearance", icon: Palette, keywords: ["skin", "theme", "appearance", "chat width", "width", "wide", "full width", "bubble", "bubbles", "tools", "tool calls", "threads", "show threads", "hide threads", "sidebar", "density", "compact", "comfortable", "avatars", "display", "run", "this run", "run card", "commands", "notifications", "sound", "sounds", "mute", "silent", "chime", "pinned", "circles", "universal", "groups", "top", "send", "enter", "return", "shift+enter", "ctrl+enter", "cmd+enter", "⌘+enter", "new line", "keyboard", "ime", "japanese", "message color", "my messages"] },
+  { id: "general", group: "you", labelKey: "settings.section.general", icon: User, keywords: ["profile", "name", "email", "language", "skin", "theme", "appearance", "black", "white", "chat width", "font", "bubble", "sidebar", "notifications", "send", "外观", "黑", "白"] },
   { id: "companion", group: "you", labelKey: "settings.section.server", icon: Monitor, keywords: ["server", "https", "domain", "dns", "self-hosted", "caddy"] },
   { id: "engines", group: "ai", labelKey: "settings.section.engines", icon: Terminal, keywords: ["models", "engines", "claude", "codex", "pi", "omp", "antigravity", "cursor", "grok", "cli", "模型", "检测"] },
   { id: "appConnections", group: "ai", labelKey: "settings.section.appConnections", icon: Plug, keywords: ["apps", "connections", "composio", "mcp", "tools", "servers", "gmail", "github", "slack", "notion", "应用", "连接", "工具", "連線", "應用"] },
@@ -267,17 +262,18 @@ function ToolCallsRow() {
 export function SettingsModal() {
   const { state, dispatch } = useStore();
   const remoteActive = window.ogb?.remoteClient?.active === true;
+  const requested = state.appSettingsSection === "appearance" ? "general" : state.appSettingsSection;
   const section: AppSettingsSection =
-    (remoteActive && !["appearance", "desktopWorkspaces"].includes(state.appSettingsSection)) || state.appSettingsSection === "remote" || state.appSettingsSection === "computer"
+    (remoteActive && !["general", "desktopWorkspaces"].includes(requested)) || requested === "remote" || requested === "computer"
       ? "companion"
-      : state.appSettingsSection;
+      : requested;
   const dialogRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   useEffect(() => window.ogb?.environments?.onOpenSettings?.(() => setQuery("")), []);
   useEffect(() => window.ogb?.onOpenAppSettings?.(() => setQuery("")), []);
   const q = query.trim().toLowerCase();
-  const baseSections = SECTIONS.filter((entry) => !remoteActive || entry.id === "companion" || entry.id === "appearance" || entry.id === "desktopWorkspaces")
+  const baseSections = SECTIONS.filter((entry) => !remoteActive || entry.id === "companion" || entry.id === "general" || entry.id === "desktopWorkspaces")
     .filter((entry) => entry.id !== "desktopWorkspaces" || Boolean(window.ogb?.environments))
     .filter((entry) => entry.id !== "organization" || Boolean(window.ogb?.organization));
   const availableSections = baseSections.filter((entry) => entry.id !== "skills" || skillsLibraryEnabled(state.config));
@@ -358,19 +354,6 @@ export function SettingsModal() {
             </Card>
 
             <LanguageRow />
-            <Card title={t("settings.mcpCalls.title")} subtitle={t("settings.mcpCalls.subtitle")}>
-              <McpCallTimeoutSettings />
-            </Card>
-            <ThreadConcurrencySettings />
-
-            <AutomaticRecoverySettings />
-            <ThreadCleanupSettings />
-
-          </>
-        );
-      case "appearance":
-        return (
-          <>
             <Card title={t("settings.skin.title")} subtitle={t("settings.skin.subtitle")}>
               <SkinPicker />
             </Card>
