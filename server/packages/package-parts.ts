@@ -1,9 +1,9 @@
 // Release (r) and written (w) hashes per part. The value shapes are frozen: change nothing here without a new stamp version.
 import { createHash } from "node:crypto";
 
-import { canonicalJson, decodeBase64 } from "../../shared/package-format.ts";
+import { canonicalJson, decodeBase64 } from "../../shared/team/package-format.ts";
 
-import type { PackageAgent, PackageConnection, PackagePlaybook } from "../../shared/package-format.ts";
+import type { PackageAgent, PackageConnection, PackagePlaybook } from "../../shared/team/package-format.ts";
 
 export interface PartPair { r: string; w: string }
 

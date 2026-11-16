@@ -1,4 +1,4 @@
-import type { WireMessage as Message } from "../../shared/wire.ts";
+import type { WireMessage as Message } from "../../shared/thread/wire.ts";
 import { withoutDeliveredNote } from "../teams/peer-provenance.ts";
 import { canAccessTeam } from "../teams/peer-roster.ts";
 

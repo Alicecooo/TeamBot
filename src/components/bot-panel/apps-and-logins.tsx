@@ -1,10 +1,10 @@
 import { Plus } from "lucide-react";
 
-import { withBotApp } from "@/lib/bot-app-access";
-import { t } from "@/lib/i18n";
+import { withBotApp } from "@/lib/bots/bot-app-access";
+import { t } from "@/lib/ui/i18n";
 
 import { useStore, type Bot } from "@/state/store";
-import { ServiceIcon } from "../PluginsPanel";
+import { ServiceIcon } from "../settings/PluginsPanel";
 
 import type { BotApp, BotApps } from "../bot-settings/useBotApps";
 import type { useBotSettingsDerived } from "../bot-settings/useBotSettingsDerived";

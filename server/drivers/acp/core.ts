@@ -17,7 +17,7 @@ import { deletePromptSplitReceipt, promptHalves, readPromptSplitReceipt, splitSe
 import type { PromptSplitReceipt } from "../prompt-split.ts";
 import { describeSpawnFailure, execCli, killCliTree, spawnCli } from "../../platform/procs.ts";
 import { runAcpOneShot } from "./background-text.ts";
-import { stripLeakedSystemHarnessMessages } from "../../../shared/system-message-guard.ts";
+import { stripLeakedSystemHarnessMessages } from "../../../shared/thread/system-message-guard.ts";
 import { classifyQuiet, describeQuiet, lastSeenPhrase, LogTail, quietKey, sampleProcessTree, type LogSignal, type ProcessSample, type QuietState } from "./quiet-status.ts";
 import { readSessionReport } from "./session-reports.ts";
 
@@ -42,8 +42,8 @@ import type { DriverCreateInput, EffortLevel, EngineInstall, ProviderDriver, Pro
 
 import { newEventId, newId, TurnNotStartedError } from "../../harness/contracts.ts";
 import { augmentedPath } from "../../platform/env-path.ts";
-import { supportsApprovalMode } from "../../../shared/approval-mode.ts";
-import { MAX_QUESTION_TEXT, parseAskQuestions, parseChoices, questionAnswersByQuestion } from "../../../shared/ask-question.ts";
+import { supportsApprovalMode } from "../../../shared/tool/approval-mode.ts";
+import { MAX_QUESTION_TEXT, parseAskQuestions, parseChoices, questionAnswersByQuestion } from "../../../shared/tool/ask-question.ts";
 
 import { appendNative } from "../native.ts";
 import { acpSessionOperationKey, acpShellRequest, answersAlone, permissionLaunchCwd } from "../permission-command.ts";
@@ -55,7 +55,7 @@ import { recoveryPromptFor } from "../../agent/resume-recovery.ts";
 import { sessionIdlePolicy } from "../session-idle.ts";
 import { classifyError } from "../retry.ts";
 import { engineFailureKind, engineFailureMessage } from "../engine-errors.ts";
-import { narrowsNativeTools, parseToolScope } from "../../../shared/tool-scope.ts";
+import { narrowsNativeTools, parseToolScope } from "../../../shared/tool/tool-scope.ts";
 import { turnStdioMcpServers } from "../turn-mcp.ts";
 
 /** Failures fixed on the provider account, not by retrying; the reporting process stays pooled. */

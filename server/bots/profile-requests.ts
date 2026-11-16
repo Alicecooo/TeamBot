@@ -1,6 +1,6 @@
 // propose_profile applies at once with an Undo. The owner's card (direct-apply.ts) is re-validated at confirm time, since it can sit open for days.
-import { PROFILE_REQUEST_FIELDS, type ProfileRequestCardData, type ProfileRequestChanges } from "../../shared/profile-request.ts";
-import { BOT_PROFILE_LIMITS } from "../../shared/bot-profile.ts";
+import { PROFILE_REQUEST_FIELDS, type ProfileRequestCardData, type ProfileRequestChanges } from "../../shared/bot/profile-request.ts";
+import { BOT_PROFILE_LIMITS } from "../../shared/bot/bot-profile.ts";
 import { parseBotProfilePatch, type BotProfilePatchInput } from "./bot-profile.ts";
 import { validateBotCwd } from "./bot-cwd.ts";
 import { newId } from "../harness/contracts.ts";

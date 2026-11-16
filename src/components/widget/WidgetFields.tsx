@@ -1,4 +1,4 @@
-import { widgetString, type WidgetNode } from "../../../shared/widget";
+import { widgetString, type WidgetNode } from "../../../shared/view/widget";
 import { useWidgetForm, widgetFieldId, WidgetCheckbox, WidgetDatePicker, WidgetInput, WidgetRadioGroup, WidgetSelect, WidgetTextarea } from "./WidgetControls";
 import { WidgetDayPicker } from "./WidgetDayPicker";
 import { WidgetTimePicker } from "./WidgetTimePicker";

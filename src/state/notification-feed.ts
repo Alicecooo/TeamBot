@@ -1,4 +1,4 @@
-import type { NotificationLogEntry } from "../../shared/notification";
+import type { NotificationLogEntry } from "../../shared/view/notification";
 
 export const NOTIFICATION_FEED_LIMIT = 500;
 

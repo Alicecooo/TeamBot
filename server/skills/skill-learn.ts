@@ -1,4 +1,4 @@
-import { SAVE_RUN_AS_SKILL_LINE } from "../../shared/learn-request.ts";
+import { SAVE_RUN_AS_SKILL_LINE } from "../../shared/bot/learn-request.ts";
 
 export const LEARN_SOURCE_PREFIX = "learn:";
 export const LEARN_PROMPT_MARKER = "[/learn]";

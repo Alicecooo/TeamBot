@@ -5,7 +5,7 @@
 // Who drives a bot's computer. A bot can only ask for hands (requestHelp); only the person takes and releases. While the
 // person holds control the bot's actions are refused, never queued: a queued click would land on whatever is under it later.
 // A plea is settled only by its sign-in card. In memory on purpose: a hold that survived a restart would brick the computer.
-import type { ComputerHelpRef } from "../../shared/wire.ts";
+import type { ComputerHelpRef } from "../../shared/thread/wire.ts";
 
 export interface ControlSnapshot {
   /** True while the person is driving; the bot's hands are refused. */

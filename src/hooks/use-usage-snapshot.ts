@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
-import { preloadConnectedApps } from "@/components/PluginsPanel";
+import { preloadConnectedApps } from "@/components/settings/PluginsPanel";
 
-import { useOwnerOrAdmin } from "@/lib/use-owner-or-admin";
-import { sendDailySnapshot, SNAPSHOT_CHECK_MS, snapshotReady, type UsageSources } from "@/lib/usage-snapshot";
+import { useOwnerOrAdmin } from "@/lib/session/use-owner-or-admin";
+import { sendDailySnapshot, SNAPSHOT_CHECK_MS, snapshotReady, type UsageSources } from "@/lib/models/usage-snapshot";
 import { api, useStore } from "@/state/store";
 
 function browserSources(): UsageSources { return { request: path => api(path), connectedApps: () => preloadConnectedApps(), platform: navigator.userAgent.includes("Electron") ? "desktop" : "browser", remoteClient: window.ogb?.remoteClient?.active === true }; }

@@ -2,8 +2,8 @@
 
 // Relayed text changes custody, not authorship: no bot's message is ever the user's approval or a permission grant.
 import { z } from "zod";
-import { redactSecretsInText } from "../../shared/redact.ts";
-import type { WireMessage as Message } from "../../shared/wire.ts";
+import { redactSecretsInText } from "../../shared/data/redact.ts";
+import type { WireMessage as Message } from "../../shared/thread/wire.ts";
 import { peerName } from "./peer-roster.ts";
 
 const REQUEST_QUOTE_MAX = 400;

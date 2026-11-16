@@ -11,8 +11,8 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { z } from "zod";
 
-import { parseSkillCommand } from "../../shared/skill-command.ts";
-import { isSkillName } from "../../shared/skill-md.ts";
+import { parseSkillCommand } from "../../shared/skill/skill-command.ts";
+import { isSkillName } from "../../shared/skill/skill-md.ts";
 import { writeFileAtomic } from "../storage/atomic.ts";
 import { DATA_DIR } from "../config/config.ts";
 import { directoryEntryState, entryExistsWithoutFollowing } from "./skill-storage.ts";

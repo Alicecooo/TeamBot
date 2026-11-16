@@ -1,6 +1,6 @@
-import type { TrialCreditRefusal } from "../../shared/trial-credit.ts";
+import type { TrialCreditRefusal } from "../../shared/data/trial-credit.ts";
 
-export { TRIAL_CREDIT_REFUSED, type TrialCreditRefusal } from "../../shared/trial-credit.ts";
+export { TRIAL_CREDIT_REFUSED, type TrialCreditRefusal } from "../../shared/data/trial-credit.ts";
 export type TrialCreditEnd = "used_up" | "ended";
 export const trialCreditEnds = (refusal: TrialCreditRefusal): refusal is TrialCreditEnd => refusal === "used_up" || refusal === "ended";
 

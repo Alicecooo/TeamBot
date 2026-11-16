@@ -5,9 +5,9 @@
 // Nothing here decides whether an action is safe: each level is the provider's own permission mode passed through, and a
 // request reaching this process is one the provider left for a person. The app's own grants are Full access, the person's
 // exact saved commands and remembered MCP read tools, and Approve for me's web search. A bot's question always reaches a human.
-import { supportsApprovalMode, type ApprovalMode } from "../../shared/approval-mode.ts";
-import { failedTurnTool, type FailedTurnTool } from "../../shared/failed-turn.ts";
-import { isOutboundTool } from "../../shared/outbound.ts";
+import { supportsApprovalMode, type ApprovalMode } from "../../shared/tool/approval-mode.ts";
+import { failedTurnTool, type FailedTurnTool } from "../../shared/thread/failed-turn.ts";
+import { isOutboundTool } from "../../shared/tool/outbound.ts";
 import type { ProviderAdapter, RequestOutcome } from "../harness/contracts.ts";
 
 /** An expired ask must never become a fresh Allow/Deny card. */

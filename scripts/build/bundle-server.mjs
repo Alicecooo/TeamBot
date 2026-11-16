@@ -38,8 +38,6 @@ const NODE_REQUIRE = {
 // which bundling already points at the output directory.
 const ENTRY_POINTS = [
   "index.ts",
-  // the `openmausbot` command
-  "openmausbot.ts",
   // the container image's entry point
   "server-launcher.ts",
   // Imported directly by the packaged smoke probes as ./proxy-paths.js.

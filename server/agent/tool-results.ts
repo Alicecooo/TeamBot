@@ -1,6 +1,6 @@
 // Short-lived overflow for agents tool results: authorize the live turn first; ownership is both bot and conversation.
 import { randomUUID } from "node:crypto";
-import { redactSecretsInText } from "../../shared/redact.ts";
+import { redactSecretsInText } from "../../shared/data/redact.ts";
 
 export const TOOL_RESULT_PREVIEW_CHARS = 16_000;
 export const TOOL_RESULT_MAX_CHARS = 128 * 1024;

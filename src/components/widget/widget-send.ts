@@ -1,5 +1,5 @@
 import { api } from "@/state/store";
-import type { WidgetOther, WidgetValues } from "../../../shared/widget";
+import type { WidgetOther, WidgetValues } from "../../../shared/view/widget";
 
 export interface WidgetPress {
   botId: string;

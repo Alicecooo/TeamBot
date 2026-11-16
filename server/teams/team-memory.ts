@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { redactSecretsInText } from "../security/redact.ts";
 import { recallTerms } from "../storage/message-db.ts";
-import { canonicalJson } from "../../shared/package-format.ts";
+import { canonicalJson } from "../../shared/team/package-format.ts";
 
 import { writeFileAtomic } from "../storage/atomic.ts";
 import { newId } from "../harness/contracts.ts";

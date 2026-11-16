@@ -6,7 +6,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { parseToolScope } from "../../shared/tool-scope.ts";
+import { parseToolScope } from "../../shared/tool/tool-scope.ts";
 
 import { bridgedCallName } from "./agents-bridge-names.ts";
 import { TOOL_BRIDGE_ENV } from "./agents-bridge.ts";

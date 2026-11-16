@@ -2,8 +2,8 @@ import { SquareSlash } from "lucide-react";
 import { useState } from "react";
 
 import type { Bot } from "@/state/store";
-import { t } from "@/lib/i18n";
-import { WRITTEN_SKILL_SOURCE, writtenSkillMd, writtenSkillProblem, type WrittenSkillProblem } from "../../../shared/written-skill";
+import { t } from "@/lib/ui/i18n";
+import { WRITTEN_SKILL_SOURCE, writtenSkillMd, writtenSkillProblem, type WrittenSkillProblem } from "../../../shared/skill/written-skill";
 import { useBotEditor } from "./BotEditorContext";
 import { inputCls } from "./field";
 

@@ -1,7 +1,7 @@
 import { Fragment, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { cn } from "@/lib/cn";
-import { t } from "@/lib/i18n";
-import { widgetNumber, widgetString, widgetTakesOther, type WidgetNode } from "../../../shared/widget";
+import { cn } from "@/lib/ui/cn";
+import { t } from "@/lib/ui/i18n";
+import { widgetNumber, widgetString, widgetTakesOther, type WidgetNode } from "../../../shared/view/widget";
 import { useWidgetForm, WidgetOtherInput, WidgetRadioMark } from "./WidgetControls";
 import { WIDGET_ROW, WIDGET_ROW_CONTROLS, WidgetListRow, WidgetNodeView } from "./WidgetNodes";
 import { ALIGN, fourSides, kids } from "./widget-style";

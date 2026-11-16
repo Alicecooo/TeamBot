@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { X } from "lucide-react";
 
-import { cn } from "@/lib/cn";
-import { t } from "@/lib/i18n";
+import { cn } from "@/lib/ui/cn";
+import { t } from "@/lib/ui/i18n";
 import type { Bot, BotSettingsSection } from "@/state/store";
-import { ChatMoreMenu } from "@/components/ChatMoreMenu";
-import { useCaptionChrome } from "../DesktopCapabilities";
+import { ChatMoreMenu } from "@/components/chat/ChatMoreMenu";
+import { useCaptionChrome } from "../chrome/DesktopCapabilities";
 import { MemorySection } from "../bot-settings/MemorySection";
 import { useBotPrompt } from "../bot-settings/useBotPrompt";
 import type { useBotSettingsDerived } from "../bot-settings/useBotSettingsDerived";

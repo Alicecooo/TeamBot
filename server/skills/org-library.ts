@@ -8,7 +8,7 @@ import { pair, partHash, sha256Hex, type PartPair, type TeamPart } from "../pack
 import { storedPresetObject, type StoredPreset } from "../packages/presets.ts";
 import type { SkillListing, SkillPackageStamp } from "./skills.ts";
 import { sectionKey, type InstalledPackageMetadata, type Store, type StoreChange } from "../storage/store.ts";
-import { PACKAGE_MAX_BYTES, PACKAGE_VERSION, PackageFormatError, parsePackageDocument, type PackageDocument } from "../../shared/package-format.ts";
+import { PACKAGE_MAX_BYTES, PACKAGE_VERSION, PackageFormatError, parsePackageDocument, type PackageDocument } from "../../shared/team/package-format.ts";
 
 export const ORG_LIBRARY_FORMAT = "openmaus.org-library";
 export const ORG_LIBRARY_CATALOG_MAX_BYTES = 256 * 1024;

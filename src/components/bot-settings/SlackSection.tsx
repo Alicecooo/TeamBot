@@ -1,6 +1,6 @@
 import { ExternalLink } from "lucide-react";
 
-import { t } from "@/lib/i18n";
+import { t } from "@/lib/ui/i18n";
 
 export function SlackSection({ managementUrl }: { managementUrl: string }) {
   return (

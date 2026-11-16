@@ -1,4 +1,4 @@
-import { t } from "@/lib/i18n";
+import { t } from "@/lib/ui/i18n";
 import { useStore, type Bot } from "@/state/store";
 import { useBotEditor } from "./BotEditorContext";
 

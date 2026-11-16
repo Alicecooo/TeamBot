@@ -1,8 +1,8 @@
 import { newId, type ModelSelection } from "../harness/contracts.ts";
-import { takeImportName } from "../../shared/import-name.ts";
-import { botMascotBody } from "../../shared/mascot-bodies.ts";
-import { MAX_TEAM_BACKUP_BYTES, parseTeamBackup, type BackupTask, type TeamBackup } from "../../shared/team-backup.ts";
-import { helperModelAllowed } from "../../shared/wire.ts";
+import { takeImportName } from "../../shared/team/import-name.ts";
+import { botMascotBody } from "../../shared/bot/mascot-bodies.ts";
+import { MAX_TEAM_BACKUP_BYTES, parseTeamBackup, type BackupTask, type TeamBackup } from "../../shared/team/team-backup.ts";
+import { helperModelAllowed } from "../../shared/thread/wire.ts";
 import type { BotRecord, GroupRecord, Message, Store, TaskRecord } from "../storage/store.ts";
 import { redactSecretsInText } from "../security/redact.ts";
 import { listMemoryLogs, listMemoryTopics, readMemoryFile, readMemoryLog, readMemoryTopic, writeMemoryFile, writeMemoryLog, writeMemoryTopic } from "../workspace/workspace.ts";

@@ -1,5 +1,5 @@
 // Redacted before it is cut: a key sliced in half would slip past the shapes redaction knows.
-import { MAX_QUESTION_TEXT } from "../../shared/ask-question.ts";
+import { MAX_QUESTION_TEXT } from "../../shared/tool/ask-question.ts";
 import { redactSecrets, redactSecretsInText } from "../security/redact.ts";
 
 export function toolDetailPreview(value: unknown): string | undefined {

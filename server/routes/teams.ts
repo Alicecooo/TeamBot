@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { MAX_TEAM_BACKUP_BYTES } from "../../shared/team-backup.ts";
-import type { WireBot, WireGroup } from "../../shared/wire.ts";
+import { MAX_TEAM_BACKUP_BYTES } from "../../shared/team/team-backup.ts";
+import type { WireBot, WireGroup } from "../../shared/thread/wire.ts";
 import { validateBotCwd } from "../bots/bot-cwd.ts";
 import { fetchBotDirectory, matchDirectoryBots, type MatchedDirectoryBot } from "../bots/bot-directory.ts";
 import { isBotPackage, packageSummary, parsePackageDocument, renderBotPackageMarkdown, type PackageDocument } from "../bots/bot-package.ts";

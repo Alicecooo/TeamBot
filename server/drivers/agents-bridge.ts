@@ -2,7 +2,7 @@
 // Security invariant: a bridged call is never judged more permissively than the same call made directly.
 // use_tool hands the name back to the proxy's one unknown-tool check and callTool path, and a tool judged
 // by its name (an outbound tool, a tool selection, an engine's own rules) never runs through it.
-import { isOutboundTool } from "../../shared/outbound.ts";
+import { isOutboundTool } from "../../shared/tool/outbound.ts";
 import { READ_ONLY_ANNOTATIONS } from "../agent/agent-tool-policy.ts";
 import { bm25Ranker } from "../mcp/mcp-directory.ts";
 import type { Json } from "./agents-client.ts";

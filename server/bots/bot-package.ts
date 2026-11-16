@@ -1,7 +1,7 @@
 import { stringify as stringifyYaml } from "yaml";
 
 import type { JsonValue } from "../config/schema.ts";
-import { BOTMRR_MARKDOWN_VERSION, isPackageDocument, PACKAGE_V1_MAX_SKILLS, parsePackageV1, utf8Bytes, type PackageDocumentV1 } from "../../shared/package-format.ts";
+import { BOTMRR_MARKDOWN_VERSION, isPackageDocument, PACKAGE_V1_MAX_SKILLS, parsePackageV1, utf8Bytes, type PackageDocumentV1 } from "../../shared/team/package-format.ts";
 
 export {
   canonicalJson,
@@ -18,7 +18,7 @@ export {
   upgradeV1,
   type PackageDocument,
   type PackageTrust,
-} from "../../shared/package-format.ts";
+} from "../../shared/team/package-format.ts";
 
 export const BOT_PACKAGE_MAX_SKILLS = PACKAGE_V1_MAX_SKILLS;
 const BOT_PACKAGE_MARKDOWN_MAX_BYTES = 1_000_000;

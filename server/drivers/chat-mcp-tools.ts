@@ -12,7 +12,7 @@ import { CALL_TOOL, directoryCallTarget, isDirectoryTool } from "../mcp/mcp-dire
 import { mcpStdioServer } from "../mcp/mcp-gate-config.ts";
 import { REMOTE_MCP_STARTUP_MS, remoteMcpSpec } from "../mcp/mcp-http.ts";
 import { compileToolSchema } from "../mcp/mcp-schema-validator.ts";
-import { allowsTool, canUseMcpServer, parseToolScope, type ToolScope } from "../../shared/tool-scope.ts";
+import { allowsTool, canUseMcpServer, parseToolScope, type ToolScope } from "../../shared/tool/tool-scope.ts";
 
 export interface ChatToolDefinition {
   type: "function";

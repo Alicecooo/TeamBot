@@ -7,10 +7,10 @@ import type { PresetRegistry } from "./presets.ts";
 import type { SkillListing, SkillPackageStamp } from "../skills/skills.ts";
 import type { BotRecord, GroupRecord, InstalledPackageMetadata, Store } from "../storage/store.ts";
 import { importedMemberProfile, type ParsedTeamManifest, type TeamManifestMember } from "./team-manifest.ts";
-import { takeImportName } from "../../shared/import-name.ts";
-import { decodeBase64, type PackageAgent, type PackageDocument, type PackageTrust } from "../../shared/package-format.ts";
-import type { ModelSelection } from "../../shared/wire.ts";
-import { botMascotBody } from "../../shared/mascot-bodies.ts";
+import { takeImportName } from "../../shared/team/import-name.ts";
+import { decodeBase64, type PackageAgent, type PackageDocument, type PackageTrust } from "../../shared/team/package-format.ts";
+import type { ModelSelection } from "../../shared/thread/wire.ts";
+import { botMascotBody } from "../../shared/bot/mascot-bodies.ts";
 
 export const NO_BOTS_MESSAGE = "This package has no bots. Add it from your organization's shelf, or update OpenMausBot.";
 export const NO_PRESETS_MESSAGE = "This file has no bots or preset bots to add. Its skills can be added from your organization's shelf.";

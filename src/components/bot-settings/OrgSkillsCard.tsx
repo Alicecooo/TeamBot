@@ -2,8 +2,8 @@ import { Building2, Check } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Bot } from "@/state/store";
-import { t } from "@/lib/i18n";
-import type { OfferedOrgSkill } from "@/lib/org-library";
+import { t } from "@/lib/ui/i18n";
+import type { OfferedOrgSkill } from "@/lib/connectors/org-library";
 import { useBotEditor } from "./BotEditorContext";
 
 export function OrgSkillsCard({ bot, onAdded }: { bot: Bot; onAdded: () => void }) {

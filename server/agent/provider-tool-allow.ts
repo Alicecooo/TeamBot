@@ -1,7 +1,7 @@
 // The grant key binds approval to the instance, the exact MCP server/tool and that server's config, so editing the server invalidates it.
 import { createHash } from "node:crypto";
 
-import { isReadOnlyTool } from "../../shared/outbound.ts";
+import { isReadOnlyTool } from "../../shared/tool/outbound.ts";
 
 export interface ProviderMcpTool {
   server: string;

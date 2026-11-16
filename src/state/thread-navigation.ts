@@ -1,4 +1,4 @@
-import type { NotificationTarget } from "@/lib/notify";
+import type { NotificationTarget } from "@/lib/ui/notify";
 import type { Action, AppState } from "./store";
 
 interface NotificationThreadOwner {

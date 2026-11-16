@@ -6,7 +6,7 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import { dirname } from "node:path";
 
-import type { WireMessage } from "../../shared/wire.ts";
+import type { WireMessage } from "../../shared/thread/wire.ts";
 import { writeFileAtomic } from "../storage/atomic.ts";
 import { MAX_SKILL_REVIEW_STEPS } from "../config/config.ts";
 import { AUTHORING_STANDARDS } from "./skill-learn.ts";

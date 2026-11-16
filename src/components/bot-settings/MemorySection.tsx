@@ -1,13 +1,13 @@
 import { FileText, FolderOpen, RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { cn } from "@/lib/cn";
-import { MEMORY_INDEX, capacityStatus, deleteMemoryDoc, fetchMemoryDoc, fetchMemoryJournal, fetchMemoryOverview, formatBytes, localizedRelativeTime, journalSource, journalSourceKey, fileLabel, openMemoryLocation, revertMemoryChange, saveMemoryDoc, fetchUpkeepStatus, tidyMemoryNow, tidySummary, noticedCount, topicFileName, type UpkeepStatus, type MemoryCapacity, type MemoryFileInfo, type MemoryJournalRow, type MemoryOverview, type LendingReview, markMemoryReviewed } from "@/lib/memory";
-import { shortPath } from "@/lib/short-path";
-import { activeLocale, t } from "@/lib/i18n";
+import { cn } from "@/lib/ui/cn";
+import { MEMORY_INDEX, capacityStatus, deleteMemoryDoc, fetchMemoryDoc, fetchMemoryJournal, fetchMemoryOverview, formatBytes, localizedRelativeTime, journalSource, journalSourceKey, fileLabel, openMemoryLocation, revertMemoryChange, saveMemoryDoc, fetchUpkeepStatus, tidyMemoryNow, tidySummary, noticedCount, topicFileName, type UpkeepStatus, type MemoryCapacity, type MemoryFileInfo, type MemoryJournalRow, type MemoryOverview, type LendingReview, markMemoryReviewed } from "@/lib/bots/memory";
+import { shortPath } from "@/lib/ui/short-path";
+import { activeLocale, t } from "@/lib/ui/i18n";
 import { ApiError, useStore, type Bot } from "@/state/store";
-import { Switch } from "../SettingsPrimitives";
-import { useDesktopCapabilities } from "../DesktopCapabilities";
+import { Switch } from "../settings/SettingsPrimitives";
+import { useDesktopCapabilities } from "../chrome/DesktopCapabilities";
 import { inputCls } from "./field";
 
 const buttonCls = "rounded-lg bg-control px-3 py-1.5 text-[13px] text-ink hover:bg-raised-hover disabled:opacity-50";

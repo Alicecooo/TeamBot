@@ -1,7 +1,7 @@
 // A model missing from its engine's catalog is no reason to fall back: engines run IDs their catalog does not list.
 import type { ModelSelection } from "../harness/contracts.ts";
 import { readyToRun, signedOut, type DefaultSelectionContext, type SelectableInstance } from "../model-catalog/default-model-selection.ts";
-import { sameModelSelection } from "../../shared/thread-model.ts";
+import { sameModelSelection } from "../../shared/thread/thread-model.ts";
 
 export type ThreadEngine = SelectableInstance & { enabled: boolean };
 

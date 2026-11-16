@@ -13,7 +13,7 @@ import { LEARN_SOURCE_PREFIX } from "./skill-learn.ts";
 import { installLibrarySkill, libraryArchiveDirectory, librarySkillFilePath, listLibrarySkills, readLibrarySkillFile, readSkillLibraryIndex, retireLibrarySkill, skillLibraryEvents, skillsLibraryEnabled, skillsLibraryRoot, updateLibrarySkill } from "./skill-library.ts";
 import { archiveSkillDirectory, readPendingAssignments, writePendingAssignments } from "./skills-library-migration.ts";
 import { listMigratableSkills, listSkills, preparedLearnedSkill, removeManifestEntry, STAGED_SKILL_FILE_MAX_BYTES } from "./skills.ts";
-import type { SkillShareRecord } from "../../shared/skill-request.ts";
+import type { SkillShareRecord } from "../../shared/skill/skill-request.ts";
 
 export type ShareLearnedSkillsMode = "off" | "ask" | "auto";
 

@@ -9,9 +9,9 @@ import { closeSync, constants, fstatSync, lstatSync, openSync, readdirSync, read
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
-import type { SetupDetection, SetupImportRequest, SetupImportResult, SetupSource, SkillSkip, SkillSource, ToolSkip } from "../../shared/setup-import.ts";
-import { holdsCredential } from "../../shared/redact.ts";
-import { parseSkillMd, scanSkillText, SKILL_FILE_MAX_BYTES, type ParsedSkill } from "../../shared/skill-md.ts";
+import type { SetupDetection, SetupImportRequest, SetupImportResult, SetupSource, SkillSkip, SkillSource, ToolSkip } from "../../shared/team/setup-import.ts";
+import { holdsCredential } from "../../shared/data/redact.ts";
+import { parseSkillMd, scanSkillText, SKILL_FILE_MAX_BYTES, type ParsedSkill } from "../../shared/skill/skill-md.ts";
 import { importedSkillIntact, readImportedSkills, storeImportedSkills, type ImportedSkillEntry, type ImportedSkillInput } from "../skills/imported-skills.ts";
 import { importedMcpServerName, isRemoteMcpServer, MAX_MCP_SERVERS, parseMcpServersImport, parseStoredMcpServer, type StoredMcpServer } from "../mcp/mcp-registry.ts";
 import { parseToml } from "./toml-lite.ts";

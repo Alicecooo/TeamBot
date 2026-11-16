@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 
-import { t } from "@/lib/i18n";
+import { t } from "@/lib/ui/i18n";
 import type { Bot } from "@/state/store";
 import { AccessSection } from "../bot-settings/AccessSection";
 import { ModelSection } from "../bot-settings/ModelSection";

@@ -1,4 +1,4 @@
-import { APPROVAL_MODES, type ApprovalMode, supportsApprovalMode as driverKindSupportsApprovalMode } from "../../shared/approval-mode.ts";
+import { APPROVAL_MODES, type ApprovalMode, supportsApprovalMode as driverKindSupportsApprovalMode } from "../../shared/tool/approval-mode.ts";
 import { availableTools, type CatalogProfile } from "../drivers/agents-catalog.ts";
 import type { ModelSelection } from "../harness/contracts.ts";
 

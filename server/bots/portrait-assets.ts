@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parsePortraitAssetName } from "../../shared/portrait-avatars.ts";
+import { parsePortraitAssetName } from "../../shared/bot/portrait-avatars.ts";
 
 const cached = new Map<string, Buffer>();
 

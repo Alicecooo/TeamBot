@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { redactSecretsInText } from "../security/redact.ts";
 import { listSkills, readSkillFile, readSkillReferences } from "./skills.ts";
-import type { SkillRequestCardData } from "../../shared/skill-request.ts";
+import type { SkillRequestCardData } from "../../shared/skill/skill-request.ts";
 
 type SkillFile = { path: string; content: string };
 

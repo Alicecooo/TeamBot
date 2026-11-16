@@ -1,8 +1,8 @@
 import { type ReactNode } from "react";
 import { Check, FileCode2, FolderOpen, Puzzle, SlidersHorizontal, Slack } from "lucide-react";
 
-import { t } from "@/lib/i18n";
-import { requestNotificationPermission } from "@/lib/notify";
+import { t } from "@/lib/ui/i18n";
+import { requestNotificationPermission } from "@/lib/ui/notify";
 import type { Bot } from "@/state/store";
 import { UsageSection } from "../bot-settings/UsageSection";
 import type { useBotSettingsDerived } from "../bot-settings/useBotSettingsDerived";

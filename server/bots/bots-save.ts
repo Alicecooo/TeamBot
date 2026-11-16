@@ -1,5 +1,5 @@
-import { approvalModeFor, approvalModeWidens } from "../../shared/approval-mode.ts";
-import { botsSaveFailure } from "../../shared/bots-save-failure.ts";
+import { approvalModeFor, approvalModeWidens } from "../../shared/tool/approval-mode.ts";
+import { botsSaveFailure } from "../../shared/bot/bots-save-failure.ts";
 import type { BotRecord, TaskPatch, TaskRecord } from "../storage/store.ts";
 
 export class BotsSaveError extends Error {

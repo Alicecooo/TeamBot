@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type DependencyList, type PointerEvent, type TouchEvent, type WheelEvent } from "react";
-import { BOTTOM_FOLLOW_THRESHOLD, shouldResumeBottomFollow, useBottomFollowResize } from "@/lib/bottom-follow";
-import { useFocusMessage } from "@/lib/focus-message";
-import { TRANSCRIPT_WINDOW_SIZE, expandWindowStart, focusWindowRange, followWindowStart, resolveTranscriptWindow, tailWindowStart } from "@/lib/transcript-window";
-import { reducedMotion } from "@/lib/onboarding";
+import { BOTTOM_FOLLOW_THRESHOLD, shouldResumeBottomFollow, useBottomFollowResize } from "@/lib/chat/bottom-follow";
+import { useFocusMessage } from "@/lib/chat/focus-message";
+import { TRANSCRIPT_WINDOW_SIZE, expandWindowStart, focusWindowRange, followWindowStart, resolveTranscriptWindow, tailWindowStart } from "@/lib/chat/transcript-window";
+import { reducedMotion } from "@/lib/session/onboarding";
 import { useStore } from "@/state/store";
 
 export const AUTO_EXPAND_TOP_THRESHOLD = 250;

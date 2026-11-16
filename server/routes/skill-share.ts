@@ -1,4 +1,4 @@
-import type { SkillShareRecord } from "../../shared/skill-request.ts";
+import type { SkillShareRecord } from "../../shared/skill/skill-request.ts";
 import type { RequestAuth } from "../auth/request-auth.ts";
 import { PASS, type RouteHandler } from "./table.ts";
 

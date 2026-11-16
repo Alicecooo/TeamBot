@@ -2,7 +2,7 @@
 // those. A thread with a turn running keeps its model until it settles; the reply counts it.
 import type { ModelSelection } from "../harness/contracts.ts";
 import type { RequestAuth } from "../auth/request-auth.ts";
-import { sameModelSelection } from "../../shared/thread-model.ts";
+import { sameModelSelection } from "../../shared/thread/thread-model.ts";
 import { PASS, type RouteHandler } from "./table.ts";
 
 const MAX_THREAD_IDS = 10_000;

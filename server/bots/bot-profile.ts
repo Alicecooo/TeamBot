@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-import { AVATAR_ZOOM_MAX, AVATAR_ZOOM_MIN, BOT_AVATAR_CROPS, botAvatarCropSchema, botAvatarUrlSchema } from "../../shared/bot-avatar.ts";
-import { BOT_PROFILE_LIMITS, fitsOnOneLine } from "../../shared/bot-profile.ts";
-import { mascotBodySchema } from "../../shared/mascot-bodies.ts";
+import { AVATAR_ZOOM_MAX, AVATAR_ZOOM_MIN, BOT_AVATAR_CROPS, botAvatarCropSchema, botAvatarUrlSchema } from "../../shared/bot/bot-avatar.ts";
+import { BOT_PROFILE_LIMITS, fitsOnOneLine } from "../../shared/bot/bot-profile.ts";
+import { mascotBodySchema } from "../../shared/bot/mascot-bodies.ts";
 
 import type { BotRecord } from "../storage/store.ts";
 
-export { fitsOnOneLine } from "../../shared/bot-profile.ts";
+export { fitsOnOneLine } from "../../shared/bot/bot-profile.ts";
 
 export const BOT_PROFILE_PATCH_FIELDS = [
   "name",

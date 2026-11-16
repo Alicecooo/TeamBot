@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { writeFileAtomic } from "../storage/atomic.ts";
 import { DATA_DIR, type AppConfig } from "../config/config.ts";
-import { isSkillName, parseSkillMd, SKILL_FILE_MAX_BYTES } from "../../shared/skill-md.ts";
+import { isSkillName, parseSkillMd, SKILL_FILE_MAX_BYTES } from "../../shared/skill/skill-md.ts";
 import type { SkillPackageStamp } from "./skills.ts";
 
 export function skillsLibraryEnabled(cfg: AppConfig): boolean {

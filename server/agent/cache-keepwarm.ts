@@ -16,7 +16,7 @@
 // five minutes by default, so pinging it costs more than the re-write it avoids. Nothing is persisted: after a restart the
 // CLI relaunches with a fresh system prompt that misses the cache anyway.
 import type { CacheWarmPingResult } from "../harness/contracts.ts";
-import type { CacheKeepWarmStatus } from "../../shared/wire.ts";
+import type { CacheKeepWarmStatus } from "../../shared/thread/wire.ts";
 
 export const CACHE_TTL_MS = 60 * 60_000;
 export const PING_AFTER_MS = 50 * 60_000;

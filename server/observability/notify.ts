@@ -1,6 +1,6 @@
-import type { Notification, NotifyKind } from "../../shared/notification.ts";
+import type { Notification, NotifyKind } from "../../shared/view/notification.ts";
 
-export type { Notification, NotifyKind } from "../../shared/notification.ts";
+export type { Notification, NotifyKind } from "../../shared/view/notification.ts";
 
 export function summarize(text: string, max = 140): string {
   const line = text.replace(/```[\s\S]*?```/g, " ").replace(/\s+/g, " ").trim();

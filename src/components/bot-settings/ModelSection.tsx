@@ -1,9 +1,9 @@
-import { EffortRow, ModelPicker } from "../ModelPicker";
+import { EffortRow, ModelPicker } from "../chat/ModelPicker";
 import { useStore, type Bot } from "@/state/store";
 import { useBotEditor } from "./BotEditorContext";
 import { ProposalStatus } from "./ProposalStatus";
-import { ThreadModelsLine } from "../ThreadModelsLine";
-import { t } from "@/lib/i18n";
+import { ThreadModelsLine } from "../chat/ThreadModelsLine";
+import { t } from "@/lib/ui/i18n";
 
 export function ModelSection({ bot }: { bot: Bot }) {
   const { state } = useStore();

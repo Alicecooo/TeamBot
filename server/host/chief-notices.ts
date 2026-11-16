@@ -1,4 +1,4 @@
-import { failedTurnTool } from "../../shared/failed-turn.ts";
+import { failedTurnTool } from "../../shared/thread/failed-turn.ts";
 import { admit } from "../agent/admission.ts";
 import { ESCALATIONS_THREAD_TITLE, EscalationLedger, escalationChip, escalationDeliverable, escalationText, type Escalation, type EscalationKind } from "../observability/escalations.ts";
 import { chiefForBot, INCIDENTS_THREAD_TITLE, IncidentLedger, incidentChip, incidentContext, incidentText, type Incident, type IncidentKind } from "../observability/incidents.ts";

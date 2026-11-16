@@ -1,9 +1,9 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { Check, ChevronDown, Clock, X } from "lucide-react";
-import { cn } from "@/lib/cn";
-import { t } from "@/lib/i18n";
-import { widgetNumber, widgetString, type WidgetNode } from "../../../shared/widget";
+import { cn } from "@/lib/ui/cn";
+import { t } from "@/lib/ui/i18n";
+import { widgetNumber, widgetString, type WidgetNode } from "../../../shared/view/widget";
 import { useWidgetField, WIDGET_BARE, WIDGET_FIELD, WIDGET_FIELD_ACTION } from "./WidgetControls";
 
 const DAY = 24 * 60;

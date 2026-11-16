@@ -1,7 +1,7 @@
 // One builder for every turn's system prompt, so what a bot receives and the "what the model sees" preview are the same bytes.
 import { agentsToolBridged } from "../drivers/agents-bridge.ts";
 import { teammateAvailabilityPrompt, type RosterMember } from "../teams/peer-roster.ts";
-import type { ConnectorToolGrant } from "../../shared/wire.ts";
+import type { ConnectorToolGrant } from "../../shared/thread/wire.ts";
 
 
 export type PromptPart = { id: string; label: string; text: string };

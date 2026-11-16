@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { peerLine } from "@/lib/peer-message";
-import { UNREAD_DIVIDER_FADE_MS, UNREAD_DIVIDER_LINGER_MS } from "@/lib/unread-divider";
+import { peerLine } from "@/lib/team/peer-message";
+import { UNREAD_DIVIDER_FADE_MS, UNREAD_DIVIDER_LINGER_MS } from "@/lib/chat/unread-divider";
 import { useStore, type Message } from "@/state/store";
 
 export function useUnreadDivider({ threadId, messages, following }: {

@@ -4,20 +4,20 @@ import { ChevronDown, ChevronRight, FolderOpen, Plus } from "lucide-react";
 
 import { api, useStore, type Bot } from "@/state/store";
 import { useBotEditor } from "./BotEditorContext";
-import { cn } from "@/lib/cn";
-import { t } from "@/lib/i18n";
+import { cn } from "@/lib/ui/cn";
+import { t } from "@/lib/ui/i18n";
 import type { LocaleKey } from "@/locales";
-import { mcpServersForBot, useMcpServers } from "@/lib/mcp-servers";
-import { shortPath } from "@/lib/short-path";
-import { useDesktopCapabilities } from "../DesktopCapabilities";
-import { ConfirmDialog } from "../ConfirmDialog";
-import { Switch } from "../SettingsPrimitives";
+import { mcpServersForBot, useMcpServers } from "@/lib/connectors/mcp-servers";
+import { shortPath } from "@/lib/ui/short-path";
+import { useDesktopCapabilities } from "../chrome/DesktopCapabilities";
+import { ConfirmDialog } from "../chrome/ConfirmDialog";
+import { Switch } from "../settings/SettingsPrimitives";
 import { ProposalStatus } from "./ProposalStatus";
 import { ToolSelectionCard } from "./ToolSelectionCard";
 import { useBotApps } from "./useBotApps";
-import { classifyConnectorTool, connectorServiceAccess, withServiceGrant, type ConnectorVerb } from "@/lib/connector-grants";
+import { classifyConnectorTool, connectorServiceAccess, withServiceGrant, type ConnectorVerb } from "@/lib/connectors/connector-grants";
 import { inputCls } from "./field";
-import type { ConnectorScope, ConnectorScopes } from "../../../shared/connector-scopes";
+import type { ConnectorScope, ConnectorScopes } from "../../../shared/connector/connector-scopes";
 import type { useBotSettingsDerived } from "./useBotSettingsDerived";
 
 /**

@@ -1,9 +1,9 @@
 import type { ServerResponse } from "node:http";
 import { z } from "zod";
 
-import { approvalModeFor } from "../../shared/approval-mode.ts";
-import { isPersistentQuestionCard } from "../../shared/ask-question.ts";
-import type { ResolvedSender, SteerQueueReason } from "../../shared/wire.ts";
+import { approvalModeFor } from "../../shared/tool/approval-mode.ts";
+import { isPersistentQuestionCard } from "../../shared/tool/ask-question.ts";
+import type { ResolvedSender, SteerQueueReason } from "../../shared/thread/wire.ts";
 import { admit } from "../agent/admission.ts";
 import { dismissQuestionCard } from "../agent/card-dismissal.ts";
 import { prepareWidgetPress, reopenCancelledPress } from "../agent/chat-widgets.ts";

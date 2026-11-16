@@ -4,7 +4,7 @@ import { bridgedCallName } from "../drivers/agents-bridge-names.ts";
 import { readDecisions, type DecisionKind, type DecisionRow } from "../observability/decision-log.ts";
 import { isRuntimeEvent, readRecentLines } from "../storage/thread-events.ts";
 
-import type { ActivityOutcome, ActivityRow } from "../../shared/activity.ts";
+import type { ActivityOutcome, ActivityRow } from "../../shared/view/activity.ts";
 
 export type { ActivityOutcome, ActivityRow };
 

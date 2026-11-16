@@ -1,5 +1,5 @@
 // No import from server/drivers: they pull in the whole provider stack.
-import { hasNativeAutoReview, supportsApprovalMode } from "../../shared/approval-mode.ts";
+import { hasNativeAutoReview, supportsApprovalMode } from "../../shared/tool/approval-mode.ts";
 
 export interface EngineCapabilities {
   resume: boolean;

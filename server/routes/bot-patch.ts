@@ -1,10 +1,10 @@
 import { z } from "zod";
 
-import { approvalModeFor, isApprovalMode, type ApprovalMode } from "../../shared/approval-mode.ts";
-import { normalizeConnectorScopes } from "../../shared/connector-scopes.ts";
-import { normalizeOutboundPolicy } from "../../shared/outbound.ts";
-import { parseToolScope, toolScopeWidens } from "../../shared/tool-scope.ts";
-import { isMausColor, MAUS_COLOR_NAMES, type WireBot } from "../../shared/wire.ts";
+import { approvalModeFor, isApprovalMode, type ApprovalMode } from "../../shared/tool/approval-mode.ts";
+import { normalizeConnectorScopes } from "../../shared/connector/connector-scopes.ts";
+import { normalizeOutboundPolicy } from "../../shared/tool/outbound.ts";
+import { parseToolScope, toolScopeWidens } from "../../shared/tool/tool-scope.ts";
+import { isMausColor, MAUS_COLOR_NAMES, type WireBot } from "../../shared/thread/wire.ts";
 import { validateBotCwd } from "../bots/bot-cwd.ts";
 import { parseBotProfilePatch } from "../bots/bot-profile.ts";
 

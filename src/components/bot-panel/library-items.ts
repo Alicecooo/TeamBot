@@ -1,6 +1,6 @@
-import { attachmentBasename } from "@/lib/composer-attachments";
+import { attachmentBasename } from "@/lib/chat/composer-attachments";
 import { visibleMessages, type Bot } from "@/state/store";
-import { collectMessageFiles, splitMessageAttachments } from "../AttachmentGallery";
+import { collectMessageFiles, splitMessageAttachments } from "../chat/AttachmentGallery";
 
 export interface LibraryItem {
   key: string;

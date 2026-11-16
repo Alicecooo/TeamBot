@@ -4,7 +4,7 @@ import { redactSecretsInText } from "../security/redact.ts";
 import { replayToolHistoryEnabled } from "./replay-settings.ts";
 import type { Message } from "../storage/store.ts";
 
-import { nameIsCommand } from "../../shared/tool-name.ts";
+import { nameIsCommand } from "../../shared/tool/tool-name.ts";
 
 /** For sessions that need history rebuilt; native resumes still receive deltas. */
 export interface ReplayEntry {

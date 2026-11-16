@@ -2,14 +2,14 @@
 import { useEffect, useState } from "react";
 import { Crown } from "lucide-react";
 
-import { cn } from "@/lib/cn";
-import { t } from "@/lib/i18n";
+import { cn } from "@/lib/ui/cn";
+import { t } from "@/lib/ui/i18n";
 import { useStore, type Bot } from "@/state/store";
-import type { ApprovalMode } from "../../../shared/approval-mode";
-import { DEFAULT_OUTBOUND_POLICY, type OutboundPolicy } from "../../../shared/outbound";
-import { approvalModeOptionsFor } from "../ApprovalModeSelector";
-import { LocalComputerAutoWarning } from "../LocalComputerAutoWarning";
-import { Switch } from "../SettingsPrimitives";
+import type { ApprovalMode } from "../../../shared/tool/approval-mode";
+import { DEFAULT_OUTBOUND_POLICY, type OutboundPolicy } from "../../../shared/tool/outbound";
+import { approvalModeOptionsFor } from "../cards/ApprovalModeSelector";
+import { LocalComputerAutoWarning } from "../chat/LocalComputerAutoWarning";
+import { Switch } from "../settings/SettingsPrimitives";
 import { ManagedTeamsSettings } from "./ManagedTeamsSettings";
 import { ProposalStatus } from "./ProposalStatus";
 import type { useBotSettingsDerived } from "./useBotSettingsDerived";

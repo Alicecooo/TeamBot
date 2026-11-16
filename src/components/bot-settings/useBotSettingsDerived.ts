@@ -1,8 +1,8 @@
-import { useDesktopCapabilities } from "../DesktopCapabilities";
+import { useDesktopCapabilities } from "../chrome/DesktopCapabilities";
 
 import { useStore, type Bot } from "@/state/store";
-import { approvalModeFor } from "../../../shared/approval-mode";
-import { connectorGrantsState, type ConnectorGrantsState } from "@/lib/connector-grants";
+import { approvalModeFor } from "../../../shared/tool/approval-mode";
+import { connectorGrantsState, type ConnectorGrantsState } from "@/lib/connectors/connector-grants";
 
 export type BotPatch = Partial<
   Pick<

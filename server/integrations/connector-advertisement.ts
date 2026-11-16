@@ -1,6 +1,6 @@
 // Trims the connector bridge's tools/list to the bot's grants; call-time enforcement stays the authority. Whenever
 // filtering cannot run (no env var, malformed, oversized) the bridge relays the list untouched.
-import { CONNECTOR_SLUG_PATTERN, CONNECTOR_TOOL_NAME_PATTERN, type ConnectorToolGrant } from "../../shared/wire.ts";
+import { CONNECTOR_SLUG_PATTERN, CONNECTOR_TOOL_NAME_PATTERN, type ConnectorToolGrant } from "../../shared/thread/wire.ts";
 import { serviceSlugFor, serviceSlugForCandidates } from "./connector-verdict.ts";
 
 export const CONNECTOR_ALLOWED_TOOLS_ENV = "OMB_CONNECTOR_ALLOWED_TOOLS";

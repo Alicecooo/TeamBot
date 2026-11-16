@@ -1,4 +1,4 @@
-import { redactSecretsInText } from "../../shared/redact.ts";
+import { redactSecretsInText } from "../../shared/data/redact.ts";
 import { TOOL_RESULT_MAX_CHARS, TOOL_RESULT_PREVIEW_CHARS, toolResultPrefix } from "../agent/tool-results.ts";
 
 /** The operation already happened. Saving overflow must never retry it or

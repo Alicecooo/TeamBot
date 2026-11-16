@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { parseToolScope, type ToolScope } from "../../shared/tool-scope.ts";
+import { parseToolScope, type ToolScope } from "../../shared/tool/tool-scope.ts";
 
 import { DATA_DIR } from "../config/config.ts";
 import { unbridgedServer } from "../drivers/agents-bridge.ts";

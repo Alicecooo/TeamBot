@@ -1,5 +1,5 @@
-import { approvalModeFor, type ApprovalMode } from "../../shared/approval-mode.ts";
-import type { WireBot } from "../../shared/wire.ts";
+import { approvalModeFor, type ApprovalMode } from "../../shared/tool/approval-mode.ts";
+import type { WireBot } from "../../shared/thread/wire.ts";
 import { parseBotProfilePatch } from "../bots/bot-profile.ts";
 import type { AppConfig } from "../config/config.ts";
 import type { ModelSelection } from "../harness/contracts.ts";

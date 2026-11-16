@@ -1,7 +1,7 @@
 // Transient-failure classification and capped backoff for turn drivers: a provider hiccup
 // (429/5xx/overloaded/reset) gets up to MAX_ATTEMPTS tries, an auth or request-shape problem none.
 import type { ProviderErrorCode } from "../harness/contracts.ts";
-import { isProviderSafetyBlock } from "../../shared/provider-safety.ts";
+import { isProviderSafetyBlock } from "../../shared/tool/provider-safety.ts";
 
 export const RETRY_MAX_ATTEMPTS = 3;
 

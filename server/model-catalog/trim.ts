@@ -1,7 +1,19 @@
 // OpenCode expands `{env:NAME}` and `{file:path}` anywhere in its config text, and escaping the brace in JSON does not
 // stop it (verified on OpenCode 1.18.27): any provider or model with a brace in any string or key is dropped here.
 // The trimmed shape keeps models.dev's field names, so trimming is idempotent.
-import { normalizeApiUrl } from "../cli/cli-api-setup.ts";
+function normalizeApiUrl(value: string): string {
+  const input = value.trim();
+  const invalid = () => new Error("Enter an HTTPS API base URL without credentials, a query, or a fragment. HTTP is allowed only for localhost.");
+  let url: URL;
+  try { url = new URL(input); } catch { throw invalid(); }
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  if (
+    /[\u0000-\u0020\u007f\\?#]/u.test(input) || url.username || url.password ||
+    input.slice(input.indexOf("://") + 3).split("/")[0]?.includes("@") ||
+    (url.protocol !== "https:" && !(url.protocol === "http:" && local))
+  ) throw invalid();
+  return url.href.replace(/\/+$/u, "");
+}
 
 export const MODEL_CATALOG_SCHEMA = 1;
 

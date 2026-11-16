@@ -12,8 +12,8 @@ import type { OrgImportContext } from "./package-import.ts";
 import { pair } from "./package-parts.ts";
 import type { SkillListing, SkillPackageStamp } from "../skills/skills.ts";
 import type { InstalledPackageMetadata, Store } from "../storage/store.ts";
-import { AGENT_MAX_SKILLS, canonicalJson, PACKAGE_FORMAT, PACKAGE_VERSION, parsePackageDocument, SEED_FILE_MAX_BYTES, SEED_MAX_BYTES, SEED_MAX_FILES, utf8Bytes, type PackageDocument, type PackagePlaybook, type PackagePreset, type PackageSkill } from "../../shared/package-format.ts";
-import { parseSkillMd } from "../../shared/skill-md.ts";
+import { AGENT_MAX_SKILLS, canonicalJson, PACKAGE_FORMAT, PACKAGE_VERSION, parsePackageDocument, SEED_FILE_MAX_BYTES, SEED_MAX_BYTES, SEED_MAX_FILES, utf8Bytes, type PackageDocument, type PackagePlaybook, type PackagePreset, type PackageSkill } from "../../shared/team/package-format.ts";
+import { parseSkillMd } from "../../shared/skill/skill-md.ts";
 
 export const PRESETS_FILE = join(DATA_DIR, "org-library", "presets.json");
 export const PUBLISHED_LIBRARY_FILE = join(DATA_DIR, "published-library.json");

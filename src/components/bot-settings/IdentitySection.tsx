@@ -2,17 +2,17 @@ import { useState } from "react";
 import { BookOpen } from "lucide-react";
 
 import { useStore, type Bot } from "@/state/store";
-import { cn } from "@/lib/cn";
-import { BOT_PROFILE_LIMITS } from "../../../shared/bot-profile";
-import { BotProfileAvatarCard } from "../BotProfileAvatarCard";
-import { BotInstructionsDialog } from "../BotInstructionsDialog";
+import { cn } from "@/lib/ui/cn";
+import { BOT_PROFILE_LIMITS } from "../../../shared/bot/bot-profile";
+import { BotProfileAvatarCard } from "../bots/BotProfileAvatarCard";
+import { BotInstructionsDialog } from "../bots/BotInstructionsDialog";
 import { inputCls } from "./field";
 import type { BotPatch } from "./useBotSettingsDerived";
 import { useBotEditor } from "./BotEditorContext";
 import { PackageProvenance } from "./PackageProvenance";
 import { ProposalStatus } from "./ProposalStatus";
-import { randomBotName } from "@/lib/random-bot-name";
-import { t } from "@/lib/i18n";
+import { randomBotName } from "@/lib/bots/random-bot-name";
+import { t } from "@/lib/ui/i18n";
 
 export type IdentityPart = "avatar" | "provenance" | "name" | "blurb";
 

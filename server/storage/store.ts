@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { writeFileAtomic, writeFileAtomicIfChanged } from "./atomic.ts";
 import { commitBotChange, keptRevocation, saveBotsFor } from "../bots/bots-save.ts";
-import { parseToolScope, toolScopeWidens } from "../../shared/tool-scope.ts";
+import { parseToolScope, toolScopeWidens } from "../../shared/tool/tool-scope.ts";
 import { ensureSections, readSections, changeEmptySection } from "../teams/section-context.ts";
 import { removeBotFolder } from "../bots/bot-folder.ts";
 import type { BotProfilePatch } from "../bots/bot-profile.ts";
@@ -18,27 +18,27 @@ import { newId, type ModelSelection } from "../harness/contracts.ts";
 import { pickBotName } from "../bots/names.ts";
 import { redactSecretsInText } from "../security/redact.ts";
 import { scrubbedSkillRequest } from "../skills/skill-request-card.ts";
-import { AVATAR_FOCUS_CENTER, AVATAR_ZOOM_MIN, botAvatarProfile, clampAvatarFocus, clampAvatarZoom } from "../../shared/bot-avatar.ts";
-import { botMascotBody } from "../../shared/mascot-bodies.ts";
-import { approvalModeFor, isApprovalMode, modelSwitchNeedsAsk, type ApprovalMode } from "../../shared/approval-mode.ts";
-import { lastChangeRequestUrl } from "../../shared/thread-link.ts";
+import { AVATAR_FOCUS_CENTER, AVATAR_ZOOM_MIN, botAvatarProfile, clampAvatarFocus, clampAvatarZoom } from "../../shared/bot/bot-avatar.ts";
+import { botMascotBody } from "../../shared/bot/mascot-bodies.ts";
+import { approvalModeFor, isApprovalMode, modelSwitchNeedsAsk, type ApprovalMode } from "../../shared/tool/approval-mode.ts";
+import { lastChangeRequestUrl } from "../../shared/thread/thread-link.ts";
 import { REMOVED_COMPUTER_DRIVER, type ComputerEngineMove } from "../computers/computer-engine-removal.ts";
-import type { ProfileRequestChanges } from "../../shared/profile-request.ts";
-import type { TeamSetupRequest, TeamSetupResult } from "../../shared/team-setup.ts";
-import { isMentionBoundary, isMentionNameContinuation } from "../../shared/mention-boundary.ts";
+import type { ProfileRequestChanges } from "../../shared/bot/profile-request.ts";
+import type { TeamSetupRequest, TeamSetupResult } from "../../shared/team/team-setup.ts";
+import { isMentionBoundary, isMentionNameContinuation } from "../../shared/thread/mention-boundary.ts";
 import type { HandedState } from "../agent/delta-context.ts";
 import type { AgentPart, PartPair } from "../packages/package-parts.ts";
-import type { BotActivity, MausColor, OptionCardData, TaskClosedBy, TaskOpenedBy, TaskUsage, WireBot, WireGroup, WireMessage, WireTask, BotProject as BotProjectRecord } from "../../shared/wire.ts";
-import { movesThreadToTop } from "../../shared/wire.ts";
+import type { BotActivity, MausColor, OptionCardData, TaskClosedBy, TaskOpenedBy, TaskUsage, WireBot, WireGroup, WireMessage, WireTask, BotProject as BotProjectRecord } from "../../shared/thread/wire.ts";
+import { movesThreadToTop } from "../../shared/thread/wire.ts";
 import { parseConnectorTools } from "../integrations/connector-tools.ts";
-import { sameModelSelection } from "../../shared/thread-model.ts";
+import { sameModelSelection } from "../../shared/thread/thread-model.ts";
 import { initialGreeting } from "../bots/initial-greeting.ts";
 export type {
   BotActivity, ConnectorCardData, OptionCardData,
   SecretRequestCardData, Surface, TaskClosedBy, TaskOpenedBy, TaskUsage,
-} from "../../shared/wire.ts";
-export type { BotProject as BotProjectRecord } from "../../shared/wire.ts";
-export type { InstalledPlaybook, InstalledPackageMetadata, MausColor, MausExpression } from "../../shared/wire.ts";
+} from "../../shared/thread/wire.ts";
+export type { BotProject as BotProjectRecord } from "../../shared/thread/wire.ts";
+export type { InstalledPlaybook, InstalledPackageMetadata, MausColor, MausExpression } from "../../shared/thread/wire.ts";
 
 export type Message = WireMessage;
 

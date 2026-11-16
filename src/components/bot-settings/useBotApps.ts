@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 
-import { botAppScope } from "@/lib/bot-app-access";
+import { botAppScope } from "@/lib/bots/bot-app-access";
 import { api, type Bot } from "@/state/store";
-import type { ConnectorScope } from "../../../shared/connector-scopes";
-import { preloadConnectedApps, type ConnectorInventory, type ToolkitCard } from "../PluginsPanel";
+import type { ConnectorScope } from "../../../shared/connector/connector-scopes";
+import { preloadConnectedApps, type ConnectorInventory, type ToolkitCard } from "../settings/PluginsPanel";
 
 export interface BotApp {
   slug: string;

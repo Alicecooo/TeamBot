@@ -1,4 +1,4 @@
-import { DEFAULT_OUTBOUND_POLICY } from "../../shared/outbound.ts";
+import { DEFAULT_OUTBOUND_POLICY } from "../../shared/tool/outbound.ts";
 import { readBotActivity } from "../agent/activity.ts";
 import { loadBrand } from "../deployment/brand.ts";
 

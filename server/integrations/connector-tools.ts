@@ -1,5 +1,5 @@
-import type { ConnectorToolGrant } from "../../shared/wire.ts";
-import { CONNECTOR_SLUG_PATTERN, CONNECTOR_TOOL_NAME_PATTERN } from "../../shared/wire.ts";
+import type { ConnectorToolGrant } from "../../shared/thread/wire.ts";
+import { CONNECTOR_SLUG_PATTERN, CONNECTOR_TOOL_NAME_PATTERN } from "../../shared/thread/wire.ts";
 
 export const CONNECTOR_SLUGS_MAX = 64;
 export const CONNECTOR_TOOLS_PER_SERVICE_MAX = 500;

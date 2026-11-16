@@ -3,7 +3,7 @@ import type { DefaultsPreset, PublishedLibrary } from "./presets.ts";
 import type { PublishedTeam } from "./published-teams.ts";
 import { nextPatchRelease } from "./published-teams.ts";
 import type { BotRecord, GroupRecord, InstalledPlaybook } from "../storage/store.ts";
-import { AGENT_MAX_SKILLS, AVATAR_MAX_BYTES, decodeBase64, PACKAGE_FORMAT, PACKAGE_MAX_SKILLS, PACKAGE_VERSION, PackageFormatError, parsePackageDocument, pictureMatchesMime, RELEASE_NOTES_MAX, redactPackageSecrets, SEED_FILE_MAX_BYTES, SEED_MAX_BYTES, SEED_MAX_FILES, utf8Bytes, type PackageAgent, type PackageConnection, type PackageDefinition, type PackageDocument, type PackagePreset } from "../../shared/package-format.ts";
+import { AGENT_MAX_SKILLS, AVATAR_MAX_BYTES, decodeBase64, PACKAGE_FORMAT, PACKAGE_MAX_SKILLS, PACKAGE_VERSION, PackageFormatError, parsePackageDocument, pictureMatchesMime, RELEASE_NOTES_MAX, redactPackageSecrets, SEED_FILE_MAX_BYTES, SEED_MAX_BYTES, SEED_MAX_FILES, utf8Bytes, type PackageAgent, type PackageConnection, type PackageDefinition, type PackageDocument, type PackagePreset } from "../../shared/team/package-format.ts";
 
 function portableKey(value: string, fallback: string, used: Set<string>): string {
   const stem = value

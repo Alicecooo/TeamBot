@@ -4,7 +4,7 @@
 // bypassPermissions, Codex with approvals off, an ACP agent in its own yolo mode.
 import { homedir } from "node:os";
 
-import type { RuntimeEvent } from "../../shared/runtime-events.ts";
+import type { RuntimeEvent } from "../../shared/thread/runtime-events.ts";
 import type { AutoVerdict } from "./auto-approve.ts";
 import { DATA_DIR, type AppConfig } from "../config/config.ts";
 import type { ProviderAdapter } from "../harness/contracts.ts";

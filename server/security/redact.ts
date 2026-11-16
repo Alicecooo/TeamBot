@@ -9,9 +9,9 @@ export function isSecretName(name: string): boolean {
   return /(^|[_.-])keys?$/.test(lower);
 }
 
-import { mask, redactSecretsInText } from "../../shared/redact.ts";
+import { mask, redactSecretsInText } from "../../shared/data/redact.ts";
 
-export { mask, redactSecretsInText } from "../../shared/redact.ts";
+export { mask, redactSecretsInText } from "../../shared/data/redact.ts";
 
 export function redactSecrets(input: unknown, depth = 0): unknown {
   if (typeof input === "string") return redactSecretsInText(input);

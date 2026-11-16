@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { openChatLink } from "@/components/ThreadRefs";
-import { useShowThreads } from "@/lib/thread-preferences";
+import { openChatLink } from "@/components/chat/ThreadRefs";
+import { useShowThreads } from "@/lib/chat/thread-preferences";
 import type { Action, AppState } from "@/state/store";
 
 export function useExternalChatLinks(state: AppState, dispatch: (action: Action) => void): void {

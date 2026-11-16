@@ -1,7 +1,7 @@
-import { cn } from "@/lib/cn";
+import { cn } from "@/lib/ui/cn";
 import { useStore, type Bot } from "@/state/store";
-import { t } from "@/lib/i18n";
-import { botUsage, costCaption, formatTokens, formatUsd, hasFiniteCost, headlineTokens, tokensColumnLabel, usageDetail } from "@/lib/usage";
+import { t } from "@/lib/ui/i18n";
+import { botUsage, costCaption, formatTokens, formatUsd, hasFiniteCost, headlineTokens, tokensColumnLabel, usageDetail } from "@/lib/models/usage";
 
 export function UsageSection({ bot, bare = false }: { bot: Bot; bare?: boolean }) {
   const { state, dispatch } = useStore();

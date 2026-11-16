@@ -1,4 +1,4 @@
-import { isPersistentQuestionCard, QUESTION_DISMISS_MESSAGE } from "../../shared/ask-question.ts";
+import { isPersistentQuestionCard, QUESTION_DISMISS_MESSAGE } from "../../shared/tool/ask-question.ts";
 import type { Message, Store } from "../storage/store.ts";
 
 /** Null when the respond does not close a question card. */

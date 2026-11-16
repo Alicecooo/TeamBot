@@ -6,7 +6,7 @@ import { realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { stripVTControlCharacters } from "node:util";
-import { deviceSignInPrompt, type DeviceSignInProvider } from "../../shared/device-sign-in.ts";
+import { deviceSignInPrompt, type DeviceSignInProvider } from "../../shared/data/device-sign-in.ts";
 import type { ProviderAuthenticationStart, ProviderAuthenticationStatus } from "../harness/contracts.ts";
 import { killCliTree, spawnCli } from "../platform/procs.ts";
 

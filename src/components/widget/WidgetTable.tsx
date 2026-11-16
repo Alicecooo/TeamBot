@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from "react";
-import { t } from "@/lib/i18n";
-import { widgetNumber, widgetString, type WidgetNode } from "../../../shared/widget";
-import { RichTable, type TableAlign, type TableCell, type TableColumn } from "../RichTable";
+import { t } from "@/lib/ui/i18n";
+import { widgetNumber, widgetString, type WidgetNode } from "../../../shared/view/widget";
+import { RichTable, type TableAlign, type TableCell, type TableColumn } from "../chat/RichTable";
 import { useWidgetForm } from "./WidgetControls";
 import { COL_SIZE, kids } from "./widget-style";
 

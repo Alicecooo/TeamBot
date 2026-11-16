@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import type { SkillRequestCardData, SkillShareRecord } from "../../shared/skill-request.ts";
+import type { SkillRequestCardData, SkillShareRecord } from "../../shared/skill/skill-request.ts";
 import { DATA_DIR, type AppConfig } from "../config/config.ts";
 import { appendDecision } from "../observability/decision-log.ts";
 import { UNDO_STALE, type DirectApply } from "../agent/direct-apply.ts";

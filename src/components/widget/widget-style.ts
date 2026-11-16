@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { widgetNumber, type WidgetNode } from "../../../shared/widget";
+import { widgetNumber, type WidgetNode } from "../../../shared/view/widget";
 
 export const ALIGN: Record<string, string> = { start: "items-start", center: "items-center", end: "items-end", baseline: "items-baseline", stretch: "items-stretch" };
 export const JUSTIFY: Record<string, string> = {

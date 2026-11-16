@@ -1,7 +1,7 @@
 // Per-turn ask gate. Register before publishing: a harness listener may answer synchronously.
 import { newId, type RequestOutcome } from "../harness/contracts.ts";
 import { floorBlockForToolCall, type FloorBlock } from "../agent/safety-floor-gate.ts";
-import type { AskQuestion } from "../../shared/ask-question.ts";
+import type { AskQuestion } from "../../shared/tool/ask-question.ts";
 import type { ChatToolCallView } from "./chat-mcp-tools.ts";
 
 /** `grant`: what "Always allow this session" would keep allowed; absent when the card can only allow once. */

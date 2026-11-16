@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 
-import { helperModelAllowed } from "../../shared/wire.ts";
+import { helperModelAllowed } from "../../shared/thread/wire.ts";
 import type { ProviderAdapter, ProviderInstance, TextGenerationOptions } from "../harness/contracts.ts";
 import type { UsageRow, UsageTrigger } from "../usage/usage-ledger.ts";
 

@@ -24,7 +24,6 @@
     "clean": "node scripts/clean-build-output.mjs",
     "lint": "oxlint --deny-warnings .",
     "dev": "vite",
-    "omb": "node --experimental-strip-types server/openmausbot.ts",
     "dev:server": "node --experimental-strip-types server/dev-server.ts",
     "mcp": "node --experimental-strip-types scripts/dev/developer-mcp-server.ts",
     "dev:desktop": "electron .",

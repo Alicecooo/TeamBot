@@ -1,7 +1,7 @@
 // The harness-side verdict for connected-app tool calls: every Composio call crosses POST /api/internal/connectors/mcp,
 // where the loopback token names the bot. Unrecognized argument shapes are denied: "this bot may call exactly these tools"
 // must hold even against a model that garbles the protocol.
-import { CONNECTOR_TOOL_NAME_PATTERN, type ConnectorToolGrant } from "../../shared/wire.ts";
+import { CONNECTOR_TOOL_NAME_PATTERN, type ConnectorToolGrant } from "../../shared/thread/wire.ts";
 
 /** The only Composio meta-tool whose arguments name target tools. */
 export const COMPOSIO_MULTI_EXECUTE_TOOL = "COMPOSIO_MULTI_EXECUTE_TOOL";

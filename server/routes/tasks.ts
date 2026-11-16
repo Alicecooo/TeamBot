@@ -1,6 +1,6 @@
-import { approvalModeFor, approvalModeWidens, isApprovalMode, type ApprovalMode } from "../../shared/approval-mode.ts";
-import { threadLinkUrl } from "../../shared/thread-link.ts";
-import type { WireBot, WireTask } from "../../shared/wire.ts";
+import { approvalModeFor, approvalModeWidens, isApprovalMode, type ApprovalMode } from "../../shared/tool/approval-mode.ts";
+import { threadLinkUrl } from "../../shared/thread/thread-link.ts";
+import type { WireBot, WireTask } from "../../shared/thread/wire.ts";
 import type { ModelSelection, ProviderInstance } from "../harness/contracts.ts";
 import type { Coordinator } from "../teams/coordinator.ts";
 import type { Handoffs } from "../agent/delta-context.ts";

@@ -4,7 +4,7 @@ import { dirname } from "node:path";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import { z } from "zod";
 
-import { APPROVAL_MODES } from "../../shared/approval-mode.ts";
+import { APPROVAL_MODES } from "../../shared/tool/approval-mode.ts";
 import { TERMINAL, type Assignment, type AssignmentEvent, type EventKind, type InboxItem, type Owner } from "./types.ts";
 
 const evidenceSchema = z.object({

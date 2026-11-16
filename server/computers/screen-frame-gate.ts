@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { screenSurfaceForTool, screenTouchingTool } from "../../shared/tool-surface.ts";
+import { screenSurfaceForTool, screenTouchingTool } from "../../shared/tool/tool-surface.ts";
 export { screenSurfaceForTool, screenTouchingTool };
 
 export function screenFrameHash(png: string): string {

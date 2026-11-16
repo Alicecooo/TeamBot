@@ -1,6 +1,6 @@
 // A bot's widget tree is normalised, scrubbed of secrets and given its text fallback here, once; everything after reads the stored message.
-import { parseWidgetInput, resolveWidgetAction, widgetActions, widgetFields, widgetToText, WIDGET_LIMITS, type WidgetAction, type WidgetNode, type WidgetPayload, type WidgetRoot, type WidgetSettled } from "../../shared/widget.ts";
-import type { MausColor } from "../../shared/wire.ts";
+import { parseWidgetInput, resolveWidgetAction, widgetActions, widgetFields, widgetToText, WIDGET_LIMITS, type WidgetAction, type WidgetNode, type WidgetPayload, type WidgetRoot, type WidgetSettled } from "../../shared/view/widget.ts";
+import type { MausColor } from "../../shared/thread/wire.ts";
 import { createOptionsCard } from "./options-card.ts";
 import { isSecretName, mask, redactSecretsInText } from "../security/redact.ts";
 import type { Message } from "../storage/store.ts";

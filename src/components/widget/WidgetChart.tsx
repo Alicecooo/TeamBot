@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Result } from "vega-embed";
-import { useColorScheme } from "@/lib/color-scheme";
-import { t } from "@/lib/i18n";
-import { vegaConfig } from "../../../shared/vega-config";
-import type { WidgetNode } from "../../../shared/widget";
-import { WIDGET_CHART_WIDTH, widgetChartHeight, widgetChartSpec } from "../../../shared/widget-chart";
+import { useColorScheme } from "@/lib/ui/color-scheme";
+import { t } from "@/lib/ui/i18n";
+import { vegaConfig } from "../../../shared/view/vega-config";
+import type { WidgetNode } from "../../../shared/view/widget";
+import { WIDGET_CHART_WIDTH, widgetChartHeight, widgetChartSpec } from "../../../shared/view/widget-chart";
 import { boxStyle } from "./widget-style";
 
 export function WidgetChart({ node }: { node: WidgetNode }) {

@@ -1,15 +1,15 @@
 import { BookOpen, Trash2 } from "lucide-react";
-import { t } from "@/lib/i18n";
+import { t } from "@/lib/ui/i18n";
 import { useEffect, useRef, useState } from "react";
 
 import { useStore, type Bot } from "@/state/store";
 import { useBotEditor } from "./BotEditorContext";
-import { skillsLibraryEnabled } from "@/lib/feature-flags";
-import { Switch } from "../SettingsPrimitives";
+import { skillsLibraryEnabled } from "@/lib/session/feature-flags";
+import { Switch } from "../settings/SettingsPrimitives";
 import { inputCls } from "./field";
 import { OrgSkillsCard } from "./OrgSkillsCard";
 import { WriteCommandCard } from "./WriteCommandCard";
-import { Select } from "../Select";
+import { Select } from "../chrome/Select";
 
 export interface ManagedSkill {
   name: string;

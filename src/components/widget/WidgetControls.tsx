@@ -1,8 +1,8 @@
 import { createContext, useContext, type Ref } from "react";
 import { Calendar, Check, ChevronsUpDown, LoaderCircle, X } from "lucide-react";
-import { cn } from "@/lib/cn";
-import { t } from "@/lib/i18n";
-import { WIDGET_LIMITS, widgetNumber, widgetString, widgetTakesOther, type WidgetActionEntry, type WidgetField, type WidgetNode, type WidgetOther, type WidgetValues } from "../../../shared/widget";
+import { cn } from "@/lib/ui/cn";
+import { t } from "@/lib/ui/i18n";
+import { WIDGET_LIMITS, widgetNumber, widgetString, widgetTakesOther, type WidgetActionEntry, type WidgetField, type WidgetNode, type WidgetOther, type WidgetValues } from "../../../shared/view/widget";
 import { isWidgetDot, widgetIcon, widgetIconFilled } from "./widget-icons";
 
 export interface WidgetForm {

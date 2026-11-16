@@ -1,6 +1,6 @@
 import type { RequestOutcome, RuntimeEvent } from "../../harness/contracts.ts";
 import { newId } from "../../harness/contracts.ts";
-import { askQuestionSummary, MAX_QUESTIONS, questionChoices, type AskQuestion } from "../../../shared/ask-question.ts";
+import { askQuestionSummary, MAX_QUESTIONS, questionChoices, type AskQuestion } from "../../../shared/tool/ask-question.ts";
 
 /** A vendor request that blocks the agent until a person answers structured questions. No approval level answers it. */
 export interface AcpQuestionRequest {

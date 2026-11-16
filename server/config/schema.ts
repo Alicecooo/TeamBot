@@ -1,8 +1,8 @@
 import type { z } from "zod";
 
-import type { JsonValue } from "../../shared/json.ts";
+import type { JsonValue } from "../../shared/data/json.ts";
 
-export type { JsonObject, JsonPrimitive, JsonValue } from "../../shared/json.ts";
+export type { JsonObject, JsonPrimitive, JsonValue } from "../../shared/data/json.ts";
 
 /** Drops a leading BOM first: PowerShell's Set-Content -Encoding UTF8 and Notepad write one, and JSON.parse rejects it. */
 export function parseJson(text: string): JsonValue {

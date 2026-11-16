@@ -5,7 +5,7 @@ import { newId } from "../harness/contracts.ts";
 import { chatFollowups, saveChatFollowup, settleChatFollowups } from "../storage/message-db.ts";
 import { drainCoalesceHead } from "../agent/admission.ts";
 import { workOriginSchema, type WorkOrigin } from "./peer-provenance.ts";
-import type { ResolvedSender, SteerQueueReason } from "../../shared/wire.ts";
+import type { ResolvedSender, SteerQueueReason } from "../../shared/thread/wire.ts";
 import type { BotRecord, Message } from "../storage/store.ts";
 import type { UsageTrigger } from "../usage/usage-ledger.ts";
 

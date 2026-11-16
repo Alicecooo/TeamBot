@@ -1,7 +1,7 @@
 // The stdio MCP servers a turn hands an agent (harness proxies and the person's own), shared by the ACP
 // family and Muse Code so the owner's tool selection applies alike.
 import type { SendTurnInput } from "../harness/contracts.ts";
-import { canUseMcpServer } from "../../shared/tool-scope.ts";
+import { canUseMcpServer } from "../../shared/tool/tool-scope.ts";
 import { gateServer, mcpStdioServer } from "../mcp/mcp-gate-config.ts";
 
 export interface TurnStdioMcpServer {

@@ -1,8 +1,8 @@
 // Security invariants: only an "answer" may name an engine (a decline, or typed words matching no option, is "Not now"),
 // so a bot's own shell with decline-only service trust can never switch the engine or resend the person's message.
 // A request the job runtime still holds is never sent again: the runtime reruns its root itself.
-import { approvalModeFor, modelSwitchNeedsAsk } from "../../shared/approval-mode.ts";
-import type { QuotaSwitchCardData } from "../../shared/wire.ts";
+import { approvalModeFor, modelSwitchNeedsAsk } from "../../shared/tool/approval-mode.ts";
+import type { QuotaSwitchCardData } from "../../shared/thread/wire.ts";
 import { recoveryCapabilityError } from "./automatic-recovery.ts";
 import { newId } from "../harness/contracts.ts";
 import type { EngineAccess, ModelCatalog, ModelSelection, ProviderAdapter, ProviderSnapshot } from "../harness/contracts.ts";

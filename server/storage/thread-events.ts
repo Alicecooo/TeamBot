@@ -1,9 +1,9 @@
 import { closeSync, fstatSync, openSync, readSync, type Stats } from "node:fs";
 import { join } from "node:path";
 import type { RuntimeEvent } from "../harness/contracts.ts";
-import type { InspectorEntry, InspectorPage, NativeRecord } from "../../shared/inspector.ts";
+import type { InspectorEntry, InspectorPage, NativeRecord } from "../../shared/view/inspector.ts";
 
-export type { InspectorEntry, InspectorPage, NativeRecord } from "../../shared/inspector.ts";
+export type { InspectorEntry, InspectorPage, NativeRecord } from "../../shared/view/inspector.ts";
 
 const DEFAULT_LIMIT = 300;
 const MAX_LIMIT = 2000;

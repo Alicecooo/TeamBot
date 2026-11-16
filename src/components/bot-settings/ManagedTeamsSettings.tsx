@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { t } from "@/lib/i18n";
+import { t } from "@/lib/ui/i18n";
 
 export function ManagedTeamsSettings({
   name, ownTeam, teams, allowed, onSave,

@@ -3,9 +3,9 @@
 import type { MemoryJournalEntry } from "../memory/memory-journal.ts";
 import type { Message } from "../storage/store.ts";
 
-import type { DigestFiles, DigestTool, HookCoverage, TurnDigest } from "../../shared/digest.ts";
-import { toolIdentity } from "../../shared/tool-name.ts";
-export type { DigestFiles, DigestTool, HookCoverage, TurnDigest } from "../../shared/digest.ts";
+import type { DigestFiles, DigestTool, HookCoverage, TurnDigest } from "../../shared/view/digest.ts";
+import { toolIdentity } from "../../shared/tool/tool-name.ts";
+export type { DigestFiles, DigestTool, HookCoverage, TurnDigest } from "../../shared/view/digest.ts";
 
 /** Evidence is observed, never inferred from a provider's brand. */
 export function coverageForDriver(_driverKind: string | undefined, fullResults = false, observedTools = false): HookCoverage {

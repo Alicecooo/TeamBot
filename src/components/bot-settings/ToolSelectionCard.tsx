@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { t } from "@/lib/i18n";
+import { t } from "@/lib/ui/i18n";
 import type { Bot } from "@/state/store";
-import { narrowsNativeTools, parseToolScope } from "../../../shared/tool-scope";
-import { TOOL_SCOPE_SUPPORT } from "../../../shared/tool-scope-support";
+import { narrowsNativeTools, parseToolScope } from "../../../shared/tool/tool-scope";
+import { TOOL_SCOPE_SUPPORT } from "../../../shared/tool/tool-scope-support";
 import { useBotEditor } from "./BotEditorContext";
 import { inputCls } from "./field";
-import { Select } from "../Select";
+import { Select } from "../chrome/Select";
 
 type Draft = { custom: boolean; onlyListed: boolean; allow: string; deny: string };
 const lines = (text: string) => text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);

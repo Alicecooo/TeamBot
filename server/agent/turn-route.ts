@@ -1,5 +1,5 @@
 import type { ModelCatalog, ModelSelection } from "../harness/contracts.ts";
-import type { EffortLevel } from "../../shared/wire.ts";
+import type { EffortLevel } from "../../shared/thread/wire.ts";
 
 export type TurnTier = "simple" | "complex";
 

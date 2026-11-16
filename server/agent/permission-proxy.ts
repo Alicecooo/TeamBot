@@ -2,8 +2,8 @@
 // stdout is the MCP channel: never console.log here.
 import { connect } from "node:net";
 import { randomUUID } from "node:crypto";
-import { parseAskQuestions, questionAnswersByQuestion, type AskQuestion } from "../../shared/ask-question.ts";
-import { allowsTool, parseToolScope } from "../../shared/tool-scope.ts";
+import { parseAskQuestions, questionAnswersByQuestion, type AskQuestion } from "../../shared/tool/ask-question.ts";
+import { allowsTool, parseToolScope } from "../../shared/tool/tool-scope.ts";
 
 const selection = parseToolScope(process.env.OMB_PERMISSION_TOOL_SCOPE === undefined
   ? undefined : (() => { try { return JSON.parse(process.env.OMB_PERMISSION_TOOL_SCOPE); } catch { return null; } })());

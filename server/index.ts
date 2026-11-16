@@ -15,13 +15,13 @@ import { autoCompactWindow } from "./drivers/claude.ts";
 import { createCoordinator, type ComposedTurn, type CoordinateBotsCall, type Coordinator, type HandoffOpener, type HandoffOptions, type HandoffView, type HostTurnResult } from "./teams/coordinator.ts";
 import { queuedBehindPersonText, settledWaitingChip, UnansweredApprovals } from "./agent/waiting-on-person.ts";
 import { assertRequestTarget, guardedRequestPath, requestConflict, requestNeedsInput } from "./agent/guarded-requests.ts";
-import { botAvatarUrlFromStoredPath } from "../shared/bot-avatar.ts";
-import { failedTurnTool } from "../shared/failed-turn.ts";
-import { STOPPED_TURN_NAME, assistantTranscript, errorTranscript } from "../shared/client-cancel.ts";
-import { canWorkOnCloud, type CloudEngine } from "../shared/cloud-computer.ts";
-import { approvalModeFor, modelSwitchNeedsAsk, isEmergencyApprovalDowngrade, isApprovalMode, setDefaultApprovalMode, type ApprovalMode } from "../shared/approval-mode.ts";
+import { botAvatarUrlFromStoredPath } from "../shared/bot/bot-avatar.ts";
+import { failedTurnTool } from "../shared/thread/failed-turn.ts";
+import { STOPPED_TURN_NAME, assistantTranscript, errorTranscript } from "../shared/thread/client-cancel.ts";
+import { canWorkOnCloud, type CloudEngine } from "../shared/data/cloud-computer.ts";
+import { approvalModeFor, modelSwitchNeedsAsk, isEmergencyApprovalDowngrade, isApprovalMode, setDefaultApprovalMode, type ApprovalMode } from "../shared/tool/approval-mode.ts";
 import { createApprovalModeSupport } from "./agent/harness-capabilities.ts";
-import { isPendingSignInRequest, normalizeSignInSite, signInFallbackText, signInOutcome, signInResumePrompt } from "../shared/sign-in-request.ts";
+import { isPendingSignInRequest, normalizeSignInSite, signInFallbackText, signInOutcome, signInResumePrompt } from "../shared/connector/sign-in-request.ts";
 
 import { HELD_NOTE, approvalHeldNote, approvalHeldReason, approvalModeForOrigin, autoVerdict, deliverFullAccessApproval, delegatedApprovalMode, undeliveredApprovalTool } from "./agent/auto-approve.ts";
 import { bindSafetyFloor, denyAtSafetyFloor, heldAtSafetyFloor, safetyFloorOn } from "./agent/safety-floor-gate.ts";
@@ -38,9 +38,9 @@ import { fitsOnOneLine } from "./bots/bot-profile.ts";
 import { routeDirectTurn } from "./agent/turn-route.ts";
 import { pickComputer } from "./computers/computer-selection.ts";
 
-import { isEffortLevel, type CardAnswerer, type ResolvedSender, type SteerQueueReason, type WireBot, type WireGroup, type WireTask } from "../shared/wire.ts";
-import { isPersistentQuestionCard, shouldSettleRequestCard } from "../shared/ask-question.ts";
-import { parseToolScope } from "../shared/tool-scope.ts";
+import { isEffortLevel, type CardAnswerer, type ResolvedSender, type SteerQueueReason, type WireBot, type WireGroup, type WireTask } from "../shared/thread/wire.ts";
+import { isPersistentQuestionCard, shouldSettleRequestCard } from "../shared/tool/ask-question.ts";
+import { parseToolScope } from "../shared/tool/tool-scope.ts";
 import * as composio from "./integrations/composio.ts";
 import { connectorCallFromFrame, connectorRefusalText, connectorScopeRefusalText, connectorUnrecognizedText, evaluateConnectorTools } from "./integrations/connector-verdict.ts";
 import { connectorCardText } from "./integrations/connector-card-text.ts";
@@ -66,7 +66,6 @@ import type { PriceList } from "./usage/prices.ts";
 import type { RequestAuth } from "./auth/request-auth.ts";
 import { assertWithinBudget, noteSpend, spendAlertText, spendState, takeSpendAlert } from "./usage/spend.ts";
 import { HOSTED_CONTRACT_HEADER, HOSTED_CONTRACT_METADATA, HOSTED_CONTRACT_VERSION } from "./deployment/hosted-contract.ts";
-import { describeSpawnFailure, execCli } from "./platform/procs.ts";
 import { buildNotification, buildSpendNotification, type Notification } from "./observability/notify.ts";
 import { isModelVariant, TurnNotStartedError, type ModelSelection, type RequestOutcome, type RuntimeEvent, type SteerOutcome, newId } from "./harness/contracts.ts";
 import { RETRY_MAX_ATTEMPTS } from "./drivers/retry.ts";
@@ -130,7 +129,7 @@ import { pickBotName } from "./bots/names.ts";
 import { botSkillTemplateSchema, newBotDefaultsSchema } from "./bots/new-bot-defaults.ts";
 import { expandLearnTurnText, learnSource } from "./skills/skill-learn.ts";
 import { connectedAppsForSetup, expandSetupTurnText, setupModeActive, setupSystemPrompt, type SetupConnectedApps } from "./config/setup-mode.ts";
-import type { SkillRequestCardData } from "../shared/skill-request.ts";
+import type { SkillRequestCardData } from "../shared/skill/skill-request.ts";
 import { botPersona, buildSystemPrompt, userProfileSystemPrompt, computerPrompt, composioSystemPrompt, customMcpPrompt, longCommandsPrompt, THREADS_PROMPT, WIDGET_PROMPT, LEARN_PROMPT, PROFILE_PROMPT, TEAM_MEMORY_PROMPT, resolveComputerPromptKind, teamAvailabilityPart } from "./agent/system-prompt.ts";
 import { shellTimeoutHookResult } from "./agent/shell-timeout-hint.ts";
 import { spillToolResult } from "./agent/tool-result-spill.ts";
@@ -147,13 +146,13 @@ import { createAgentCard } from "./agent/chat-widgets.ts";
 import { ProfileRequestService } from "./bots/profile-requests.ts";
 import { ModelRequestService } from "./agent/model-requests.ts";
 import { TeamSetupError, TeamSetupRequestService } from "./teams/team-setup-requests.ts";
-import type { TeamSetupRequest } from "../shared/team-setup.ts";
+import type { TeamSetupRequest } from "../shared/team/team-setup.ts";
 import { TeamMemory, TEAM_MEMORY_KINDS, type TeamMemoryKind } from "./teams/team-memory.ts";
 import { describeTool } from "./agent/activity.ts";
 import { OutboundCounts } from "./usage/outbound-counts.ts";
 import { OutboundRequestService, outboundCard } from "./usage/outbound-requests.ts";
-import { DEFAULT_OUTBOUND_POLICY, connectorCallsIn, outboundCallsIn } from "../shared/outbound.ts";
-import { connectorAccessDecision, describeConnectorScopes } from "../shared/connector-scopes.ts";
+import { DEFAULT_OUTBOUND_POLICY, connectorCallsIn, outboundCallsIn } from "../shared/tool/outbound.ts";
+import { connectorAccessDecision, describeConnectorScopes } from "../shared/connector/connector-scopes.ts";
 import { bindThreadLogCapProvider } from "./storage/thread-log-rotation.ts";
 import { assertModelVariantSupported } from "./agent/member-turn.ts";
 import { AGENTS_PROXY_ENV, agentsProxyLaunch, agentsToolBridgeEnv, applyAgentsBridge, bridgedToolTitle, turnEngine } from "./drivers/agents-bridge-switch.ts";
@@ -176,9 +175,8 @@ import { acquireDataDirLeaseForProcess } from "./storage/data-dir-lease.ts";
 import { createWorkspaceAccess, describeEdition, editionStatus, entitled, hostedWorkspaceConfiguration, hostedWorkspaceConfigured, LICENSE_WARN_DAYS, licenseWarning, sharedWorkspaceFullAccessConfigured, loadEnterpriseLayer, type EditionStatus, type WorkspaceAccess } from "./deployment/enterprise.ts";
 import { environmentDescriptor, loadEnvironmentId } from "./auth/environment.ts";
 import { createCustomDomainVerifier, customDomainIpv4, normalizeCustomDomain } from "./network/custom-domain.ts";
-import { allowedScopes, createEmailSignIn, parseAllowList } from "./auth/account-signin.ts";
 import { ProviderAuthSessions } from "./auth/provider-auth-sessions.ts";
-import { clearSessionCookie, isLoopbackHost, isProxied, labelFromUserAgent, requestOrigin, requestSource, resolveLoopbackTrust, resolveRequestAuth, parseCookies, serializeSessionCookie, sessionCookieName } from "./auth/request-auth.ts";
+import { clearSessionCookie, isLoopbackHost, isProxied, requestOrigin, resolveLoopbackTrust, resolveRequestAuth, parseCookies, serializeSessionCookie, sessionCookieName } from "./auth/request-auth.ts";
 import { cookieMaxAgeSeconds, SessionRegistry, type SessionRecord } from "./auth/sessions.ts";
 import { ThreadStarters } from "./agent/thread-starters.ts";
 import { frameForMember, memberBody, noteSeen, notFoundFor, pathSubject, sameAudience, SEES_EVERYTHING, VisibleSet, type FrameContext, type PathSubject, type StreamSeen, type ThreadOwner, type Viewer } from "./bots/bot-visibility.ts";
@@ -253,16 +251,8 @@ function releaseDataDirLeaseAtExit(): void {
 process.once("exit", releaseDataDirLeaseAtExit);
 // Only after ensureDirs(), whose one-time legacy data-dir rename must not find ~/.touko already there.
 const ENVIRONMENT_ID = loadEnvironmentId(DATA_DIR);
-const signInAllowList = cacheUntilConfigChanges((config) => ({
-  admins: parseAllowList(config.signIn?.admins?.join(",")),
-  members: parseAllowList(config.signIn?.members?.join(",")),
-}));
 const sessions = new SessionRegistry({
   file: join(DATA_DIR, "sessions.json"),
-  emailScopesSnapshot: () => {
-    const membership = signInAllowList();
-    return (email) => allowedScopes(email, membership);
-  },
   portalMembership: hostedWorkspaceConfiguration()?.portalMembership === true,
 });
 
@@ -318,9 +308,6 @@ bindThreadLogCapProvider(() => threadEventLogMaxBytes(cfg));
 bindDecisionRetention(() => decisionRetentionDays(cfg.decisions?.retentionDays));
 bindSafetyFloor(() => cfg);
 const customDomainVerifier = createCustomDomainVerifier({ environmentId: ENVIRONMENT_ID });
-const emailSignIn = createEmailSignIn({
-  allow: signInAllowList,
-});
 let customDomainRevision = 0;
 function savedCustomDomain(): string | null {
   if (DESKTOP_MANAGED || !cfg.customDomain) return null;
@@ -354,7 +341,7 @@ function personKey(session: Pick<SessionRecord, "id" | "email">): string {
 }
 
 function sharedMembership(): boolean {
-  return hostedWorkspaceConfiguration()?.portalMembership === true || signInAllowList().members.length > 0;
+  return hostedWorkspaceConfiguration()?.portalMembership === true;
 }
 
 function linePersonKey(message: Message | undefined): string | undefined {
@@ -5706,7 +5693,7 @@ async function startTurn(
       if (e instanceof PlaceUnavailableError) clearFailedAutoPin(bot.id, threadId, e.place);
       let message = e instanceof Error ? e.message : String(e);
       const current = store.projectBotForTask(bot.id, threadId);
-      const backups: [] = [];
+      const backups: ModelSelection[] = [];
       const nextIndex = backups.findIndex((candidate, index) => index >= (opts?.automaticRecoveryIndex ?? 0) &&
         registry.get(candidate.instanceId)?.enabled &&
         (candidate.instanceId !== instanceId || candidate.model !== model));
@@ -6584,40 +6571,10 @@ function settleSignIn(botId: string, threadId: string, messageId: string, outcom
 }
 
 async function testCliBinary(
-  cli: string,
-  driver: (typeof BUILT_IN_DRIVERS)[number] | undefined,
+  _cli: string,
+  _driver: (typeof BUILT_IN_DRIVERS)[number] | undefined,
 ): Promise<{ ok: boolean; version?: string; message?: string; install?: (typeof BUILT_IN_DRIVERS)[number]["install"] }> {
-  return new Promise((resolve) => {
-    execCli(
-      cli,
-      ["--version"],
-      {
-        timeout: 10_000,
-        // SIGKILL, not SIGTERM: a child that traps TERM would never fire the callback and would pin the HTTP socket.
-        killSignal: "SIGKILL",
-        maxBuffer: 1024 * 64,
-        env: cliProbeEnvironment(),
-      },
-      (err, stdout) => {
-        if (err) {
-          const e = err as NodeJS.ErrnoException & { killed?: boolean };
-          // Node's err.code is an errno string only for spawn failures; a non-zero exit gives the status, a timeout null with killed.
-          const exceededBuffer = e.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER";
-          const isSpawnError = typeof e.code === "string" && !exceededBuffer;
-          const message = exceededBuffer
-            ? "CLI test produced more than 64 KiB of output"
-            : isSpawnError
-              ? describeSpawnFailure(e, cli).message
-              : e.killed
-              ? "CLI test timed out after 10s"
-              : `CLI exited with error ${String(e.code)}: ${(stderrOf(err) || "").slice(0, 200) || err.message.split("\n")[0]}`;
-          resolve({ ok: false, message, ...(driver?.install && isSpawnError ? { install: driver.install } : {}) });
-          return;
-        }
-        resolve({ ok: true, version: stdout.trim().split("\n")[0] });
-      },
-    );
-  });
+  return { ok: false, message: "CLI engines are not available." };
 }
 
 /** Only PATH: never hand inherited credentials to an arbitrary wrapper selected through Settings. */
@@ -6626,11 +6583,6 @@ function cliProbeEnvironment(): NodeJS.ProcessEnv {
   stripWorkspaceCredentialEnv(env);
   for (const key of PROVIDER_CREDENTIAL_ENV) delete env[key];
   return env;
-}
-
-function stderrOf(err: unknown): string {
-  const s = (err as { stderr?: unknown }).stderr;
-  return typeof s === "string" ? s : Buffer.isBuffer(s) ? s.toString("utf8") : "";
 }
 
 function editionForSettings(status: EditionStatus) {
@@ -7098,7 +7050,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
     // Two public routes come first; everything else needs the loopback owner or a paired session with the right scope.
     if (method === "GET" && !path.startsWith("/api/") && !path.startsWith("/.well-known/") && serveStatic(res, path)) return;
     if (method === "GET" && path === "/.well-known/openmausbot/environment") {
-      return json(res, 200, environmentDescriptor({ environmentId: ENVIRONMENT_ID, desktopManaged: DESKTOP_MANAGED, emailSignIn: !HOSTED_WORKSPACE && !CLOUD_HOME && emailSignIn.enabled(),  cloudHome: Boolean(CLOUD_HOME) }));
+      return json(res, 200, environmentDescriptor({ environmentId: ENVIRONMENT_ID, desktopManaged: DESKTOP_MANAGED, emailSignIn: false, cloudHome: Boolean(CLOUD_HOME) }));
     }
     const domainCheck = /^\/\.well-known\/openmausbot\/domain-check\/([a-f0-9]{64})$/.exec(path);
     if (method === "GET" && domainCheck) {
@@ -7106,44 +7058,6 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       const challenge = customDomainVerifier.challenge(domainCheck[1]);
       return json(res, challenge ? 200 : 404, challenge ?? { error: "No active domain check." });
     }
-    // Never on a Cloud home: it is personal, and the owner's devices sign in through the Admin.
-
-    if (method === "POST" && (path === "/api/auth/email/start" || path === "/api/auth/email/verify")) {
-      if (!/^application\/json\b/i.test(String(req.headers["content-type"] ?? ""))) {
-        return json(res, 415, { error: "send the sign-in request as JSON (content-type: application/json)" });
-      }
-      if (!emailSignIn.enabled()) return json(res, 404, { error: "Email sign-in is not set up. Configure the server sign-in allow-list." });
-      const source = requestSource(req);
-      const allowed = sessions.attemptAllowed(source);
-      if (!allowed.ok) return json(res, 429, { error: `too many failed sign-in attempts from your address; try again in ${Math.ceil(allowed.retryAfterMs / 1000)}s` });
-      const body = await readBody(req);
-      const email = typeof body?.email === "string" ? body.email : "";
-      if (path === "/api/auth/email/start") {
-        const started = await emailSignIn.start(email);
-        if (!started.ok) {
-          if (started.status === 403) sessions.noteFailure(source);
-          return json(res, started.status, { error: started.error });
-        }
-        return json(res, 200, { ok: true });
-      }
-      const code = typeof body?.code === "string" ? body.code : "";
-      const label = typeof body?.label === "string" ? body.label : "";
-      const verified = await emailSignIn.verify(email, code);
-      if (!verified.ok) {
-        if (verified.status === 401 || verified.status === 403) sessions.noteFailure(source);
-        console.warn(`email sign-in refused from ${source}: ${verified.error}`);
-        return json(res, verified.status, { error: verified.error });
-      }
-      sessions.clearFailures(source);
-      const issued = sessions.issue({ label: label.trim() || labelFromUserAgent(req.headers["user-agent"]), scopes: verified.scopes, userId: verified.userId, email: verified.email });
-      const environment = environmentDescriptor({ environmentId: ENVIRONMENT_ID, desktopManaged: DESKTOP_MANAGED, emailSignIn: true,  });
-      const secure = requestOrigin(req)?.startsWith("https://") === true;
-      res.setHeader("set-cookie", serializeSessionCookie(SESSION_COOKIE, issued.token, { secure, maxAgeSeconds: cookieMaxAgeSeconds(issued.session) }));
-      return json(res, 200, { session: issued.session, environment });
-    }
-
-    // The companion apps' pairing route: same window, lockout and single-use exchange as /api/auth/pair; redeeming the credential IS the sign-in.
-
     const gate = resolveRequestAuth(req, {
       sessions,
       cookieName: SESSION_COOKIE,

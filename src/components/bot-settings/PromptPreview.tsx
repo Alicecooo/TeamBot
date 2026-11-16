@@ -1,7 +1,7 @@
 import { ChevronDown } from "lucide-react";
 
-import { cn } from "@/lib/cn";
-import { t } from "@/lib/i18n";
+import { cn } from "@/lib/ui/cn";
+import { t } from "@/lib/ui/i18n";
 
 export interface PromptPreviewData {
   sections: Array<{ id: string; label: string; text: string; bytes: number }>;

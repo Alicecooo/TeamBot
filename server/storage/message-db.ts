@@ -5,10 +5,10 @@ import { DatabaseSync } from "node:sqlite";
 
 import { DATA_DIR } from "../config/config.ts";
 import { peerProvenanceAuthor, type WorkOrigin } from "../teams/peer-provenance.ts";
-import type { ResolvedSender, SteerQueueReason } from "../../shared/wire.ts";
+import type { ResolvedSender, SteerQueueReason } from "../../shared/thread/wire.ts";
 import type { Message } from "./store.ts";
 import type { UsageTrigger } from "../usage/usage-ledger.ts";
-import type { Notification, NotificationLogEntry } from "../../shared/notification.ts";
+import type { Notification, NotificationLogEntry } from "../../shared/view/notification.ts";
 
 const DB_FILE = () => join(DATA_DIR, "messages.db");
 

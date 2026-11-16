@@ -8,7 +8,7 @@ import { UNDO_STALE, type DirectApply } from "../agent/direct-apply.ts";
 import { harnessCapabilityLines, type DriverCapabilities } from "../agent/harness-capabilities.ts";
 import { redactSecretsInText } from "../security/redact.ts";
 import type { BotRecord, OptionCardData } from "../storage/store.ts";
-import type { TeamSetupFields, TeamSetupOperation, TeamSetupRequest, TeamSetupResult, TeamSetupUndo } from "../../shared/team-setup.ts";
+import type { TeamSetupFields, TeamSetupOperation, TeamSetupRequest, TeamSetupResult, TeamSetupUndo } from "../../shared/team/team-setup.ts";
 
 const section = (value?: string) => value?.trim() || "";
 const teamName = z.string().trim().min(1).max(60).refine(fitsOnOneLine).refine((value) => redactSecretsInText(value) === value, "Team names cannot contain credentials");

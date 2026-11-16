@@ -1,4 +1,4 @@
-import type { WorkspaceLeftBehind } from "../shared/workspace-move.ts";
+import type { WorkspaceLeftBehind } from "../shared/team/workspace-move.ts";
 export interface MoveContents { bots: number; rooms: number; chats: number }
 /** Which server answered: null from a server from before it said. */
 export interface ServerIdentity { appVersion: string | null; environmentId: string | null }

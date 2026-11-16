@@ -1,17 +1,17 @@
 // Ported from upstream's provider contracts with Promises for Effect and listeners for Stream; shapes and names are kept.
 
 // Ported from upstream's provider contracts with Promises for Effect and listeners for Stream; shapes and names are kept.
-import type { ApprovalMode } from "../../shared/approval-mode.ts";
-import type { ToolScope } from "../../shared/tool-scope.ts";
-import type { EffortLevel } from "../../shared/wire.ts";
-import type { DriverKind, InstanceId, ModelVariantOption, RuntimeEventListener, ThreadId, TurnId } from "../../shared/runtime-events.ts";
-import type { ProviderIcon } from "../../shared/provider-icon.ts";
+import type { ApprovalMode } from "../../shared/tool/approval-mode.ts";
+import type { ToolScope } from "../../shared/tool/tool-scope.ts";
+import type { EffortLevel } from "../../shared/thread/wire.ts";
+import type { DriverKind, InstanceId, ModelVariantOption, RuntimeEventListener, ThreadId, TurnId } from "../../shared/thread/runtime-events.ts";
+import type { ProviderIcon } from "../../shared/view/provider-icon.ts";
 
-export type { EffortLevel, ModelSelection } from "../../shared/wire.ts";
+export type { EffortLevel, ModelSelection } from "../../shared/thread/wire.ts";
 export type {
   DriverKind, InstanceId, ModelVariantOption, ModelVariantState, RuntimeEvent,
   RuntimeEventBase, RuntimeEventListener, ThreadId, TurnId,
-} from "../../shared/runtime-events.ts";
+} from "../../shared/thread/runtime-events.ts";
 
 export type ProviderErrorCode =
   | "missing_cli"

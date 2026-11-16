@@ -12,8 +12,8 @@ import { libraryDescriptionsAt, librarySkillFilePath, listLibrarySkills, type Li
 import { readManagedLinks, writeManagedLinks } from "./skill-link-registry.ts";
 import { directoryEntryState, entryExistsWithoutFollowing, formatKb, isSkillReferencePath, learnedSkillDirectoryMatches, publishReviewedRevision, readReferenceFiles, referenceLimitError, referencePathError, REFERENCES_ADVICE, skillReferencesSha256, STAGED_SKILL_FILE_MAX_BYTES } from "./skill-storage.ts";
 import { workspaceDir } from "../workspace/workspace.ts";
-import { isSkillName, parseSkillMd, scanSkillText, SKILL_FILE_MAX_BYTES, type ParsedSkill } from "../../shared/skill-md.ts";
-import { parseSkillCommand } from "../../shared/skill-command.ts";
+import { isSkillName, parseSkillMd, scanSkillText, SKILL_FILE_MAX_BYTES, type ParsedSkill } from "../../shared/skill/skill-md.ts";
+import { parseSkillCommand } from "../../shared/skill/skill-command.ts";
 
 export {
   DESCRIPTION_MAX,
@@ -23,7 +23,7 @@ export {
   SKILL_FILE_MAX_BYTES,
   SKILL_NAME_MAX,
   type ParsedSkill,
-} from "../../shared/skill-md.ts";
+} from "../../shared/skill/skill-md.ts";
 export { STAGED_SKILL_FILE_MAX_BYTES } from "./skill-storage.ts";
 
 export const INDEX_MAX_SKILLS = 30;

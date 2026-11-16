@@ -1,5 +1,5 @@
 // The name a call made through the agents tool bridge is read as. Imports no engine driver.
-import { WATCHER_OPTIONS_CARD_BOT_ID } from "../../shared/options-card.ts";
+import { WATCHER_OPTIONS_CARD_BOT_ID } from "../../shared/view/options-card.ts";
 
 import { bridgedCallTitle } from "./agents-bridge.ts";
 import { availableTools } from "./agents-catalog.ts";

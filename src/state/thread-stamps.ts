@@ -1,4 +1,4 @@
-import { movesThreadToTop } from "../../shared/wire";
+import { movesThreadToTop } from "../../shared/thread/wire";
 import type { AppState, Message } from "./store";
 
 export function mergeTaskStamps<T extends { threadId: string; updatedAt?: number; lastThreadOrderAt?: number }>(previous: T[] | undefined, incoming: T[] | undefined): T[] | undefined {

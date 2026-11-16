@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Pencil } from "lucide-react";
 
-import { cn } from "@/lib/cn";
-import { t } from "@/lib/i18n";
+import { cn } from "@/lib/ui/cn";
+import { t } from "@/lib/ui/i18n";
 import type { Bot } from "@/state/store";
-import { BOT_PROFILE_LIMITS } from "../../../shared/bot-profile";
-import { BotAvatar } from "../Avatar";
+import { BOT_PROFILE_LIMITS } from "../../../shared/bot/bot-profile";
+import { BotAvatar } from "../bots/Avatar";
 import type { BotPatch } from "../bot-settings/useBotSettingsDerived";
 
 const inlineInputCls =

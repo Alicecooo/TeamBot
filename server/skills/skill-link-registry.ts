@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { z } from "zod";
 import { writeFileAtomicIfChanged } from "../storage/atomic.ts";
 import { DATA_DIR } from "../config/config.ts";
-import { isSkillName } from "../../shared/skill-md.ts";
+import { isSkillName } from "../../shared/skill/skill-md.ts";
 
 const managedLinksSchema = z.array(z.string());
 

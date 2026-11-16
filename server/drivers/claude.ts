@@ -18,8 +18,8 @@ import { ClaudeLoginController } from "./claude-login-auth.ts";
 
 import type { DriverCreateInput, ModelCatalog, ProviderDriver, ProviderInstance, ProviderSnapshot, RuntimeEvent, RuntimeEventListener, SendTurnInput, SteerOutcome, TextGenerationOptions } from "../harness/contracts.ts";
 import { customServerGate, gateServer } from "../mcp/mcp-gate-config.ts";
-import { canUseMcpServer } from "../../shared/tool-scope.ts";
-import { assertToolScopeSupported } from "../../shared/tool-scope-support.ts";
+import { canUseMcpServer } from "../../shared/tool/tool-scope.ts";
+import { assertToolScopeSupported } from "../../shared/tool/tool-scope-support.ts";
 
 import { newEventId, newId } from "../harness/contracts.ts";
 import { askInputSummary, commandSummary, toolDetailPreview } from "../agent/tool-summary.ts";
@@ -35,7 +35,7 @@ import { BACKGROUND_CALL_TIMEOUT_MS, backgroundCallArgs, spawnBackgroundCall } f
 import { permissionLaunchCwd, shellRequest } from "./permission-command.ts";
 import { SPAWNED_PROXIES } from "../proxy-paths.ts";
 import { extractMcpImages } from "../mcp/mcp-tool-images.ts";
-import { ASK_USER_QUESTION_TOOL, ASK_USER_TOOL, askQuestionSummary, parseAskQuestions, parseChoices, questionChoices, type AskQuestion } from "../../shared/ask-question.ts";
+import { ASK_USER_QUESTION_TOOL, ASK_USER_TOOL, askQuestionSummary, parseAskQuestions, parseChoices, questionChoices, type AskQuestion } from "../../shared/tool/ask-question.ts";
 
 /** Parent-session credentials/routing a named account must not inherit. */
 export const CLAUDE_ACCOUNT_ENV_KEYS = [

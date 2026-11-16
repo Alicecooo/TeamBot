@@ -1,5 +1,5 @@
 // The job runtime's public types: one record for every hand-off between bots, one lifecycle, one wake lane.
-import type { ApprovalMode } from "../../shared/approval-mode.ts";
+import type { ApprovalMode } from "../../shared/tool/approval-mode.ts";
 
 /** Where the work ultimately started. Immutable down the whole tree. */
 export type OriginKind = "person" | "outside";

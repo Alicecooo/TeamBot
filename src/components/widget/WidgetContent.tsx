@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
 import { ImageOff } from "lucide-react";
-import { cn } from "@/lib/cn";
-import { t } from "@/lib/i18n";
-import { widgetNumber, widgetString, type WidgetNode } from "../../../shared/widget";
+import { cn } from "@/lib/ui/cn";
+import { t } from "@/lib/ui/i18n";
+import { widgetNumber, widgetString, type WidgetNode } from "../../../shared/view/widget";
 import { useWidgetForm } from "./WidgetControls";
 import type { WidgetWhere } from "./WidgetNodes";
 import { BADGE_DOT, BADGE_INK, BADGE_SIZE, BADGE_SOLID, boxStyle } from "./widget-style";

@@ -1,6 +1,6 @@
 // The agents tools that put something in front of the person: the Watcher's options card, the widget tools and raise_escalation.
-import { parseOptionsCardInput, WATCHER_OPTIONS_CARD_BOT_ID } from "../../shared/options-card.ts";
-import { parseWidgetInput, widgetAdvice } from "../../shared/widget.ts";
+import { parseOptionsCardInput, WATCHER_OPTIONS_CARD_BOT_ID } from "../../shared/view/options-card.ts";
+import { parseWidgetInput, widgetAdvice } from "../../shared/view/widget.ts";
 
 import type { ToolCallContext, ToolCallResult } from "./agents-call.ts";
 import type { Json } from "./agents-client.ts";

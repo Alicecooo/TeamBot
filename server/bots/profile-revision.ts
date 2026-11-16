@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import type { ProfileRequestChanges } from "../../shared/profile-request.ts";
+import type { ProfileRequestChanges } from "../../shared/bot/profile-request.ts";
 
 export function profileSnapshot(
   bot: { name: string; title: string; description: string; cwd?: string; notifications?: boolean; },

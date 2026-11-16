@@ -1,7 +1,7 @@
-import type { Surface } from "../../shared/wire.ts";
-import { canWorkOnCloud, type CloudEngine } from "../../shared/cloud-computer.ts";
-import { canUseMcpServer } from "../../shared/tool-scope.ts";
-import { placeRowText, type PlaceRow, type PlaceSource } from "../../shared/place-view.ts";
+import type { Surface } from "../../shared/thread/wire.ts";
+import { canWorkOnCloud, type CloudEngine } from "../../shared/data/cloud-computer.ts";
+import { canUseMcpServer } from "../../shared/tool/tool-scope.ts";
+import { placeRowText, type PlaceRow, type PlaceSource } from "../../shared/view/place-view.ts";
 export type { Surface, PlaceSource };
 
 /** The bot's "Works on" setting; undefined = Auto. */

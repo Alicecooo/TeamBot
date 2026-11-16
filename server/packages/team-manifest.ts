@@ -2,9 +2,9 @@ import { z } from "zod";
 
 import { schemaIssue, type JsonValue } from "../config/schema.ts";
 import type { MausColor } from "../storage/store.ts";
-import { takeImportName } from "../../shared/import-name.ts";
-import { botMascotBody, type MascotBodyId } from "../../shared/mascot-bodies.ts";
-import { optionalText, requiredText } from "../../shared/package-format.ts";
+import { takeImportName } from "../../shared/team/import-name.ts";
+import { botMascotBody, type MascotBodyId } from "../../shared/bot/mascot-bodies.ts";
+import { optionalText, requiredText } from "../../shared/team/package-format.ts";
 
 export const TEAM_MANIFEST_FORMAT = "openmaus.team" as const;
 export const TEAM_MANIFEST_VERSION = 2 as const;

@@ -4,8 +4,8 @@
 // or a computer is never acted on.
 import { z } from "zod";
 
-import { failedTurnTool } from "../../shared/failed-turn.ts";
-import { nameIsCommand } from "../../shared/tool-name.ts";
+import { failedTurnTool } from "../../shared/thread/failed-turn.ts";
+import { nameIsCommand } from "../../shared/tool/tool-name.ts";
 import type { RuntimeEvent, SteerOutcome } from "../harness/contracts.ts";
 import { quoteInNote } from "../teams/peer-provenance.ts";
 import { RepeatDetector, callKey, toolItemKey } from "../agent/repeat-detector.ts";

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import type { Bot } from "@/state/store";
-import { packageProvenance, type OrgLibraryInstall, type OrgLibraryListing } from "@/lib/org-library";
+import { packageProvenance, type OrgLibraryInstall, type OrgLibraryListing } from "@/lib/connectors/org-library";
 import { useBotEditor } from "./BotEditorContext";
 
 export function PackageProvenance({ bot }: { bot: Bot }) {

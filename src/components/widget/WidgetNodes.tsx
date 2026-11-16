@@ -1,8 +1,8 @@
 import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 import { Check, LoaderCircle } from "lucide-react";
-import { cn } from "@/lib/cn";
-import { widgetNumber, widgetString, type WidgetNode } from "../../../shared/widget";
-import { ChatMarkdown } from "../ChatMarkdown";
+import { cn } from "@/lib/ui/cn";
+import { widgetNumber, widgetString, type WidgetNode } from "../../../shared/view/widget";
+import { ChatMarkdown } from "../chat/ChatMarkdown";
 import { WidgetChart } from "./WidgetChart";
 import { WidgetBadge, WidgetImage, WidgetProgress } from "./WidgetContent";
 import { useWidgetForm, widgetActionUrl, widgetCanPress, widgetFieldId, WidgetButton, WidgetGlyph, type WidgetForm } from "./WidgetControls";

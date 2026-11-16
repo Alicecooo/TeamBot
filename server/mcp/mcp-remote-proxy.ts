@@ -1,8 +1,8 @@
 // The upstream handshake is OMB's own, never the engine's: an engine's client adds capability fields a strict server
 // refuses. stdout carries only protocol frames.
 import { createInterface } from "node:readline";
-import { redactSecretsInText } from "../../shared/redact.ts";
-import { allowsTool, parseToolScope, type ToolScope } from "../../shared/tool-scope.ts";
+import { redactSecretsInText } from "../../shared/data/redact.ts";
+import { allowsTool, parseToolScope, type ToolScope } from "../../shared/tool/tool-scope.ts";
 
 import type { ValidateFunction } from "ajv";
 import { CALL_TOOL, DESCRIBE_TOOL, INSTRUCTIONS_CHARS, SEARCH_TOOL, SELECTION_EXCLUDES, ToolDirectory, bounded, searchesCatalog, type CatalogTool, type DirectoryContext } from "./mcp-directory.ts";

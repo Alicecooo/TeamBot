@@ -1,4 +1,4 @@
-import type { WireBot } from "../../shared/wire.ts";
+import type { WireBot } from "../../shared/thread/wire.ts";
 import { validateBotCwd } from "../bots/bot-cwd.ts";
 import { parseBotProfilePatch } from "../bots/bot-profile.ts";
 import type { AppConfig } from "../config/config.ts";

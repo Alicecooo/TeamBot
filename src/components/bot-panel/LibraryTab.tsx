@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { FileText, Image as ImageIcon } from "lucide-react";
 
-import { t } from "@/lib/i18n";
+import { t } from "@/lib/ui/i18n";
 import type { LocaleKey } from "@/locales";
-import { fetchMemoryDoc, MEMORY_INDEX } from "@/lib/memory";
+import { fetchMemoryDoc, MEMORY_INDEX } from "@/lib/bots/memory";
 import { useStore, type Bot } from "@/state/store";
 import { SkillReviewDialog, useManagedSkills } from "../bot-settings/SkillsSection";
 import { botLibraryItems, isPageItem, memoryEntries, type LibraryItem } from "./library-items";

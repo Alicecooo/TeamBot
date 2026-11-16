@@ -1,9 +1,9 @@
 // Who may see a bot on a shared workspace: absent/"everyone", "admins", or { people: [...] } plus admins. Access control,
 // not an approval gate; the owner, a session-less local service and admin sessions see everything.
 import { z } from "zod";
-import { parsePortraitAssetName } from "../../shared/portrait-avatars.ts";
+import { parsePortraitAssetName } from "../../shared/bot/portrait-avatars.ts";
 
-import type { BotVisibility } from "../../shared/wire.ts";
+import type { BotVisibility } from "../../shared/thread/wire.ts";
 
 export type { BotVisibility };
 

@@ -1,4 +1,4 @@
-import type { SignInPlace } from "../../shared/sign-in-request.ts";
+import type { SignInPlace } from "../../shared/connector/sign-in-request.ts";
 import { PASS, type RouteContext, type RouteHandler } from "./table.ts";
 
 /** Only dispatch inside the internal capability gate, with its guarded body

@@ -1,5 +1,5 @@
 // The agents tool catalog and which tools a turn sees: definitions only, no environment, no calls.
-import { OPTIONS_CARD_LIMITS, WATCHER_OPTIONS_CARD_BOT_ID } from "../../shared/options-card.ts";
+import { OPTIONS_CARD_LIMITS, WATCHER_OPTIONS_CARD_BOT_ID } from "../../shared/view/options-card.ts";
 import { agentToolAnnotations } from "../agent/agent-tool-policy.ts";
 import { WIDGET_TOOL_DEFINITIONS } from "./agents-widget-tools.ts";
 

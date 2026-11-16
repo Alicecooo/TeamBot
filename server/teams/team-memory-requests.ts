@@ -3,7 +3,7 @@
 import type { DecisionRow } from "../observability/decision-log.ts";
 import { UNDO_STALE, type DirectApply } from "../agent/direct-apply.ts";
 import { TeamMemoryConflict, type TeamMemory, type TeamMemoryInput } from "./team-memory.ts";
-import type { OptionCardData } from "../../shared/wire.ts";
+import type { OptionCardData } from "../../shared/thread/wire.ts";
 
 type Speaker = { id: string; name: string; section?: string };
 type Card = OptionCardData;

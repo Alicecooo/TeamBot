@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
-import { allowsTool, parseToolScope, type ToolScope } from "../../shared/tool-scope.ts";
+import { allowsTool, parseToolScope, type ToolScope } from "../../shared/tool/tool-scope.ts";
 
 import { bridgedCallTarget } from "../drivers/agents-bridge.ts";
 import { resolveCliSpawn } from "../platform/env-path.ts";

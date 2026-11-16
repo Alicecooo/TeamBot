@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { CircleAlert, X } from "lucide-react";
 import { useStore, type Message } from "@/state/store";
-import { openExternalLink } from "@/lib/app-links";
-import { cn } from "@/lib/cn";
-import { t } from "@/lib/i18n";
-import { widgetActions, widgetFields, widgetInitialValues, widgetScope, widgetString, type WidgetField, type WidgetNode, type WidgetOther, type WidgetPayload, type WidgetSettled, type WidgetValues } from "../../../shared/widget";
-import { ASK_QUIET_BUTTON, AskSettledLine, returnFocusToComposer } from "../AskCard";
+import { openExternalLink } from "@/lib/connectors/app-links";
+import { cn } from "@/lib/ui/cn";
+import { t } from "@/lib/ui/i18n";
+import { widgetActions, widgetFields, widgetInitialValues, widgetScope, widgetString, type WidgetField, type WidgetNode, type WidgetOther, type WidgetPayload, type WidgetSettled, type WidgetValues } from "../../../shared/view/widget";
+import { ASK_QUIET_BUTTON, AskSettledLine, returnFocusToComposer } from "../cards/AskCard";
 import { WidgetBody } from "./WidgetBody";
 import { WIDGET_COMPACT_BELOW, widgetActionUrl, WidgetButton, WidgetFormProvider, WidgetGlyph, type WidgetForm } from "./WidgetControls";
 import { kids } from "./widget-style";

@@ -1,5 +1,5 @@
-import { parseOptionsCardInput, WATCHER_OPTIONS_CARD_BOT_ID, type OptionsCardInput } from "../../shared/options-card.ts";
-import type { MausColor } from "../../shared/wire.ts";
+import { parseOptionsCardInput, WATCHER_OPTIONS_CARD_BOT_ID, type OptionsCardInput } from "../../shared/view/options-card.ts";
+import type { MausColor } from "../../shared/thread/wire.ts";
 
 interface OptionsCardBot {
   id: string;

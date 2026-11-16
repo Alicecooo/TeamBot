@@ -1,43 +1,43 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, type ReactNode } from "react";
 
-import type { CardAnswerer, ConnectorToolGrant, EffortLevel, InstalledPackageMetadata, ServerFrame, SteerQueueReason, OptionCardData as WireOptionCard } from "../../shared/wire";
-import { movesThreadToTop } from "../../shared/wire";
-import type { NotificationLogEntry } from "../../shared/notification";
+import type { CardAnswerer, ConnectorToolGrant, EffortLevel, InstalledPackageMetadata, ServerFrame, SteerQueueReason, OptionCardData as WireOptionCard } from "../../shared/thread/wire";
+import { movesThreadToTop } from "../../shared/thread/wire";
+import type { NotificationLogEntry } from "../../shared/view/notification";
 import { reduceNotificationFeed, type NotificationFeedAction } from "./notification-feed";
 import { bumpThreadUpdatedAt, mergeTaskStamps, rewindThreadUpdatedAt } from "./thread-stamps";
 import { openNotificationTarget, visibleNotificationThread } from "./thread-navigation";
 export { awayFromMainThread, botOpensTo, openBot, openBotThread, openNotificationTarget, openThread, visibleNotificationThread, type ThreadTarget } from "./thread-navigation";
-import type { TurnDigest } from "../../shared/digest";
-import type { ToolScope } from "../../shared/tool-scope";
-import type { ModelVariantOption, RuntimeEvent } from "../../shared/runtime-events";
-import type { MausColor } from "@/lib/bot-appearance";
-import type { BotAvatarCrop } from "../../shared/bot-avatar";
-import type { MascotBodyId } from "../../shared/mascot-bodies";
-import { approvalModeFor, type ApprovalMode } from "../../shared/approval-mode";
-import { desktopCapabilitiesNow } from "@/lib/desktop";
-import { sameModelSelection } from "../../shared/thread-model";
-import type { QuestionRequestCardData } from "../../shared/ask-question";
-import type { ProfileRequestCardData } from "../../shared/profile-request";
-import type { ModelRequestCardData } from "../../shared/model-request";
-import type { PlaceRow } from "../../shared/place-view";
-import { reviewedSkillSha256, skillRequestBehavior, type SkillRequestCardData } from "../../shared/skill-request";
-import { restrictedCopyRequest } from "@/lib/bot-duplicate";
-import { botShowsUnread } from "@/lib/bot-unread";
-import { firstUnreadMessageId, threadOpensUnread, threadReadCursor } from "@/lib/unread-divider";
-import type { ComputerStart } from "@/lib/computer-start";
-import { parseComputerHelp } from "@/lib/computer-control";
-import { answerResponse, dismissResponse } from "@/lib/card-answer";
-import { readLastConversation, rememberConversation } from "@/lib/last-conversation";
-import { readLastBotSection, rememberBotSection } from "@/lib/last-bot-section";
-import { showNotification } from "@/lib/notify";
-import { useShowThreads } from "@/lib/thread-preferences";
-import { roleProfilePatch, type BotRole } from "@/lib/bot-roles";
-import { t } from "@/lib/i18n";
+import type { TurnDigest } from "../../shared/view/digest";
+import type { ToolScope } from "../../shared/tool/tool-scope";
+import type { ModelVariantOption, RuntimeEvent } from "../../shared/thread/runtime-events";
+import type { MausColor } from "@/lib/bots/bot-appearance";
+import type { BotAvatarCrop } from "../../shared/bot/bot-avatar";
+import type { MascotBodyId } from "../../shared/bot/mascot-bodies";
+import { approvalModeFor, type ApprovalMode } from "../../shared/tool/approval-mode";
+import { desktopCapabilitiesNow } from "@/lib/desktop/desktop";
+import { sameModelSelection } from "../../shared/thread/thread-model";
+import type { QuestionRequestCardData } from "../../shared/tool/ask-question";
+import type { ProfileRequestCardData } from "../../shared/bot/profile-request";
+import type { ModelRequestCardData } from "../../shared/tool/model-request";
+import type { PlaceRow } from "../../shared/view/place-view";
+import { reviewedSkillSha256, skillRequestBehavior, type SkillRequestCardData } from "../../shared/skill/skill-request";
+import { restrictedCopyRequest } from "@/lib/bots/bot-duplicate";
+import { botShowsUnread } from "@/lib/bots/bot-unread";
+import { firstUnreadMessageId, threadOpensUnread, threadReadCursor } from "@/lib/chat/unread-divider";
+import type { ComputerStart } from "@/lib/desktop/computer-start";
+import { parseComputerHelp } from "@/lib/desktop/computer-control";
+import { answerResponse, dismissResponse } from "@/lib/chat/card-answer";
+import { readLastConversation, rememberConversation } from "@/lib/bots/last-conversation";
+import { readLastBotSection, rememberBotSection } from "@/lib/bots/last-bot-section";
+import { showNotification } from "@/lib/ui/notify";
+import { useShowThreads } from "@/lib/chat/thread-preferences";
+import { roleProfilePatch, type BotRole } from "@/lib/bots/bot-roles";
+import { t } from "@/lib/ui/i18n";
 import { createBotPatchQueue, type BotUpdatePatch } from "./bot-patch-queue";
 import { useChatErrorClear } from "./chat-error";
-import { openLiveEvents, publishLiveFrame, publishMissedFrames } from "@/lib/live-events";
+import { openLiveEvents, publishLiveFrame, publishMissedFrames } from "@/lib/chat/live-events";
 
-export type { MausColor } from "@/lib/bot-appearance";
+export type { MausColor } from "@/lib/bots/bot-appearance";
 
 export interface OptionCardData extends Pick<WireOptionCard, "fixedOptions"> {
   title: string;
@@ -65,7 +65,7 @@ export interface OptionCardData extends Pick<WireOptionCard, "fixedOptions"> {
   teamMemoryRequest?: { section: string; entryId: string; kind: string; revision?: string };
   profileRequest?: ProfileRequestCardData;
   modelRequest?: ModelRequestCardData;
-  teamSetupRequest?: import("../../shared/team-setup").TeamSetupRequest;
+  teamSetupRequest?: import("../../shared/team/team-setup").TeamSetupRequest;
   questionRequest?: QuestionRequestCardData;
 }
 
@@ -97,20 +97,20 @@ export interface SecretRequestCardData {
   stopped?: boolean;
 }
 
-export type ComputerControlState = { held: boolean; helpReason: string | null; help?: import("../../shared/wire").ComputerHelpRef | null };
+export type ComputerControlState = { held: boolean; helpReason: string | null; help?: import("../../shared/thread/wire").ComputerHelpRef | null };
 
-export interface Message extends Pick<import("../../shared/wire").WireMessage, "widget" | "quickModel"> {
+export interface Message extends Pick<import("../../shared/thread/wire").WireMessage, "widget" | "quickModel"> {
   id: string;
   role: "bot" | "user";
   kind: "text" | "options" | "activity" | "screen" | "connector" | "secret" | "signin" | "digest" | "compaction" | "widget";
   text?: string;
   digest?: TurnDigest;
-  compaction?: import("../../shared/wire").WireMessage["compaction"];
-  attachments?: import("../../shared/wire").WireMessage["attachments"];
+  compaction?: import("../../shared/thread/wire").WireMessage["compaction"];
+  attachments?: import("../../shared/thread/wire").WireMessage["attachments"];
   card?: OptionCardData;
   connector?: ConnectorCardData;
   secret?: SecretRequestCardData;
-  signIn?: import("../../shared/wire").SignInRequestCardData;
+  signIn?: import("../../shared/thread/wire").SignInRequestCardData;
   tool?: { name: string; ok?: boolean; setup?: boolean; claudeUpdate?: boolean; place?: PlaceRow; summary?: string; input?: string; output?: string ; itemId?: string; outputPath?: string; fullResult?: boolean };
   steered?: boolean;
   via?: "api";
@@ -161,7 +161,7 @@ export interface Task {
   updatedAt?: number;
   lastThreadOrderAt?: number;
   usage?: TaskUsage;
-  cacheKeepWarm?: import("../../shared/wire").CacheKeepWarmStatus;
+  cacheKeepWarm?: import("../../shared/thread/wire").CacheKeepWarmStatus;
   cwd?: string | null;
   modelSelection?: ModelSelection;
   followsBotModel?: boolean;
@@ -382,7 +382,7 @@ export interface InstanceInfo {
   instanceId: string;
   driverKind: string;
   displayName: string;
-  icon?: import("../../shared/provider-icon").ProviderIcon;
+  icon?: import("../../shared/view/provider-icon").ProviderIcon;
   readOnly?: boolean;
   trialCredit?: "active" | "used_up" | "ended";
   managed?: { organizationId: string; organizationName: string };
@@ -495,7 +495,7 @@ export interface AppState {
   computerStarts: Record<string, ComputerStart>;
   deletingBots: Record<string, true>;
   computerControl: Record<string, ComputerControlState>;
-  signInFocus: { botId: string; messageId: string; url: string; site: string; place: import("../../shared/wire").Surface; requestId: number; consumed: boolean } | null;
+  signInFocus: { botId: string; messageId: string; url: string; site: string; place: import("../../shared/thread/wire").Surface; requestId: number; consumed: boolean } | null;
   focusMessage: { threadId: string; messageId: string; matchText?: string; nonce: number; consumed: boolean } | null;
   unreadDivider: { threadId: string; messageId: string } | null;
   connected: boolean;
@@ -673,7 +673,7 @@ export type Action =
  | { type: "toggleSettings"; open?: boolean; section?: BotSettingsSection; botId?: string }
  | { type: "togglePlugins"; open?: boolean; surface?: "apps" | "mcp" }
  | { type: "toggleNewBot"; open?: boolean }
- | { type: "openSignIn"; botId: string; messageId: string; url: string; site: string; place: import("../../shared/wire").Surface }
+ | { type: "openSignIn"; botId: string; messageId: string; url: string; site: string; place: import("../../shared/thread/wire").Surface }
  | { type: "signInFocusConsumed"; requestId: number }
  | { type: "toggleInspector"; open?: boolean }
  | { type: "toggleActivity"; open?: boolean }

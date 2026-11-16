@@ -1,4 +1,4 @@
-import { hasNativeAutoReview, supportsApprovalMode } from "../../shared/approval-mode.ts";
+import { hasNativeAutoReview, supportsApprovalMode } from "../../shared/tool/approval-mode.ts";
 import type { Level, LevelSource, OriginKind } from "./types.ts";
 
 export interface LevelInput {

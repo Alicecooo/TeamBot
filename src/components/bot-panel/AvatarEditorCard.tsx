@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ImagePlus, Loader2, Trash2 } from "lucide-react";
-import { cn } from "@/lib/cn";
-import { t } from "@/lib/i18n";
+import { cn } from "@/lib/ui/cn";
+import { t } from "@/lib/ui/i18n";
 import type { LocaleKey } from "@/locales";
 import type { Bot } from "@/state/store";
-import { portraitFromAvatarUrl } from "../../../shared/portrait-avatars";
-import { MascotAvatarPicker } from "../MascotAvatarPicker";
-import { AvatarFraming, OrganizationAvatarIcons, useAvatarImage, type AvatarPatch } from "../avatar-editing";
+import { portraitFromAvatarUrl } from "../../../shared/bot/portrait-avatars";
+import { MascotAvatarPicker } from "../bots/MascotAvatarPicker";
+import { AvatarFraming, OrganizationAvatarIcons, useAvatarImage, type AvatarPatch } from "../bots/avatar-editing";
 
 export type AvatarEditorTab = "bot" | "upload";
 const TABS: ReadonlyArray<readonly [AvatarEditorTab, LocaleKey]> = [

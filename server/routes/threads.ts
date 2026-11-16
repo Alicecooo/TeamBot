@@ -1,4 +1,4 @@
-import type { WireBot, WireTask } from "../../shared/wire.ts";
+import type { WireBot, WireTask } from "../../shared/thread/wire.ts";
 import { ATTACHMENTS_DIR, extensionForMime, FILE_MAX_BYTES, IMAGE_MAX_BYTES, parseAudioRange, readAttachment, saveFile, saveImageUpload, validateAttachmentUploadId, type SavedAttachment } from "../workspace/attachments.ts";
 import { deliveredCopy } from "../bots/bot-attachment.ts";
 import { memberBot, type Viewer, type VisibleSet } from "../bots/bot-visibility.ts";

@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import type { DriverCreateInput, ModelCatalog, ProviderInstance, RuntimeEvent, RuntimeEventListener, SendTurnInput, TextGenerationOptions } from "../harness/contracts.ts";
 import { newEventId, newId } from "../harness/contracts.ts";
-import { ASK_USER_TOOL, ASK_USER_TOOL_DEFINITION, askQuestionSummary, parseAskQuestions, questionChoices } from "../../shared/ask-question.ts";
-import { allowsTool, parseToolScope } from "../../shared/tool-scope.ts";
+import { ASK_USER_TOOL, ASK_USER_TOOL_DEFINITION, askQuestionSummary, parseAskQuestions, questionChoices } from "../../shared/tool/ask-question.ts";
+import { allowsTool, parseToolScope } from "../../shared/tool/tool-scope.ts";
 import { redactSecretsInText } from "../security/redact.ts";
 import { toolDetailPreview } from "../agent/tool-summary.ts";
 import { ChatToolSessionError, mountChatTools, type ChatToolDefinition, type ChatToolSession, type ChatToolResult } from "./chat-mcp-tools.ts";

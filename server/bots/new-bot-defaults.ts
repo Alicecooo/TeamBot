@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { profilePatchSchema, fitsOnOneLine } from "./bot-profile.ts";
-import { EFFORT_LEVELS } from "../../shared/wire.ts";
+import { EFFORT_LEVELS } from "../../shared/thread/wire.ts";
 import { isModelVariant } from "../harness/contracts.ts";
-import { parseToolScope, type ToolScope } from "../../shared/tool-scope.ts";
+import { parseToolScope, type ToolScope } from "../../shared/tool/tool-scope.ts";
 
 const strings = (max: number, length: number) => z.array(z.string().max(length)).max(max);
 

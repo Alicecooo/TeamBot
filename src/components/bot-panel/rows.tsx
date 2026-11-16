@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { ChevronLeft, ChevronRight, type LucideIcon } from "lucide-react";
 
-import { cn } from "@/lib/cn";
-import { t } from "@/lib/i18n";
-import { BOT_COLORS, type MausColor } from "@/lib/bot-appearance";
-import { Switch } from "../SettingsPrimitives";
+import { cn } from "@/lib/ui/cn";
+import { t } from "@/lib/ui/i18n";
+import { BOT_COLORS, type MausColor } from "@/lib/bots/bot-appearance";
+import { Switch } from "../settings/SettingsPrimitives";
 
 export const rowCls = "flex min-h-[46px] items-center gap-2.5 px-3.5 py-[11px]";
 const titleCls = "text-[13.5px] font-medium text-ink";

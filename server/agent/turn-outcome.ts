@@ -1,5 +1,5 @@
-import { errorTranscript } from "../../shared/client-cancel.ts";
-import { isOutboundTool } from "../../shared/outbound.ts";
+import { errorTranscript } from "../../shared/thread/client-cancel.ts";
+import { isOutboundTool } from "../../shared/tool/outbound.ts";
 import type { RuntimeEvent } from "../harness/contracts.ts";
 import { buildTurnDigest, digestTools } from "../observability/digest.ts";
 import { stopCause } from "../drivers/engine-errors.ts";

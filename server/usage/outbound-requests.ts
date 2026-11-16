@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { ConnectorCall } from "../../shared/outbound.ts";
+import type { ConnectorCall } from "../../shared/tool/outbound.ts";
 import { describeTool } from "../agent/activity.ts";
 
 export type OutboundAnswer = "allow" | "deny" | "timeout";

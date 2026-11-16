@@ -32,7 +32,6 @@ export const SPAWNED_PROXIES = {
   mcpGate: resolveProxy("mcp/mcp-gate"),
   mcpRemote: resolveProxy("mcp/mcp-remote-proxy"),
   hook: resolveProxy("hooks/omb-hook"),
-  piMcpExtension: resolveProxy("drivers/pi-mcp-extension"),
 } as const;
 
 // in the packaged app process.execPath is Electron — run the proxy as node

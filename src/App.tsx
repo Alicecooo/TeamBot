@@ -1,26 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Menu } from "lucide-react";
 import { openBot, StoreProvider, useStore } from "@/state/store";
-import { useShowThreads } from "@/lib/thread-preferences";
-import { ThreadRefsProvider } from "@/components/ThreadRefs";
-import { initAnalytics } from "@/lib/analytics";
-import { Sidebar } from "@/components/Sidebar";
-import { ChatView } from "@/components/ChatView";
-import { SIDEBAR_AND_PANEL_FIT, TWO_SIDE_PANELS_FIT, useMediaQuery } from "@/lib/use-media-query";
-import { PluginsPanel, preloadConnectedApps } from "@/components/PluginsPanel";
-import { ActivityPanel, BotSettingsDialog, InspectorPanel, NewBotDialog, preloadScreens, SettingsModal } from "@/components/lazy-screens";
-import { NotificationRail, NotificationsPanel } from "@/components/NotificationsPanel";
-import { useNotificationFeed } from "@/lib/notification-preferences";
-import { DesktopCapabilitiesProvider, useCaptionChrome, useDesktopCapabilities, WindowDragStrip } from "@/components/DesktopCapabilities";
-import { WindowCaptionButtons } from "@/components/WindowCaptionButtons";
-import { CommandPalette } from "@/components/CommandPalette";
-import { setLocale, t } from "@/lib/i18n";
+import { useShowThreads } from "@/lib/chat/thread-preferences";
+import { ThreadRefsProvider } from "@/components/chat/ThreadRefs";
+import { initAnalytics } from "@/lib/session/analytics";
+import { Sidebar } from "@/components/sidebar/Sidebar";
+import { ChatView } from "@/components/chat/ChatView";
+import { SIDEBAR_AND_PANEL_FIT, TWO_SIDE_PANELS_FIT, useMediaQuery } from "@/lib/ui/use-media-query";
+import { PluginsPanel, preloadConnectedApps } from "@/components/settings/PluginsPanel";
+import { ActivityPanel, BotSettingsDialog, InspectorPanel, NewBotDialog, preloadScreens, SettingsModal } from "@/components/chrome/lazy-screens";
+import { NotificationRail, NotificationsPanel } from "@/components/sidebar/NotificationsPanel";
+import { useNotificationFeed } from "@/lib/ui/notification-preferences";
+import { DesktopCapabilitiesProvider, useCaptionChrome, useDesktopCapabilities, WindowDragStrip } from "@/components/chrome/DesktopCapabilities";
+import { WindowCaptionButtons } from "@/components/chrome/WindowCaptionButtons";
+import { CommandPalette } from "@/components/sidebar/CommandPalette";
+import { setLocale, t } from "@/lib/ui/i18n";
 
-import { effectiveLanguage, useLanguageChoice } from "@/lib/language-preference";
-import { botShowsUnread } from "@/lib/bot-unread";
+import { effectiveLanguage, useLanguageChoice } from "@/lib/ui/language-preference";
+import { botShowsUnread } from "@/lib/bots/bot-unread";
 import { useExternalChatLinks } from "@/hooks/use-external-chat-links";
 import { useUsageSnapshot } from "@/hooks/use-usage-snapshot";
-import { ChatNotice } from "@/components/ChatErrorBanner";
+import { ChatNotice } from "@/components/chat/ChatErrorBanner";
 
 function Shell() {
   const { state, dispatch } = useStore();

@@ -1,17 +1,17 @@
 import { useState } from "react";
 
-import { cn } from "@/lib/cn";
-import { t } from "@/lib/i18n";
-import { friendlyEffort, simpleEffortLevels } from "@/lib/model-friendly";
+import { cn } from "@/lib/ui/cn";
+import { t } from "@/lib/ui/i18n";
+import { friendlyEffort, simpleEffortLevels } from "@/lib/models/model-friendly";
 import { currentTaskBot, useStore, type Bot } from "@/state/store";
-import type { ApprovalMode } from "../../../shared/approval-mode";
-import type { EffortLevel } from "../../../shared/wire";
-import { approvalModeOptionsFor } from "../ApprovalModeSelector";
-import { LocalComputerAutoWarning } from "../LocalComputerAutoWarning";
+import type { ApprovalMode } from "../../../shared/tool/approval-mode";
+import type { EffortLevel } from "../../../shared/thread/wire";
+import { approvalModeOptionsFor } from "../cards/ApprovalModeSelector";
+import { LocalComputerAutoWarning } from "../chat/LocalComputerAutoWarning";
 import { OutboundControl } from "../bot-settings/PermissionsSection";
 import { useBotEditor } from "../bot-settings/BotEditorContext";
-import { ModelPicker } from "../ModelPicker";
-import { ThreadModelsLine } from "../ThreadModelsLine";
+import { ModelPicker } from "../chat/ModelPicker";
+import { ThreadModelsLine } from "../chat/ThreadModelsLine";
 import { useBotApps } from "../bot-settings/useBotApps";
 import type { BotPatch, useBotSettingsDerived } from "../bot-settings/useBotSettingsDerived";
 import { AppsCard } from "./apps-and-logins";

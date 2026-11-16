@@ -1,4 +1,4 @@
-import type { ResolvedSender } from "../../shared/wire.ts";
+import type { ResolvedSender } from "../../shared/thread/wire.ts";
 import type { InstanceConfigMap } from "../harness/contracts.ts";
 import type { ProviderRegistry } from "../harness/registry.ts";
 import type { hostedModelPolicy } from "../deployment/hosted-models.ts";
