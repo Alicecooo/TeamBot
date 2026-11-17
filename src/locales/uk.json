@@ -812,7 +812,7 @@
   "connectors.grants.limited": "Боти з обмеженими інструментами: {count}",
   "connectors.grants.more": "+{count} ще",
   "place.view.local.line": "Використовує ваш екран, мишу і клавіатуру.",
-  "place.view.browser.short": "Лише вебсторінки",
+  "place.view.browser.short": "Browser removed",
   "place.action.tryAgain": "Спробувати ще раз",
   "place.view.ccOn.short": "Увімк.",
   "place.view.ccNew.short": "Готово",

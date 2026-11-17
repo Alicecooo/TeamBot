@@ -2,11 +2,10 @@ import { DEFAULT_OUTBOUND_POLICY } from "../../shared/tool/outbound.ts";
 import { readBotActivity } from "../agent/activity.ts";
 import { loadBrand } from "../deployment/brand.ts";
 
-import { DATA_DIR, EVENTS_DIR, NATIVE_DIR, instanceConfigs, type AppConfig } from "../config/config.ts";
+import { DATA_DIR, EVENTS_DIR, NATIVE_DIR } from "../config/config.ts";
 import { decisionsCsv, readDecisionRange, readDecisions } from "../observability/decision-log.ts";
 import { editionForMembers, editionStatus } from "../deployment/enterprise.ts";
 import type { OutboundCounts } from "../usage/outbound-counts.ts";
-import { loadPlanUsage, planAccountsFromInstances } from "../usage/plan-usage.ts";
 import type { Store } from "../storage/store.ts";
 import { readThreadEvents } from "../storage/thread-events.ts";
 import { parseUsageRange } from "../usage/usage-ledger.ts";
@@ -15,7 +14,6 @@ import { PASS, type RouteHandler } from "./table.ts";
 
 export interface StatusRouteDeps {
   store: Pick<Store, "bot" | "bots" | "tasks">;
-  cfg: AppConfig;
   outboundCounts: Pick<OutboundCounts, "today">;
   staticDir: string | null;
   sharedWorkspaceFullAccessEnabled(): boolean;
@@ -26,7 +24,7 @@ export interface StatusRouteDeps {
 
 export function createStatusRoutes(deps: StatusRouteDeps): RouteHandler {
   const {
-    store, cfg, outboundCounts, staticDir: STATIC_DIR, sharedWorkspaceFullAccessEnabled,
+    store, outboundCounts, staticDir: STATIC_DIR, sharedWorkspaceFullAccessEnabled,
 
   } = deps;
   return async ({ res, url, path, method, auth, json }) => {
@@ -61,16 +59,6 @@ export function createStatusRoutes(deps: StatusRouteDeps): RouteHandler {
       }
       const limit = parsedLimit;
       return json(res, 200, readThreadEvents({ eventsDir: EVENTS_DIR, nativeDir: NATIVE_DIR, threadId, limit }));
-    }
-
-    // Subscription windows (5-hour and weekly). Unlisted, so it stays admin.
-    if (method === "GET" && path === "/api/plan-usage") {
-      res.setHeader("cache-control", "no-store");
-      const report = await loadPlanUsage({
-        accounts: planAccountsFromInstances(instanceConfigs(cfg)),
-        refresh: url.searchParams.get("refresh") === "1",
-      });
-      return json(res, 200, report);
     }
 
     if (method === "GET" && path === "/api/decisions") {

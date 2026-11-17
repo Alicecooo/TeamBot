@@ -1,6 +1,5 @@
 // What GET /api/config tells the app about the server and its settings (re-exported by store.tsx).
 import type { OnboardingStatus } from "@/lib/session/onboarding";
-import type { ModelSelection } from "./store";
 
 /** GET /api/config — configured flags only; secrets are never echoed. */
 export interface ConfigStatus {
@@ -17,19 +16,12 @@ export interface ConfigStatus {
   composio: { configured: boolean; mode?: "managed" | "self-hosted" | "unavailable" };
   /** `included`: cloud computers come with Cloud Pro, no key is saved. */
   box: { configured: boolean; included?: boolean };
-  /** Per-call ceiling (minutes) for a bot's MCP tools. Absent from servers
-   * older than the setting; read it with mcpCallTimeoutMinutes(). */
-  mcp?: { callTimeoutMinutes: number };
-  threads?: { maxConcurrentPerBot: number; eventLogMaxBytes?: number; eventLogRetentionDays?: number };
-  automaticRecovery?: { enabled: boolean; backup?: ModelSelection };
-  /** Prompt-cache keep-warm for idle Claude threads. Absent from older servers. */
-  cacheKeepWarm?: { enabled: boolean; windowMinutes: number };
   /** who's using the app — collected in onboarding, shown in the sidebar */
   profile?: { name: string; email: string; aboutMe?: string };
   /** UI language override; "" (or absent) follows the system language. */
   language?: string;
   /** Opt-in flags. Absent means off. */
-  features?: { skillAuthoring: boolean; showToolCalls?: boolean; sharedComputers?: boolean; claudeUserMcp?: boolean; llmThreadTitles?: boolean; skillsLibrary?: boolean; shareLearnedSkills?: "off" | "ask" | "auto" };
+  features?: { skillAuthoring: boolean; showToolCalls?: boolean; sharedComputers?: boolean; llmThreadTitles?: boolean; skillsLibrary?: boolean; shareLearnedSkills?: "off" | "ask" | "auto" };
   /** First-run progress: whether the welcome tour was finished and which
    * one-time hints were dismissed. Server-owned so it follows the workspace. */
   onboarding?: OnboardingStatus;

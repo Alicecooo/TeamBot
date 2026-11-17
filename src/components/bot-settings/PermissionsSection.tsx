@@ -33,7 +33,6 @@ export function PermissionsSection({
   const displaySectionName = sectionName === "General" ? t("botAccess.teams.general") : sectionName;
   const [localAutoWarning, setLocalAutoWarning] = useState<string | null>(null);
   const shows = (part: PermissionsPart) => !parts || parts.includes(part);
-  const displayedApprovalMode = engine?.driverKind === "antigravityAgent" && approvalMode === "auto" ? "ask" : approvalMode;
   const autoOffered = approvalModeOptionsFor(engine?.driverKind ?? "", trustedModesAvailable)
     .some((option) => option.mode === "auto");
   const applyFullEverywhere = () =>
@@ -130,7 +129,7 @@ export function PermissionsSection({
           <Segmented
             attr="data-approval-choice"
             label={t("botSettings.simple.beforeActs", { name: bot.name })}
-            value={displayedApprovalMode}
+            value={approvalMode}
             onChange={setApprovalMode}
             options={[
               { value: "ask", label: t("botSettings.simple.ask"), disabled: Boolean(bot.busy) },
@@ -139,7 +138,7 @@ export function PermissionsSection({
             ]}
           />
         </div>
-        {!draft && displayedApprovalMode === "auto" && <div className="mt-4 border-t border-hairline/40 pt-4">
+        {!draft && approvalMode === "auto" && <div className="mt-4 border-t border-hairline/40 pt-4">
           <OutboundControl key={bot.id} bot={bot} onChange={(outbound) => patch({ outbound })} embedded />
         </div>}
       </div>}

@@ -195,33 +195,6 @@ export class RuntimeCoordinator implements Coordinator {
     return this.runtime.status(id);
   }
 
-  job(threadId: string, since: number, botId?: string): { scopes: string[]; rows: Assignment[] } {
-    this.ready();
-    const given = new Map<string, Assignment>();
-    for (const a of this.store.all({ ownerThreadId: threadId, roots: true, openSince: since })) {
-      if (a.assignee.destination.threadId === threadId) given.set(a.id, a);
-    }
-    if (botId) for (const a of this.store.all({ assignee: { botId, threadId }, openSince: since })) given.set(a.id, a);
-    const rows = new Map<string, Assignment>();
-    const scopes: string[] = [];
-    for (const start of [...given.values()].sort((a, b) => a.createdAt - b.createdAt)) {
-      if (rows.has(start.id)) continue;
-      scopes.push(start.id);
-      const subtree = start.parentId ? this.subtree(start) : this.store.all({ rootId: start.id });
-      for (const a of subtree) rows.set(a.id, a);
-    }
-    return { scopes, rows: [...rows.values()].sort((a, b) => a.createdAt - b.createdAt) };
-  }
-
-  private subtree(start: Assignment): Assignment[] {
-    const out = [start];
-    const seen = new Set([start.id]);
-    for (let i = 0; i < out.length; i++) {
-      for (const child of this.store.children(out[i]!.id)) if (!seen.has(child.id)) { seen.add(child.id); out.push(child); }
-    }
-    return out;
-  }
-
   poll(owner: Owner): { items: StatusView["inbox"]; assignments: HandoffView[] } {
     this.ready();
     const polled = this.runtime.poll(owner);

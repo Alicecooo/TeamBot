@@ -42,23 +42,12 @@ export function approvalModeOptions(): ApprovalModeOption[] {
 export function approvalModeOptionsFor(driverKind: string, trustedModesAvailable = true) {
   return approvalModeOptions()
     .filter((option) => supportsApprovalMode(driverKind, option.mode)
-      // Antigravity has no native reviewer: its full-access grant is shown as Auto below, and the real Auto, which
-      // behaves as Ask, is not offered.
-      && (driverKind !== "antigravityAgent" || option.mode !== "auto")
       && (trustedModesAvailable || option.mode !== "custom"))
-    .map((option) => {
-      if (driverKind === "antigravityAgent" && option.mode === "full") {
-        return {
-          ...option,
-          label: t("approvalMode.antigravity.label"),
-          chip: t("approvalMode.auto.chip"),
-          description: t("approvalMode.antigravity.desc"),
-        };
-      }
-      return option.mode === "auto" && !hasNativeAutoReview(driverKind)
+    .map((option) => (
+      option.mode === "auto" && !hasNativeAutoReview(driverKind)
         ? { ...option, description: t("approvalMode.noNativeReview") }
-        : option;
-    });
+        : option
+    ));
 }
 
 export function approvalModeSelectionRequiresLocalDesktop(
@@ -67,9 +56,4 @@ export function approvalModeSelectionRequiresLocalDesktop(
 ) {
   // Custom cannot leave through HTTP even while the provider instance is missing, so the lock follows the durable mode.
   return currentMode === "custom" && !trustedModesAvailable;
-}
-
-/** The mode to show as chosen. Security: old Antigravity Auto settings still ask; never display or silently grant the new Auto until it is chosen. */
-export function shownApprovalMode(driverKind: string, savedMode: ApprovalMode): ApprovalMode {
-  return driverKind === "antigravityAgent" && savedMode === "auto" ? "ask" : savedMode;
 }

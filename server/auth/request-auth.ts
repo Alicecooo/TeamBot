@@ -341,14 +341,9 @@ export interface ResolveOptions {
   features?: { sharedComputers?: boolean };
   /** Absent is `owner`; ignored while loopbackMutationToken is in force. */
   loopbackTrust?: LoopbackTrust;
-  /** Under `service`: a per-launch secret from `openmausbot serve` over stdin (never env, which other children read); it opens only pairing codes. */
-  cliOwnerToken?: string;
   /** resolveLoopbackTrust's `localBrowsers`: a development server lets this machine's browsers use loopback trust. */
   trustLocalBrowser?: boolean;
 }
-
-const CLI_OWNER_HEADER = "x-openmausbot-cli-owner";
-const CLI_OWNER_ROUTE = /^\/api\/auth\/pairing$/;
 
 const DESKTOP_OWNER_HEADER = "x-openmausbot-desktop-owner";
 
@@ -430,12 +425,6 @@ export function resolveRequestAuth(req: IncomingMessage, options: ResolveOptions
       return deny(403, "forbidden: this change must come from the desktop app or an authenticated session");
     }
     if (options.loopbackMutationToken === undefined && options.loopbackTrust === "service") {
-      if (
-        options.cliOwnerToken && CLI_OWNER_ROUTE.test(path) && ["GET", "POST"].includes(method.toUpperCase()) &&
-        secureTokenMatch(headerValue(req.headers[CLI_OWNER_HEADER]), options.cliOwnerToken)
-      ) {
-        return { auth: { kind: "loopback", scopes: LOOPBACK_SCOPES }, status: 401, error: "" };
-      }
       // On a shared server "local" includes every bot's shell: default deny outside SERVICE_ALLOW.
       if (!serviceAllowed(method, path)) {
         return deny(403, "forbidden: on this shared server a local request without a session may only use the service routes; sign in to change settings, people or access");

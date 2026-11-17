@@ -10,18 +10,12 @@ import { computerStartLine } from "@/lib/desktop/computer-start";
 import { useCaptionChrome, useDesktopCapabilities } from "@/components/chrome/DesktopCapabilities";
 import { currentTaskBot, useStore, formatTime, visibleMessages, type Action, type Bot, type InstanceInfo, type Message, type AppState, awayFromMainThread, openBot } from "@/state/store";
 import { EngineSetup } from "../settings/EngineSetup";
-import { CHATGPT_USAGE_URL, ManageUsageLink } from "./ChatGptPlanStatus";
-import { CODEX_USAGE_URL, codexUsageLimitReached } from "../../../shared/data/codex-usage-limit";
-import { ClaudeUpdatePrompt } from "./ClaudeUpdatePrompt";
-import { failedTurnCause, signedOutEngine } from "@/lib/chat/failed-turn";
+import { failedTurnCause } from "@/lib/chat/failed-turn";
 import { plainErrorLine } from "@/lib/ui/plain-error";
 import { openPlaceAction, placeRowViewFor, usePlaceSeat, worksOnSimpleLabel } from "@/lib/sidebar/place-view";
 import type { PlaceRow } from "../../../shared/view/place-view";
-import { trialCreditKind, type TrialCreditRefusal } from "../../../shared/data/trial-credit";
-import { TrialCreditNotice } from "../settings/TrialCreditNotice";
 import { isPureLeakedSystemHarnessMessage, stripLeakedSystemHarnessMessages } from "../../../shared/thread/system-message-guard.ts";
 import { ConversationalReply, QuickModelNote, useReplySegments, useThreadOpenedAt } from "./ConversationalReply";
-import type { LocaleKey } from "@/locales";
 import { isProviderSafetyBlock, PROVIDER_SAFETY_GUIDANCE, PROVIDER_SAFETY_HELP_URL } from "../../../shared/tool/provider-safety";
 import { isCancelledTranscriptRow } from "../../../shared/thread/client-cancel";
 import { BotAvatar } from "../bots/Avatar";
@@ -162,18 +156,15 @@ export function ErrorRow({
   onRetry,
   action,
   setupInstance,
-  claudeUpdateInstance,
 }: {
   message: string;
   headline?: string;
   onRetry?: () => void;
   action?: { label: string; onClick: () => void } | null;
   setupInstance?: InstanceInfo;
-  claudeUpdateInstance?: InstanceInfo;
 }) {
 
   const headline = plainHeadline ?? message;
-  const usageUrl = message.includes("subscription_sharing_usage_limit_exceeded") ? CHATGPT_USAGE_URL : codexUsageLimitReached(message) ? CODEX_USAGE_URL : null;
   return (
     <div className="flex justify-start">
       <div className="w-fit max-w-[min(var(--chat-bubble-max),var(--chat-bubble-pct))] rounded-xl border border-danger/30 bg-danger/10 px-3.5 py-2.5 text-[13.5px] text-danger">
@@ -182,12 +173,7 @@ export function ErrorRow({
           <span className="min-w-0 break-words">{headline}</span>
         </div>
         {headline !== message && <details className="mt-2 text-[12px] text-ink-secondary"><summary className="cursor-pointer">{t("chat.error.details")}</summary><p className="mt-1 break-words">{message}</p></details>}
-        
-        {usageUrl ? (
-          <ManageUsageLink href={usageUrl} className="ui-button ui-button-md mt-2 border-transparent bg-ink text-app hover:brightness-110" />
-        ) : claudeUpdateInstance ? (
-          <ClaudeUpdatePrompt instance={claudeUpdateInstance} onRetry={onRetry} />
-        ) : isProviderSafetyBlock(message) ? (
+        {isProviderSafetyBlock(message) ? (
           <p className="mt-2 text-[12.5px] leading-relaxed text-ink-secondary">
             {PROVIDER_SAFETY_GUIDANCE}{" "}
             <a href={PROVIDER_SAFETY_HELP_URL} target="_blank" rel="noreferrer" className="underline">{t("ui.provider.safety")}</a>
@@ -238,18 +224,6 @@ function PlaceFailedRow({ place, botId, threadId, onRetry }: {
   return <ErrorRow message={view.line} action={view.action && onClick ? { label: view.action.label, onClick } : null} />;
 }
 
-const TRIAL_CREDIT_LINE: Record<"paused" | "too_low", LocaleKey> = { paused: "engines.trialCreditPaused", too_low: "engines.trialCreditTooLow" };
-function TrialCreditFailedRow({ kind, onRetry }: { kind: TrialCreditRefusal; onRetry?: () => void }) {
-  const { dispatch } = useStore();
-  if (kind === "used_up" || kind === "ended") return <TrialCreditNotice kind={kind} />;
-  if (kind === "paused") return <ErrorRow message={t(TRIAL_CREDIT_LINE[kind])} onRetry={onRetry} />;
-  return <ErrorRow message={t(TRIAL_CREDIT_LINE[kind])} action={{ label: t("chat.error.connectOwnAi"), onClick: () => dispatch({ type: "toggleAppSettings", open: true, section: "engines" }) }} />;
-}
-
-export function claudeUpdateTarget(engine: InstanceInfo | undefined): InstanceInfo | undefined {
-  return engine?.driverKind === "claudeAgent" && !engine.readOnly ? engine : undefined;
-}
-
 export function FailedTurnRow({ tool, engine, onRetry, botId, threadId }: {
   tool: NonNullable<Message["tool"]>;
   engine: InstanceInfo | undefined;
@@ -258,17 +232,13 @@ export function FailedTurnRow({ tool, engine, onRetry, botId, threadId }: {
   threadId?: string;
 }) {
   if (tool.place && botId) return <PlaceFailedRow place={tool.place} botId={botId} threadId={threadId} onRetry={onRetry} />;
-  const credit = trialCreditKind(failedTurnCause(tool.name) ?? "");
-  if (credit) return <TrialCreditFailedRow kind={credit} onRetry={onRetry} />;
-  const signedOut = signedOutEngine(tool, engine);
   const cause = failedTurnCause(tool.name) ?? tool.name;
   return (
     <ErrorRow
       message={cause}
-      headline={signedOut ? t("chat.error.signedOut", { name: signedOut.displayName }) : plainErrorLine(cause)}
+      headline={plainErrorLine(cause)}
       onRetry={onRetry}
       setupInstance={tool.setup ? engine : undefined}
-      claudeUpdateInstance={tool.claudeUpdate ? claudeUpdateTarget(engine) : undefined}
     />
   );
 }

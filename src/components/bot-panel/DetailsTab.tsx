@@ -31,8 +31,6 @@ export function DetailsTab({ bot, derived, onOpen }: {
   const apps = useBotApps(bot);
   const { patch, approvalMode, engine, trustedModesAvailable } = derived;
 
-  // Antigravity's old Auto still executes as Ask: show that without changing the saved mode or granting Full.
-  const displayedApprovalMode = engine?.driverKind === "antigravityAgent" && approvalMode === "auto" ? "ask" : approvalMode;
   const autoOffered = approvalModeOptionsFor(engine?.driverKind ?? "", trustedModesAvailable)
     .some((option) => option.mode === "auto");
   const chooseMode = (mode: Extract<ApprovalMode, "ask" | "auto" | "full">) => {
@@ -85,7 +83,7 @@ export function DetailsTab({ bot, derived, onOpen }: {
           <Segmented
             attr="data-approval-choice"
             label={t("botSettings.simple.beforeActs", { name: bot.name })}
-            value={displayedApprovalMode}
+            value={approvalMode}
             onChange={chooseMode}
             options={[
               { value: "ask", label: t("botSettings.simple.ask"), tooltip: t("botSettings.simple.askHint"), disabled: Boolean(bot.busy) },
@@ -94,7 +92,7 @@ export function DetailsTab({ bot, derived, onOpen }: {
             ]}
           />
         </ColRow>
-        {!draft && displayedApprovalMode === "auto" && <OutboundControl key={bot.id} bot={bot} onChange={(outbound) => patch({ outbound })} embedded />}
+        {!draft && approvalMode === "auto" && <OutboundControl key={bot.id} bot={bot} onChange={(outbound) => patch({ outbound })} embedded />}
       </Card>
 
       <AppsCard bot={bot} derived={derived} apps={apps} onOpenAccess={() => onOpen("apps")} />

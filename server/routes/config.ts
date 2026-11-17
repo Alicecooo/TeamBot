@@ -3,7 +3,6 @@ import { changedInstanceIds, engineLaunches, loadConfig, parseConfigPatch, saveC
 import type { InstanceConfigMap, ModelSelection } from "../harness/contracts.ts";
 import type { ProviderRegistry } from "../harness/registry.ts";
 import { HOSTED_PROVIDER_SETTINGS_ERROR } from "../deployment/hosted-models.ts";
-import type { SessionRegistry } from "../auth/sessions.ts";
 import { parseSkillMd } from "../skills/skills.ts";
 import type { Store } from "../storage/store.ts";
 import { PASS, type RouteHandler } from "./table.ts";
@@ -21,7 +20,6 @@ export interface ConfigRouteDeps {
   store: Pick<Store, "bots" | "patchBot">;
   cfg: AppConfig;
   registry: Pick<ProviderRegistry, "get" | "forgetSnapshots">;
-  sessions: Pick<SessionRegistry, "revalidateEmailSessions">;
 
   hostedModels: boolean;
 
@@ -39,7 +37,7 @@ export interface ConfigRouteDeps {
 }
 
 export function createConfigRoutes(deps: ConfigRouteDeps): RouteHandler {
-  const { cfg, registry, sessions, hostedModels, providerConfigs, providerConfigBusy, checkedModelSelection, policyModelRefusal, configStatus, configForAccess, revokeEngineCapabilities, reloadProviders, broadcast, drainQueuedSends } = deps;
+  const { cfg, registry, hostedModels, providerConfigs, providerConfigBusy, checkedModelSelection, configStatus, configForAccess, revokeEngineCapabilities, reloadProviders, broadcast, drainQueuedSends } = deps;
 
   return async ({ req, res, url, path, method, auth, json, readBody }) => {
     // Secrets are never echoed back: booleans only.
@@ -66,15 +64,7 @@ export function createConfigRoutes(deps: ConfigRouteDeps): RouteHandler {
         const checked = checkedModelSelection(patch.defaultModelSelection);
         if (!checked.ok) return json(res, checked.status, { error: checked.error });
       }
-      if (patch.automaticRecovery?.enabled) {
-        const checked = checkedModelSelection(patch.automaticRecovery.backup, undefined, true);
-        if (!checked.ok) return json(res, checked.status, { error: checked.error });
-        const target = registry.get(checked.selection.instanceId)!;
-        if (!target.enabled) return json(res, 400, { error: "Enable the backup engine before selecting it for recovery." });
-        const refusal = policyModelRefusal(target);
-        if (refusal) return json(res, 403, { error: refusal, code: "managed_policy" });
-        patch.automaticRecovery.backup = checked.selection;
-      }
+      delete patch.automaticRecovery;
       if (!Object.keys(patch).length) return json(res, 400, { error: "nothing to save" });
       if (providerConfigBusy.get()) return json(res, 409, { error: "provider settings are already being updated" });
       providerConfigBusy.set(true);
@@ -110,9 +100,6 @@ export function createConfigRoutes(deps: ConfigRouteDeps): RouteHandler {
         }
         registry.forgetSnapshots();
 
-        if (patch.signIn !== undefined) {
-          sessions.revalidateEmailSessions();
-        }
         const changedEngines = new Set(changedInstanceIds(enginesBefore, engineLaunches(providerConfigs())));
         // Revoked before any await: a changed engine's old children are invalid at once.
         revokeEngineCapabilities(changedEngines);

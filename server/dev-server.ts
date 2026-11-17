@@ -23,13 +23,10 @@ if (paDevelopment) {
       : `Explicitly restore a verified complete data backup into ${dataDir}.`;
     throw new Error(`Touko business database is missing: ${join(dataDir, "messages.db")}. ${recovery} No archive is imported automatically.`);
   }
-  for (const key of Object.keys(process.env)) if (/^CODEX_/i.test(key)) delete process.env[key];
-  process.env.CODEX_HOME = join(developmentRoot, ".runtime", "codex");
   const tools = join(developmentRoot, ".tools");
-  const inheritedPath = (process.env.PATH ?? "").split(delimiter).filter((part) =>
-    !/codex-runtimes|openai\.codexprimaryruntime|openai\.codex_|openai[\\/]codex|[\\/]\.codex[\\/](?:bin|tmp)(?:[\\/]|$)/i.test(part));
+  const inheritedPath = (process.env.PATH ?? "").split(delimiter).filter(Boolean);
   process.env.PATH = [dirname(process.execPath), join(tools, "node_modules", ".bin"),
-    join(tools, "pnpm-bin"), join(tools, "agent-clis"), join(tools, "agent-clis", "node_modules", ".bin"),
+    join(tools, "pnpm-bin"),
     ...inheritedPath].join(delimiter);
 }
 

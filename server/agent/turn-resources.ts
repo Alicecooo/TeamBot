@@ -6,7 +6,7 @@ export type TurnOwner = {
   computerParkedOn?: string;
 };
 
-/** Whole-turn claims on app-managed resources (a desktop, a browser session, a phone), so a screenshot and its click see the same desktop. Not a shell sandbox. */
+/** Whole-turn claims on app-managed resources (a desktop or a browser session), so a screenshot and its click see the same desktop. Not a shell sandbox. */
 export class TurnResources {
   private readonly owners = new Map<string, TurnOwner>();
   /** Only turns actually waiting: a lazy claim that failed once and moved on must not block the front. */

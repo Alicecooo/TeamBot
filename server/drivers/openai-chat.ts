@@ -71,7 +71,7 @@ function providerError(json: CompletionJson): string | null {
 
 const MACHINE_CODE = /^[a-z][a-z0-9_]*$/;
 
-/** A failed response's own error message, then its machine code (trial-credit.ts parses it), else the raw body. */
+/** A failed response's own error message, then its machine code, else the raw body. */
 function httpErrorDetail(body: string, limit = 500): string {
   let json: CompletionJson | undefined;
   try { json = object(JSON.parse(body)); } catch { json = undefined; }
@@ -100,7 +100,6 @@ interface RuntimeOptions<Config> {
   unavailableReason: string;
   timeoutMs: number;
   nativeLog: NativeLog;
-  refreshModels?: () => Promise<void>;
   generateModel?: () => string;
   reasoning?: boolean;
   /** Cerebras rejects `reasoning_content` and takes `reasoning`. */
@@ -848,7 +847,6 @@ export function createOpenAIChatRuntime<Config>(options: RuntimeOptions<Config>)
     get models() {
       return options.models();
     },
-    ...(options.refreshModels ? { refreshModels: options.refreshModels } : {}),
     snapshot: async () => {
       if (!options.apiKey) return { state: "unavailable", reason: options.unavailableReason };
       if (keyRejected(options.apiUrl, options.apiKey)) return { state: "available", authenticated: false, reason: KEY_REJECTED_REASON, version: null };

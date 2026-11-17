@@ -146,20 +146,8 @@ export interface WireTask {
    * Derived at projection, never stored. */
   surfaceAuto?: true;
   usage?: TaskUsage;
-  /** Prompt-cache keep-warm status for this thread, derived at projection;
-   * absent when no window is open. */
-  cacheKeepWarm?: CacheKeepWarmStatus;
   /** the folder this task's turns run in, pinned on its first turn. */
   cwd?: string | null;
-}
-
-/** One thread's keep-warm window as a client shows it. Times are epoch ms. */
-export interface CacheKeepWarmStatus {
-  state: "warm" | "stopped";
-  until?: number;
-  nextPingAt?: number;
-  last?: { at: number; read: number; write: number; costUsd: number | null };
-  stopped?: string;
 }
 
 /** A lightweight organizational label within one bot. */
@@ -304,9 +292,6 @@ export interface WireBot {
    * MEMORY.md and topic files, adds facts about the person to About me and
    * tidies nightly. On unless explicitly false. */
   memoryUpkeep?: boolean;
-  /** Prompt-cache keep-warm for this bot's Claude threads: true or false
-   * overrides the workspace setting; absent follows it. */
-  cacheKeepWarm?: boolean;
   /** false: the workspace's helper model never writes this bot's background texts. Absent or true: allowed. */
   helperModel?: boolean;
   /** Which of the app-wide MCP servers this bot mounts, by name. */
@@ -385,10 +370,7 @@ export interface WireMessage {
   /** activity messages: tool name + outcome. */
   tool?: {
     name: string; ok?: boolean; setup?: boolean; terminal?: boolean; summary?: string; input?: string; output?: string;
-    /** error rows: the installed Claude Code is too old for the model, and
-     * the UI can offer to update it in place. */
-    claudeUpdate?: boolean;
-  /** error rows: the place this turn could not use. */
+    /** error rows: the place this turn could not use. */
     place?: PlaceRow;
     /** Provider item identity, scoped to the owning turn. */
     itemId?: string;

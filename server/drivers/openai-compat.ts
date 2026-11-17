@@ -93,11 +93,6 @@ export const OpenAICompatDriver: ProviderDriver<OpenAICompatConfig> = {
     access: "api",
   },
   models: DEFAULT_MODELS,
-  install: {
-    docsUrl: "https://openrouter.ai/keys",
-    settings: "connections",
-    signInCommand: "Save an OpenAI-compatible API key in Settings → API keys, or set OPENAI_COMPAT_API_KEY on the server.",
-  },
   decodeConfig,
   defaultConfig: () => decodeConfig({}),
 
@@ -174,7 +169,6 @@ export const OpenAICompatDriver: ProviderDriver<OpenAICompatConfig> = {
       tools: config.tools,
       computerUse: true,
       models: () => catalog,
-      refreshModels: fetchModels,
       requestBody: (model, messages, stream) => ({
         model,
         messages,

@@ -106,7 +106,6 @@ const RESERVED_MCP_NAMES = new Set([
   "computer",
   "agents",
   "composio",
-  "phone",
   "dweb",
   "openmausbot_connectors",
   

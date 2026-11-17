@@ -1,7 +1,7 @@
 // Per-bot Agent Skills: imports keep SKILL.md only and land disabled; learned skills may add reviewed references/<topic>.md files.
 import { createHash, randomUUID } from "node:crypto";
-import { closeSync, constants, existsSync, fstatSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { closeSync, constants, existsSync, fstatSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { z } from "zod";
 
 import { writeFileAtomic } from "../storage/atomic.ts";
@@ -9,7 +9,6 @@ import { DATA_DIR } from "../config/config.ts";
 import { redactSecretsInText } from "../security/redact.ts";
 import { LEARN_SOURCE_PREFIX } from "./skill-learn.ts";
 import { libraryDescriptionsAt, librarySkillFilePath, listLibrarySkills, type LibrarySkillListing } from "./skill-library.ts";
-import { readManagedLinks, writeManagedLinks } from "./skill-link-registry.ts";
 import { directoryEntryState, entryExistsWithoutFollowing, formatKb, isSkillReferencePath, learnedSkillDirectoryMatches, publishReviewedRevision, readReferenceFiles, referenceLimitError, referencePathError, REFERENCES_ADVICE, skillReferencesSha256, STAGED_SKILL_FILE_MAX_BYTES } from "./skill-storage.ts";
 import { workspaceDir } from "../workspace/workspace.ts";
 import { isSkillName, parseSkillMd, scanSkillText, SKILL_FILE_MAX_BYTES, type ParsedSkill } from "../../shared/skill/skill-md.ts";
@@ -131,35 +130,6 @@ function skillTarget(root: string, name: string, entry: SkillManifestEntry): str
     : join(root, "skills", name);
 }
 
-/** Checks each app-created level without following symlinks before scanning or creating below it. */
-function nativeLinkDirectory(root: string, relative: string, create: boolean): string | null {
-  const [family, leaf] = relative.split("/");
-  if (!family || !leaf) return null;
-  const familyDir = join(root, family);
-  let familyState = directoryEntryState(familyDir);
-  if (familyState === "missing" && create) {
-    try {
-      mkdirSync(familyDir, { mode: 0o700 });
-    } catch {
-      return null;
-    }
-    familyState = directoryEntryState(familyDir);
-  }
-  if (familyState !== "directory") return null;
-
-  const linkDir = join(familyDir, leaf);
-  let linkState = directoryEntryState(linkDir);
-  if (linkState === "missing" && create) {
-    try {
-      mkdirSync(linkDir, { mode: 0o700 });
-    } catch {
-      return null;
-    }
-    linkState = directoryEntryState(linkDir);
-  }
-  return linkState === "directory" ? linkDir : null;
-}
-
 /** Approval and enablement state stays outside the bot's working directory. */
 function skillStateDir(botId: string): string {
   return join(DATA_DIR, "skill-state", botId);
@@ -212,212 +182,9 @@ function readManifest(botId: string): SkillManifest {
   return migrated;
 }
 
-function comparablePath(path: string): string {
-  const normalized = resolve(path).replace(/^\\\\\?\\/, "");
-  return process.platform === "win32" ? normalized.toLowerCase() : normalized;
-}
-
-function nativeLinkPointsToSkill(link: string, target: string): boolean {
-  try {
-    if (!lstatSync(link).isSymbolicLink()) return false;
-    try {
-      return comparablePath(realpathSync(link)) === comparablePath(realpathSync(target));
-    } catch {
-      const rawTarget = readlinkSync(link);
-      const resolvedTarget = resolve(dirname(link), rawTarget.replace(/^\\\\\?\\/, ""));
-      return comparablePath(resolvedTarget) === comparablePath(target);
-    }
-  } catch {
-    return false;
-  }
-}
-
-function nativeLinkDirectlyTargetsOwnedSkill(
-  link: string,
-  root: string,
-  name: string,
-  revisionWasManaged: boolean,
-  targetBaseDirectory = dirname(link),
-): boolean {
-  try {
-    if (!lstatSync(link).isSymbolicLink()) return false;
-    const rawTarget = readlinkSync(link);
-    const resolvedTarget = resolve(targetBaseDirectory, rawTarget.replace(/^\\\\\?\\/, ""));
-    const insideSkills = relative(join(root, "skills"), resolvedTarget).replaceAll("\\", "/");
-    return insideSkills === name || (revisionWasManaged && /^\.revisions\/[a-f0-9]{64}$/.test(insideSkills));
-  } catch {
-    return false;
-  }
-}
-
-type NativeLinkRemoval = "removed" | "preserved" | "retry";
-
-/** renameSync is the identity boundary: a workspace process can replace the name, not which entry was moved. */
-function removeOwnedNativeLink(
-  botId: string,
-  link: string,
-  root: string,
-  name: string,
-  revisionWasManaged: boolean,
-  beforeRemove?: (link: string) => void,
-): NativeLinkRemoval {
-  const quarantineDir = join(skillStateDir(botId), "link-removal");
-  try {
-    mkdirSync(quarantineDir, { recursive: true, mode: 0o700 });
-  } catch {
-    return "retry";
-  }
-  const quarantined = join(quarantineDir, randomUUID());
-  beforeRemove?.(link);
-  try {
-    renameSync(link, quarantined);
-  } catch {
-    return nativeLinkDirectlyTargetsOwnedSkill(link, root, name, revisionWasManaged)
-      ? "retry"
-      : "preserved";
-  }
-
-  if (nativeLinkDirectlyTargetsOwnedSkill(
-    quarantined,
-    root,
-    name,
-    revisionWasManaged,
-    dirname(link),
-  )) {
-    try {
-      unlinkSync(quarantined);
-      return "removed";
-    } catch {
-      try {
-        if (!entryExistsWithoutFollowing(link)) renameSync(quarantined, link);
-      } catch {}
-      return "retry";
-    }
-  }
-
-  try {
-    if (!entryExistsWithoutFollowing(link)) renameSync(quarantined, link);
-  } catch {}
-  return "preserved";
-}
-
 function writeManifest(botId: string, manifest: SkillManifest): void {
   mkdirSync(skillStateDir(botId), { recursive: true, mode: 0o700 });
   writeFileAtomic(manifestPath(botId), `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600 });
-}
-
-const NATIVE_SKILL_DIRS = [".claude/skills", ".agents/skills", ".grok/skills"];
-
-/** Compares link text, never real paths: an unsafe skills/ root is not followed, and a user-replaced link stays. */
-function removeNativeLinksForUnsafeSkillsRoot(
-  botId: string,
-  root: string,
-  linkRoot: string,
-  threadId: string | undefined,
-  previouslyManaged: string[],
-  beforeRemove?: (link: string) => void,
-): void {
-  const retry = new Set<string>();
-  for (const dir of NATIVE_SKILL_DIRS) {
-    const linkDir = nativeLinkDirectory(linkRoot, dir, false);
-    if (!linkDir) {
-      for (const name of previouslyManaged) retry.add(name);
-      continue;
-    }
-    let existing: string[];
-    try {
-      existing = readdirSync(linkDir).filter(isSkillName);
-    } catch {
-      for (const name of previouslyManaged) retry.add(name);
-      continue;
-    }
-    for (const name of new Set([...existing, ...previouslyManaged])) {
-      const link = join(linkDir, name);
-      if (!nativeLinkDirectlyTargetsOwnedSkill(link, root, name, previouslyManaged.includes(name))) continue;
-      const result = removeOwnedNativeLink(
-        botId,
-        link,
-        root,
-        name,
-        previouslyManaged.includes(name),
-        beforeRemove,
-      );
-      if (result === "retry") retry.add(name);
-    }
-  }
-  try {
-    writeManagedLinks(botId, [...retry], threadId);
-  } catch {
-  }
-}
-
-/** Links, not copies; junctions on Windows, where directory symlinks need privileges. */
-export function syncSkillLinks(
-  botId: string,
-  options: { beforeRemove?: (link: string) => void; task?: { threadId: string; folder: string } } = {},
-): void {
-  const root = workspaceDir(botId);
-  const linkRoot = options.task?.folder ?? root, threadId = options.task?.threadId;
-  const previouslyManaged = readManagedLinks(botId, threadId);
-  // The bot can replace its skills root: never follow it, but still revoke existing app links.
-  if (directoryEntryState(skillsDir(botId)) === "unsafe") {
-    removeNativeLinksForUnsafeSkillsRoot(botId, root, linkRoot, threadId, previouslyManaged, options.beforeRemove);
-    return;
-  }
-  const manifest = readManifest(botId);
-  const enabled = Object.entries(manifest).filter(
-    ([name, entry]) => entry.enabled && skillContentMatches(botId, name, entry),
-  );
-  const desired = new Map(enabled.map(([name, entry]) => [name, skillTarget(root, name, entry)]));
-  const managed = new Set<string>();
-  for (const dir of NATIVE_SKILL_DIRS) {
-    const linkDir = nativeLinkDirectory(linkRoot, dir, enabled.length > 0);
-    if (!linkDir) continue;
-    let existing: string[] = [];
-    try {
-      existing = readdirSync(linkDir).filter(isSkillName);
-    } catch {
-    }
-    for (const name of new Set([...existing, ...previouslyManaged])) {
-      const link = join(linkDir, name);
-      const target = desired.get(name);
-      if (target && nativeLinkPointsToSkill(link, target)) {
-        managed.add(name);
-      } else if (nativeLinkDirectlyTargetsOwnedSkill(link, root, name, previouslyManaged.includes(name))) {
-        const result = removeOwnedNativeLink(
-          botId,
-          link,
-          root,
-          name,
-          previouslyManaged.includes(name),
-          options.beforeRemove,
-        );
-        if (result === "retry") managed.add(name);
-      }
-    }
-    if (!enabled.length) continue;
-    for (const [name, entry] of enabled) {
-      const link = join(linkDir, name);
-      const target = skillTarget(root, name, entry);
-      if (nativeLinkPointsToSkill(link, target)) {
-        managed.add(name);
-        continue;
-      }
-      try {
-        symlinkSync(
-          target,
-          link,
-          process.platform === "win32" ? "junction" : "dir",
-        );
-        managed.add(name);
-      } catch {
-      }
-    }
-  }
-  try {
-    writeManagedLinks(botId, [...managed], threadId);
-  } catch {
-  }
 }
 
 export interface SkillListing {
@@ -542,7 +309,6 @@ export function setSkillEnabled(botId: string, name: string, enabled: boolean): 
   }
   entry.enabled = enabled;
   writeManifest(botId, manifest);
-  syncSkillLinks(botId);
   return skillListing(botId, name, entry);
 }
 
@@ -611,8 +377,6 @@ export function removeSkill(botId: string, name: string): { removed: true } | { 
   const targetState = target ? directoryEntryState(target) : "missing";
   delete manifest[name];
   writeManifest(botId, manifest);
-  // While the target still exists, so ownership can be proven without deleting a user-replaced path.
-  syncSkillLinks(botId);
   if (entry.storageRevision) {
     removeReviewedRevision(botId, entry.storageRevision, entry.sha256, entry.referencesSha256);
   } else if (target && targetState === "directory") {
@@ -838,7 +602,6 @@ function installPreparedSkill(
       ) {
         return { error: "the installed learned skill no longer matches the reviewed content" };
       }
-      syncSkillLinks(botId);
       return skillListing(botId, name, existing);
     }
     return { error: `a skill named "${name}" is already imported — choose a different name` };
@@ -870,7 +633,6 @@ function installPreparedSkill(
     try {
       manifest[name] = entry;
       writeManifest(botId, manifest);
-      syncSkillLinks(botId);
       return skillListing(botId, name, entry);
     } catch (error) {
       delete manifest[name];
@@ -885,7 +647,6 @@ function installPreparedSkill(
   } catch (error) {
     return { error: `skill import was rolled back: ${error instanceof Error ? error.message : String(error)}` };
   }
-  if (entry.enabled) syncSkillLinks(botId);
   return skillListing(botId, name, entry);
 }
 
@@ -910,7 +671,6 @@ function updatePreparedSkill(
     ) {
       return { error: "the installed learned skill no longer matches the reviewed update" };
     }
-    syncSkillLinks(botId);
     return skillListing(botId, name, existing);
   }
   if (
@@ -953,16 +713,14 @@ function updatePreparedSkill(
     };
     latestManifest[name] = entry;
     writeManifest(botId, latestManifest);
-    syncSkillLinks(botId);
     retireReviewedSkillStorage(botId, name, latest);
     return skillListing(botId, name, entry);
   } catch (error) {
-    syncSkillLinks(botId);
     return { error: `skill update was not applied: ${error instanceof Error ? error.message : String(error)}` };
   }
 }
 
-/** Proposed bytes never reach the prompt or native links before a person confirms the card. */
+/** Proposed bytes never reach the prompt before a person confirms the card. */
 export function stageSkillWrite(
   botId: string,
   input: {
@@ -1146,7 +904,6 @@ export function applyStagedSkillWrite(
     }
     const listing = skillListing(botId, name, entry);
     options.onApplied?.(listing);
-    syncSkillLinks(botId);
     return listing;
   }
   const prepared = preparedLearnedSkill(staged.files);
@@ -1239,7 +996,6 @@ export function undoSkillWrite(
 }
 
 export function skillsSystemPrompt(botId: string, assignedLibrary?: readonly string[], startedAt?: number): string {
-  syncSkillLinks(botId);
   const enabled = resolveBotSkills(botId, assignedLibrary).filter((skill) => skill.enabled);
   if (!enabled.length) {
     loggedIndexOmissions.delete(botId);
@@ -1366,6 +1122,5 @@ export function removeManifestEntry(botId: string, name: string, expectSha256: s
   }
   delete manifest[name];
   writeManifest(botId, manifest);
-  syncSkillLinks(botId);
   return { removed: true };
 }

@@ -1,7 +1,7 @@
 
 // Import first: it reads a Cloud home's secrets off the launcher's pipe before any module can start a process.
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { readFileSync, rmSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { ToolResults, TOOL_RESULT_MAX_CHARS } from "./agent/tool-results.ts";
 import { extname, join } from "node:path";
@@ -11,7 +11,6 @@ import { z } from "zod";
 import { selectReplay, replayToolCalls, DEFAULT_REBUILD_BYTES, MAX_SUMMARY_BYTES } from "./agent/context-rebuild.ts";
 import { draftSummary, foldPoint } from "./agent/compaction-summary.ts";
 import { compactBudget, compactionReading, contextWindowFor, shouldCompact } from "./agent/context-budget.ts";
-import { autoCompactWindow } from "./drivers/claude.ts";
 import { createCoordinator, type ComposedTurn, type CoordinateBotsCall, type Coordinator, type HandoffOpener, type HandoffOptions, type HandoffView, type HostTurnResult } from "./teams/coordinator.ts";
 import { queuedBehindPersonText, settledWaitingChip, UnansweredApprovals } from "./agent/waiting-on-person.ts";
 import { assertRequestTarget, guardedRequestPath, requestConflict, requestNeedsInput } from "./agent/guarded-requests.ts";
@@ -28,7 +27,6 @@ import { bindSafetyFloor, denyAtSafetyFloor, heldAtSafetyFloor, safetyFloorOn } 
 import { providerMcpTool, providerToolAllowKey } from "./agent/provider-tool-allow.ts";
 
 import * as checkpoints from "./agent/checkpoints.ts";
-import { commandReceipt } from "./agent/commands.ts";
 import { buildTurnDigest, coverageForDriver, digestPromptLine, renderDigest, toolEvidence } from "./observability/digest.ts";
 import { appendDecision, bindDecisionRetention, decisionRetentionDays, flushDecisionLog, pruneDecisions, withDecisionActor, type DecisionActor } from "./observability/decision-log.ts";
 import { inMyFolderCwd, validateBotCwd } from "./bots/bot-cwd.ts";
@@ -48,18 +46,14 @@ import { chiefOfStaffSystemPrompt } from "./teams/chief-of-staff.ts";
 import { buildRecall, recallThreadIds, withRecalled } from "./memory/recall.ts";
 import { hostTimeZone, takesTurnClock, turnClockLine, withTurnClock } from "./agent/turn-clock.ts";
 import { createMemoryUpkeep, upkeepEnabled } from "./memory/memory-upkeep.ts";
-import { createCacheKeepWarm, type KeepWarmStatus, type KeepWarmTarget } from "./agent/cache-keepwarm.ts";
 import { createSkillReview, turnToolSteps } from "./skills/skill-review.ts";
 import { createSideJobs, helperSelection } from "./agent/side-jobs.ts";
 import type { CaptureTurn } from "./memory/memory-capture.ts";
 import { appendAboutMe, commitLearned, planLearned } from "./bots/profile-learned.ts";
 import { canAccessTeam, canReachPeer, livePeerRoster, livePeerRosterBlock, peerAllowed, peerName, peerRosterSystemPrompt, peerStatus, peerStatusWords, reachablePeers, resolveTeammate, PEER_ACCESS_HELP } from "./teams/peer-roster.ts";
 import { attachForTurn, saveBotAttachment } from "./bots/bot-attachment.ts";
-import { cacheUntilConfigChanges, ensureDirs, instanceConfigs, loadConfig, changedInstanceIds, engineLaunches, mcpCallTimeoutMinutes, cacheKeepWarmSettings, threadEventLogMaxBytes, maxConcurrentBotThreads, threadEventLogRetentionDays, saveConfig, showToolCallsEnabled, claudeUserMcpEnabled, skillAuthoringEnabled, skillReviewEnabled, skillReviewSteps, autoRecallEnabled, captureQuietMs, tidyHour, llmThreadTitlesEnabled, stripWorkspaceCredentialEnv, PROVIDER_CREDENTIAL_ENV, DATA_DIR, customMcpServers, onConfigSaved } from "./config/config.ts";
-import { sweepThreadEventLogs, type ThreadLogRetentionCandidate } from "./storage/thread-retention.ts";
+import { cacheUntilConfigChanges, ensureDirs, instanceConfigs, loadConfig, changedInstanceIds, engineLaunches, saveConfig, showToolCallsEnabled, skillAuthoringEnabled, skillReviewEnabled, skillReviewSteps, autoRecallEnabled, captureQuietMs, tidyHour, llmThreadTitlesEnabled, DATA_DIR, customMcpServers } from "./config/config.ts";
 import { ComputerControl } from "./computers/computer-control.ts";
-import { augmentedPath } from "./platform/env-path.ts";
-import { registerEnginesBinDir } from "./platform/engine-install.ts";
 import { appendUsage, flushUsageLedger, type UsageRow, type UsageTrigger } from "./usage/usage-ledger.ts";
 import { ledgerCost } from "./model-catalog/model-prices.ts";
 import type { PriceList } from "./usage/prices.ts";
@@ -67,9 +61,8 @@ import type { RequestAuth } from "./auth/request-auth.ts";
 import { assertWithinBudget, noteSpend, spendAlertText, spendState, takeSpendAlert } from "./usage/spend.ts";
 import { HOSTED_CONTRACT_HEADER, HOSTED_CONTRACT_METADATA, HOSTED_CONTRACT_VERSION } from "./deployment/hosted-contract.ts";
 import { buildNotification, buildSpendNotification, type Notification } from "./observability/notify.ts";
-import { isModelVariant, TurnNotStartedError, type ModelSelection, type RequestOutcome, type RuntimeEvent, type SteerOutcome, newId } from "./harness/contracts.ts";
+import { isModelVariant, type ModelSelection, type RequestOutcome, type RuntimeEvent, type SteerOutcome, newId } from "./harness/contracts.ts";
 import { RETRY_MAX_ATTEMPTS } from "./drivers/retry.ts";
-import { recoveryCapabilityError } from "./agent/automatic-recovery.ts";
 import { createQuotaSwitchHost } from "./host/quota-switch.ts";
 import { decodeGeneratedImage } from "./workspace/generated-image.ts";
 import { addDisabledMcpServer, isRemoteMcpServer, listMcpServers, parseStoredMcpServer } from "./mcp/mcp-registry.ts";
@@ -114,13 +107,12 @@ import { extractReplayImages, extractTurnImages } from "./agent/turn-images.ts";
 import { threadTitlePrompt, type ThreadTitleSource } from "./agent/thread-title.ts";
 import { TurnWatchdog } from "./agent/turn-watchdog.ts";
 import { TurnResources, type TurnOwner } from "./agent/turn-resources.ts";
-import { ensureWorkspace, workspaceLocationsPrompt, supportsWorkspaceFiles, updateMemory, appendMemoryLog, memoryLogPath, memorySystemPrompt, memorySourceLabel, searchMemoryFiles, SESSION_SEARCH_SYSTEM_PROMPT, workspaceDir } from "./workspace/workspace.ts";
+import { ensureWorkspace, ensureTaskWorkspace, workspaceLocationsPrompt, supportsWorkspaceFiles, updateMemory, appendMemoryLog, memoryLogPath, memorySystemPrompt, memorySourceLabel, searchMemoryFiles, SESSION_SEARCH_SYSTEM_PROMPT, workspaceDir } from "./workspace/workspace.ts";
 import { listMemoryTopics, memoryDate, readMemoryFile, readMemoryTopic, writeMemoryFile, writeMemoryTopic } from "./workspace/workspace.ts";
 import { beginMemoryTurn, endMemoryTurn, flushAllMemoryJournals, journalTurnWrite, type MemoryJournalEntry } from "./memory/memory-journal.ts";
 import { readSections, sectionContextKey, sectionContextSystemPrompt, writeSectionContext } from "./teams/section-context.ts";
 import { applyStagedSkillWrite, applySkillWriteWithReceipt, getStagedSkillWrite, installOrgSkill, installSkill, parseSkillMd, scanSkillText, listSkills, listStagedSkillWrites, readSkillFile, rejectStagedSkillWrite, setSkillEnabled, skillPackageStamps, stageSkillWrite, undoSkillWrite } from "./skills/skills.ts";
 import { fetchSkillFromSource } from "./skills/skill-fetch.ts";
-import { ensureTaskWorkspaceWithSkills } from "./skills/skill-task-links.ts";
 import { parseSkillManageReferences, previousSkillVersion, skillCardCopy, skillRequestReferences } from "./skills/skill-request-card.ts";
 import { skillReferencesSha256 } from "./skills/skill-storage.ts";
 import { createSkillsLibraryHost } from "./host/skills-library.ts";
@@ -131,11 +123,9 @@ import { expandLearnTurnText, learnSource } from "./skills/skill-learn.ts";
 import { connectedAppsForSetup, expandSetupTurnText, setupModeActive, setupSystemPrompt, type SetupConnectedApps } from "./config/setup-mode.ts";
 import type { SkillRequestCardData } from "../shared/skill/skill-request.ts";
 import { botPersona, buildSystemPrompt, userProfileSystemPrompt, computerPrompt, composioSystemPrompt, customMcpPrompt, longCommandsPrompt, THREADS_PROMPT, WIDGET_PROMPT, LEARN_PROMPT, PROFILE_PROMPT, TEAM_MEMORY_PROMPT, resolveComputerPromptKind, teamAvailabilityPart } from "./agent/system-prompt.ts";
-import { shellTimeoutHookResult } from "./agent/shell-timeout-hint.ts";
-import { spillToolResult } from "./agent/tool-result-spill.ts";
 import { readCuaConnection, readCuaUnavailableReason, gatedLocalComputer } from "./computers/local-computer.ts";
 import { createLoopGuard, loopGuardSettings } from "./host/loop-guard.ts";
-import { claudeUserSkillsEnabled, settingsTurnFields } from "./agent/turn-settings.ts";
+import { settingsTurnFields } from "./agent/turn-settings.ts";
 import { redactSecretsInText } from "./security/redact.ts";
 
 import { createScreenFrameSource, type ScreenCapture } from "./computers/screen-frame-source.ts";
@@ -153,7 +143,6 @@ import { OutboundCounts } from "./usage/outbound-counts.ts";
 import { OutboundRequestService, outboundCard } from "./usage/outbound-requests.ts";
 import { DEFAULT_OUTBOUND_POLICY, connectorCallsIn, outboundCallsIn } from "../shared/tool/outbound.ts";
 import { connectorAccessDecision, describeConnectorScopes } from "../shared/connector/connector-scopes.ts";
-import { bindThreadLogCapProvider } from "./storage/thread-log-rotation.ts";
 import { assertModelVariantSupported } from "./agent/member-turn.ts";
 import { AGENTS_PROXY_ENV, agentsProxyLaunch, agentsToolBridgeEnv, applyAgentsBridge, bridgedToolTitle, turnEngine } from "./drivers/agents-bridge-switch.ts";
 import { loadBundledSkills, loadUserSkills, mergeSkills, renderSkillInstructions, selectBundledSkills, skillsLibraryEnabled } from "./skills/skill-library.ts";
@@ -175,7 +164,6 @@ import { acquireDataDirLeaseForProcess } from "./storage/data-dir-lease.ts";
 import { createWorkspaceAccess, describeEdition, editionStatus, entitled, hostedWorkspaceConfiguration, hostedWorkspaceConfigured, LICENSE_WARN_DAYS, licenseWarning, sharedWorkspaceFullAccessConfigured, loadEnterpriseLayer, type EditionStatus, type WorkspaceAccess } from "./deployment/enterprise.ts";
 import { environmentDescriptor, loadEnvironmentId } from "./auth/environment.ts";
 import { createCustomDomainVerifier, customDomainIpv4, normalizeCustomDomain } from "./network/custom-domain.ts";
-import { ProviderAuthSessions } from "./auth/provider-auth-sessions.ts";
 import { clearSessionCookie, isLoopbackHost, isProxied, requestOrigin, resolveLoopbackTrust, resolveRequestAuth, parseCookies, serializeSessionCookie, sessionCookieName } from "./auth/request-auth.ts";
 import { cookieMaxAgeSeconds, SessionRegistry, type SessionRecord } from "./auth/sessions.ts";
 import { ThreadStarters } from "./agent/thread-starters.ts";
@@ -183,7 +171,7 @@ import { frameForMember, memberBody, noteSeen, notFoundFor, pathSubject, sameAud
 import { describeBrand, loadBrand } from "./deployment/brand.ts";
 import { deliverSseFrame } from "./observability/sse-fanout.ts";
 // Keep these two last, so loading the route table leaves module start-up order as is.
-import { gzipTunnelReplies, json, onJsonBody, readBody } from "./harness/http.ts";
+import { json, onJsonBody, readBody } from "./harness/http.ts";
 import { ROUTES, dispatchRoutes } from "./routes/table.ts";
 import { createHostedSlackRoutes } from "./routes/hosted-slack.ts";
 import { createBotPresetRoutes } from "./routes/bot-presets.ts";
@@ -207,13 +195,10 @@ import { createThreadModelRoutes } from "./routes/thread-models.ts";
 import { createUndoRoutes } from "./routes/undo.ts";
 import { createUpgrades } from "./routes/upgrades.ts";
 
-import { createAntigravityLeftoverRoutes } from "./routes/antigravity-leftovers.ts";
 import { createConfigRoutes } from "./routes/config.ts";
 import { createInstanceRoutes } from "./routes/instances.ts";
 import { createMcpServerRoutes } from "./routes/mcp-servers.ts";
-import { createSetupImportRoutes } from "./routes/setup-import.ts";
 import { createStatusRoutes } from "./routes/status.ts";
-import { findAntigravityLeftovers, removeAntigravityLeftovers } from "./drivers/antigravity-temp.ts";
 import { createNotificationRoutes } from "./routes/notifications.ts";
 import { createUsageRoutes } from "./routes/usage.ts";
 import { createBotMessageRoutes } from "./routes/bot-messages.ts";
@@ -277,20 +262,6 @@ const HOSTED_FULL_ACCESS_REFUSAL = "On a shared company workspace Full access co
 if (HOSTED_WORKSPACE) setDefaultApprovalMode("ask");
 // On a shared workspace loopback is a service, not the owner: every bot's shell is a loopback caller too.
 const LOOPBACK = resolveLoopbackTrust({ desktopManaged: DESKTOP_MANAGED, hostedWorkspace: HOSTED_WORKSPACE, cloudHome: Boolean(CLOUD_HOME), fromSource: import.meta.url.endsWith(".ts") });
-// The CLI's per-launch secret comes on stdin, never an env var: every engine this server starts inherits its environment.
-let cliOwnerToken: string | undefined;
-if (process.env.OMB_CLI_OWNER_STDIN === "1" && LOOPBACK.trust === "service" && process.stdin) {
-  let received = "";
-  process.stdin.setEncoding("utf8");
-  process.stdin.on("error", () => {});
-  process.stdin.on("data", (chunk: string) => {
-    if (cliOwnerToken !== undefined || received.length > 256) return;
-    received += chunk;
-    const line = received.split("\n", 1)[0]!;
-    if (received.includes("\n") && /^[A-Za-z0-9_-]{43}$/.test(line)) cliOwnerToken = line;
-  });
-}
-delete process.env.OMB_CLI_OWNER_STDIN;
 // Empty is a deny-all bootstrap state; only Electron's private utility-process port replaces it.
 let desktopMutationToken: string | undefined = DESKTOP_MANAGED ? "" : undefined;
 
@@ -304,7 +275,6 @@ if (hostedModels) {
   if (selection.instanceId && JSON.stringify(selection) !== JSON.stringify(cfg.defaultModelSelection)) saveConfig({ defaultModelSelection: selection });
   cfg.defaultModelSelection = selection;
 }
-bindThreadLogCapProvider(() => threadEventLogMaxBytes(cfg));
 bindDecisionRetention(() => decisionRetentionDays(cfg.decisions?.retentionDays));
 bindSafetyFloor(() => cfg);
 const customDomainVerifier = createCustomDomainVerifier({ environmentId: ENVIRONMENT_ID });
@@ -324,7 +294,6 @@ function customDomainStatus() {
 }
 const registry = new ProviderRegistry(BUILT_IN_DRIVERS);
 const supportsApprovalMode = createApprovalModeSupport(registry);
-registerEnginesBinDir();
 
 // Set only when a turn is admitted, never on queue or steer, so a second person's words cannot re-book the first person's turn.
 const turnTriggers = new Map<string, UsageTrigger>();
@@ -595,7 +564,6 @@ function queuedTurnTrigger(item: { trigger?: UsageTrigger; sender?: ResolvedSend
   if (item.peerAsk) return undefined;
   return item.sender ? { kind: "user", label: item.sender.name } : { kind: "owner" };
 }
-const providerAuthSessions = new ProviderAuthSessions();
 const mcpOAuth = new McpOAuthManager({
   file: join(DATA_DIR, "mcp-oauth.json"),
   isOwnerLive: (owner) => owner === "loopback" || sessions.isLive(owner),
@@ -617,11 +585,6 @@ type UtilityParentPort = {
 // Only Electron's utility process supplies parentPort, private to the desktop main process; plain Node leaves it absent.
 const utilityParentPort = (process as NodeJS.Process & { parentPort?: UtilityParentPort }).parentPort;
 type DesktopPrivateMessage = {
-  type: "openmausbot:phone-secret-save";
-  requestId: string;
-  target: string;
-  value: string;
-} | {
   type: "approval-trusted-mode-result" | "approval-trusted-mode-commit-result";
   requestId: string;
   ok: boolean;
@@ -750,7 +713,7 @@ type InternalCapability = {
   threadId: string;
   generation: string;
   depth: number;
-  kind: "agents" | "connectors" | "computer" | "hooks" | "phone";
+  kind: "agents" | "connectors" | "computer";
   skillAuthoring: boolean;
   createdBots: number;
   openedThreads: number;
@@ -993,21 +956,6 @@ function agentsIntegration(
       OMB_CHIEF_OF_STAFF: store.bot(botId)?.chiefOfStaff === true ? "1" : "0",
       OMB_ESCALATIONS: chiefEscalationsEnabled(cfg) ? "1" : "0"},
   };
-}
-
-const hooksEnabled = () => process.env.OMB_HOOKS !== "0";
-function hooksIntegration(botId: string, threadId: string, generation: string): { url: string; token: string } {
-  const token = mintInternalCapability({
-    botId,
-    threadId,
-    generation,
-    depth: 0,
-    kind: "hooks",
-    skillAuthoring: false,
-    createdBots: 0,
-    openedThreads: 0,
-  });
-  return { url: `http://127.0.0.1:${PORT}`, token };
 }
 
 type DirectTurnDispatchClaim = {
@@ -1367,9 +1315,8 @@ function parksBehindCoordination(botId: string, threadId: string): boolean {
   return (store.projectBotForTask(botId, threadId) ?? store.bot(botId))?.parkDirectMessages === true;
 }
 
-function botAtThreadCapacity(botId: string): boolean {
-  // threadBusy, not the stored flag: a reservation holds its slot after an early completion clears the flag.
-  return store.tasks(botId).filter((task) => threadBusy(botId, task.threadId)).length >= maxConcurrentBotThreads(cfg);
+function botAtThreadCapacity(_botId: string): boolean {
+  return false;
 }
 
 function hasDirectDispatch(botId: string): boolean {
@@ -1893,7 +1840,7 @@ const store = new Store(
   () => cfg.language ?? Intl.DateTimeFormat().resolvedOptions().locale,
 );
 
-const skillsHost = createSkillsLibraryHost({ store, cfg, appendSkillRequestCard, engineConfig: (instanceId) => providerConfigs()[instanceId] });
+const skillsHost = createSkillsLibraryHost({ store, cfg, appendSkillRequestCard });
 const { listBotSkills, readBotSkillFile } = skillsHost;
 
 let followupsReady = false;
@@ -1905,17 +1852,6 @@ if (store.needsSeed()) await refreshUnsetModelSelections();
 else enginesRead = refreshUnsetModelSelections().catch(
   (error) => console.warn(`[engines] reading the engines at start failed: ${error instanceof Error ? error.message : String(error)}`),
 ).finally(() => { enginesRead = null; });
-const startupCatalogs = registry.instances().flatMap((instance) =>
-  instance.startupModelRefresh ? [instance.startupModelRefresh] : []);
-for (const pending of startupCatalogs) {
-  void pending.then(async () => {
-    try { await refreshUnsetModelSelections(); }
-    catch (error) {
-      console.warn(`[engines] refreshing the new-bot default after model discovery failed: ${error instanceof Error ? error.message : String(error)}`);
-    }
-    broadcast({ kind: "config", ...configStatus() });
-  }, () => {});
-}
 store.seedIfEmpty();
 hostedModels?.reconcile(store);
 if (skillsLibraryEnabled(cfg)) {
@@ -1939,12 +1875,9 @@ if (skillsLibraryEnabled(cfg)) {
 // Replay only after the secondary write above is durable.
 
 let activeCoordinationForThread = (_threadId: string): boolean => false;
-let cacheKeepWarmStatus = (_threadId: string): KeepWarmStatus | undefined => undefined;
 const wireTask = (task: TaskRecord, botModel: ModelSelection): WireTask => {
   const base = toWireTask(task, botModel);
-  const keepWarm = cacheKeepWarmStatus(task.threadId);
-  return { ...base, waitingForTeammates: activeCoordinationForThread(task.threadId) && !task.busy,
-    ...(keepWarm ? { cacheKeepWarm: keepWarm } : {}) };
+  return { ...base, waitingForTeammates: activeCoordinationForThread(task.threadId) && !task.busy };
 };
 
 function botMainThread(botId: string): string | undefined {
@@ -1952,7 +1885,7 @@ function botMainThread(botId: string): string | undefined {
   return mainThread(store.tasks(botId), bot?.threadId);
 }
 
-/** Strips provider session ids (resumeCursors) here, not at call sites, so no broadcast or paired phone ever gets them. */
+/** Strips provider session ids (resumeCursors) here, not at call sites, so no broadcast ever gets them. */
 const wireBot = (bot: BotRecord): WireBot => {
   const { resumeCursors: _resumeCursors, tasks, approvalGrant, lastProfileRequestId: _lastProfileRequestId, lastTeamSetupReceipt: _lastTeamSetupReceipt, packageBase: _packageBase, assignedSkills: _assignedSkills, ...rest } = bot;
   // Clients see Ask while an elevated grant awaits the desktop's confirmation, never a grant that may still roll back.
@@ -2016,7 +1949,6 @@ function previewSystemPrompt(bot: BotRecord) {
     { id: "", label: "", text: "" },
     { id: "plan", label: "Surface", text: previewPlan.computer === undefined ? "" : surfacePrompt({
       computer: previewPlan.computer && previewPlan.computer !== "off" && computerPromptKind ? previewPlan.computer : null,
-      browser: previewPlan.computer === undefined ? false : previewPlan.browser,
     }, { note: previewPlan.note, cloudHome: Boolean(CLOUD_HOME) }) },
     { id: "", label: "", text: "" },
     { id: "composio", label: "Connected apps", text: caps?.composioMcp && bot.composio !== false && composio.configured(cfg) ? composioSystemPrompt(bot.connectorTools) + describeConnectorScopes(bot.connectorScopes) : "" },
@@ -2029,7 +1961,7 @@ function previewSystemPrompt(bot: BotRecord) {
     { id: "team-memory", label: "Team memory", text: teamMemory.systemPrompt(bot.section) + (agentsMounted ? TEAM_MEMORY_PROMPT : "") },
     teamAvailabilityPart(agentsMounted && coordination ? peers : []),
     { id: "memory", label: "Memory", text: memorySystemPrompt(bot.id, { managedWrites: agentsMounted, fileTools: Boolean(privateWorkspace), enabled: bot.memoryEnabled !== false }) },
-    { id: "skills", label: "Skills index", text: privateWorkspace ? skillsHost.skillsIndex(bot, undefined, instance) : "" },
+    { id: "skills", label: "Skills index", text: privateWorkspace ? skillsHost.skillsIndex(bot, undefined) : "" },
   ], agentsMounted ? { env: agentsToolBridgeEnv(cfg, bot, instance && turnEngine(instance, providerConfigs(), registry.lastSnapshot(instance.instanceId), bot.cwd)) } : undefined);
   const totalBytes = built.sections.reduce((n, s) => n + s.bytes, 0);
   return {
@@ -2986,7 +2918,6 @@ function closeSessionStreams(sessionId: string): void {
   }
 }
 sessions.onSessionRevoked((sessionId) => {
-  providerAuthSessions.revokeOwner(sessionId);
   mcpOAuth.revokeOwner(sessionId);
   closeSessionStreams(sessionId);
   // A revoked owner device no longer vouches for its lines (cloudOwnerPerson).
@@ -3330,96 +3261,6 @@ function captureTurnFor(threadId: string, turnId: string): CaptureTurn | null {
   };
 }
 
-// Prompt-cache keep-warm (server/agent/cache-keepwarm.ts; design from Cache Tax,
-// MIT, Karan Bansal): an idle Claude thread with a big context gets one
-// forked, tool-less cache read per idle stretch while its window is open,
-// instead of a full re-write on the next message.
-const keepWarmTargets = new Map<string, KeepWarmTarget>();
-const keepWarmContext = new Map<string, number>();
-function keepWarmBotFor(threadId: string): BotRecord | null {
-  return store.botByThread(threadId);
-}
-const cacheKeepWarm = createCacheKeepWarm({
-  now: () => Date.now(),
-  after: (ms, fn) => {
-    const timer = setTimeout(fn, ms);
-    timer.unref?.();
-    return { cancel: () => clearTimeout(timer) };
-  },
-  windowMs: (botId) => {
-    const bot = store.bot(botId);
-    const workspace = cacheKeepWarmSettings(cfg);
-    const on = bot?.cacheKeepWarm ?? workspace.enabled;
-    return bot && on ? workspace.windowMinutes * 60_000 : null;
-  },
-  ineligible: ({ threadId, botId, instanceId }) => {
-    if (!store.bot(botId)) return "the bot was deleted";
-    const bot = store.bot(botId);
-    if (!bot || (bot.threadId !== threadId && !store.taskByThread(botId, threadId))) return "the thread was deleted";
-    const instance = registry.get(instanceId);
-    if (!instance?.adapter.cacheKeepWarm) return "this engine cannot keep its cache warm";
-    if (policyModelRefusal(instance)) return "this engine is not allowed here";
-    // A metered API key's cache lives five minutes: pinging it costs more than the re-write it saves.
-    if (registry.lastSnapshot(instanceId)?.billing !== "subscription") return "keep-warm runs only on a Claude subscription sign-in";
-    return null;
-  },
-  busy: ({ threadId, botId }) => threadBusy(botId, threadId) || botHasActiveTurn(botId),
-  overBudget: () => spendState(cfg, DATA_DIR)?.exceeded === true,
-  ping: async ({ threadId, instanceId }, signal) => {
-    const warm = registry.get(instanceId)?.adapter.cacheKeepWarm;
-    return warm ? warm.ping(threadId, { signal }) : { ok: false, reason: "this engine cannot keep its cache warm" };
-  },
-  hold: ({ threadId, instanceId }, until) => { registry.get(instanceId)?.adapter.cacheKeepWarm?.hold(threadId, until); },
-  book: ({ threadId, botId, instanceId }, result) => {
-    const bot = store.bot(botId);
-    const instance = registry.get(instanceId);
-    if (!bot || !instance) return;
-    bookTurnUsage({
-      botId: bot.id,
-      botName: bot.name,
-      threadId,
-      instanceId,
-      driverKind: instance.driverKind,
-      model: result.model ?? store.taskByThread(bot.id, threadId)?.modelSelection?.model ?? bot.modelSelection.model,
-      input: result.input + result.cacheRead + result.cacheWrite,
-      output: result.output,
-      cachedInput: result.cacheRead,
-      costUsd: result.costUsd,
-      trigger: { kind: "bot", botId: bot.id },
-    });
-  },
-  changed: ({ threadId }) => {
-    const bot = store.botByThread(threadId);
-    if (bot) broadcast({ kind: "bot", bot: wireBot(bot) });
-  },
-});
-cacheKeepWarmStatus = (threadId) => cacheKeepWarm.status(threadId);
-onConfigSaved((before, after) => {
-  if (JSON.stringify(before.cacheKeepWarm ?? null) !== JSON.stringify(after.cacheKeepWarm ?? null)) setImmediate(() => cacheKeepWarm.refresh());
-});
-bus.subscribe((event: RuntimeEvent) => {
-  if (shouldIgnoreProviderEvent(event)) return;
-  try {
-    if (event.type === "thread.token-usage.updated") {
-      if (event.contextTokens !== undefined) keepWarmContext.set(event.threadId, event.contextTokens);
-    } else if (event.type === "turn.started") {
-      keepWarmContext.delete(event.threadId);
-      const bot = keepWarmBotFor(event.threadId);
-      if (bot && event.providerInstanceId) keepWarmTargets.set(event.threadId, { threadId: event.threadId, botId: bot.id, instanceId: event.providerInstanceId });
-      cacheKeepWarm.noteTurnStarted(event.threadId);
-    } else if (event.type === "turn.completed") {
-      const target = keepWarmTargets.get(event.threadId);
-      const contextTokens = keepWarmContext.get(event.threadId);
-      keepWarmTargets.delete(event.threadId);
-      keepWarmContext.delete(event.threadId);
-      if (!target) return;
-      cacheKeepWarm.noteTurnCompleted(target, { ok: event.ok, stopReason: event.stopReason, contextTokens });
-    }
-  } catch (error) {
-    console.warn(`cache keep-warm: ${(error as Error).message}`);
-  }
-});
-
 bus.subscribe((event: RuntimeEvent) => {
   if (shouldIgnoreProviderEvent(event)) return;
   if (event.type !== "turn.completed" || !event.turnId || !event.ok) return;
@@ -3534,51 +3375,6 @@ function clearTurnDigestState(threadId: string): void {
   forgetTurnCheckpoint(threadId);
   liveTurnByThread.delete(threadId);
   memoryRowsByThread.delete(threadId);
-}
-
-const TOOL_RESULTS_DIR = join(DATA_DIR, "tool-results");
-const TOOL_RESULT_SPILL_MAX = 512 * 1024;
-
-const DIGESTS_AFTER_COMPACTION = 2;
-function ingestEngineHook(capability: InternalCapability, body: unknown): { ok: boolean; ignored?: string; context?: string; hookSpecificOutput?: unknown } {
-  const event = body && typeof body === "object" ? (body as { event?: unknown; payload?: unknown }) : {};
-  const name = typeof event.event === "string" ? event.event : "";
-  const payload = event.payload && typeof event.payload === "object" ? (event.payload as Record<string, unknown>) : {};
-  const threadId = capability.threadId;
-  const chip = (text: string) => store.appendMessage(threadId, { role: "bot", kind: "activity", tool: { name: text, ok: true } });
-  if (name === "PreCompact") {
-    const trigger = payload.trigger === "manual" ? "manual" : "auto";
-    chip(`context compaction started (${trigger})`);
-    return { ok: true };
-  }
-  if (name === "SessionStart") {
-    if (payload.source !== "compact") return { ok: true, ignored: `SessionStart ${String(payload.source ?? "")}` };
-    const bot = store.bot(capability.botId);
-    const digests = store.activePath(threadId).filter((m) => m.kind === "digest" && m.digest).slice(-DIGESTS_AFTER_COMPACTION);
-    chip(`context compacted — re-sent the last ${digests.length} digest${digests.length === 1 ? "" : "s"}`);
-    if (!digests.length) return { ok: true };
-    const context = digests.map((m) => digestPromptLine(m.digest!, m.from?.name ?? store.bot(m.digest!.botId)?.name ?? bot?.name ?? "the bot")).join("\n");
-    return { ok: true, context };
-  }
-  if (name === "Stop") return { ok: true };
-  if (name === "PostToolUseFailure") return shellTimeoutHookResult(payload);
-  if (name !== "PostToolUse") return { ok: true, ignored: name || "unknown" };
-  const toolUseId = typeof payload.tool_use_id === "string" ? payload.tool_use_id : "";
-  if (!toolUseId) return { ok: true, ignored: "PostToolUse without tool_use_id" };
-  if (!Object.hasOwn(payload, "tool_response")) return { ok: true, ignored: "hook did not include a tool response" };
-  const response = payload.tool_response;
-  const text = typeof response === "string" ? response : JSON.stringify(response ?? null, null, 2);
-  const turnId = liveTurnByThread.get(threadId);
-  const row = store.activePath(threadId).findLast((m) => m.kind === "activity" && m.turnId === turnId && m.tool?.itemId === toolUseId);
-  if (!turnId || !row?.tool) return { ok: true, ignored: "tool not observed in this turn" };
-  const key = `${threadId}:${turnId}:${toolUseId}`;
-  if (!commandReceipt("hook.ingest", key)) {
-    const dir = join(TOOL_RESULTS_DIR, threadId.replace(/[^\w.-]/g, "_"));
-    const redacted = redactSecretsInText(text);
-    const fullResult = spillToolResult(dir, key, redacted, TOOL_RESULT_SPILL_MAX);
-    store.patchMessage(threadId, row.id, { tool: { ...row.tool, fullResult } }, { kind: "hook.ingest", key });
-  }
-  return { ok: true };
 }
 
 async function scheduleTurnDigest(input: {
@@ -3800,11 +3596,11 @@ function turnSurfacePlan(bot: BotRecord, threadId?: string) {
 
 async function computerPreviewSurface(bot: BotRecord, threadId?: string) {
   const plan = turnSurfacePlan(bot, threadId);
-if (plan.computer !== undefined) return plan.computer === "off" && plan.browser ? "browser" : plan.computer;
-const instance = registry.get(bot.modelSelection.instanceId);
-if (shouldMountLocalComputer({ requested: undefined, hostPlatform: process.platform,
+  if (plan.computer !== undefined) return plan.computer;
+  const instance = registry.get(bot.modelSelection.instanceId);
+  if (shouldMountLocalComputer({ requested: undefined, hostPlatform: process.platform,
     providerSupportsLocal: instance?.adapter.capabilities.localComputerMcp === true }) && readCuaConnection()) return "local";
-return "off";
+  return "off";
 }
 
 /** Read-only: starting a configured computer waits until a chat tool selects it and the old turn releases its tools. */
@@ -4544,9 +4340,8 @@ async function compactConversation(input: {
     floor = measurement.tokens;
     store.patchTask(bot.id, threadId, { contextFloor: floor });
   }
-  const nativeCompactAt = nativeCompactTokens(instance);
   if (!manual && !shouldCompact({ contextTokens: measurement?.tokens, estimatedBytes: bytes,
-    budget: compactBudget(window, cfg.context?.compactAt, nativeCompactAt), floor, window, nativeCompactAt })) return;
+    budget: compactBudget(window, cfg.context?.compactAt), floor, window })) return;
   const fold = manual ? { folded: history, firstKeptId: "" } : foldPoint(history);
   if (!fold) return;
   const foldedThroughId = manual
@@ -4581,8 +4376,6 @@ const handoffs = new Handoffs({
   replies: (threadId, turnId) => store.activePath(threadId)
     .filter((m) => m.role === "bot" && m.kind === "text" && !m.from && m.turnId === turnId).map((m) => m.id),
 });
-const nativeCompactTokens = (instance: { driverKind: string; instanceId: string }) => instance.driverKind === "claudeAgent" ? Number(autoCompactWindow({ ...process.env, ...cfg.instances?.[instance.instanceId]?.environment })) : undefined;
-
 const loopingEngine = (threadId: string, bot = store.botByThread(threadId)) => bot ? runningTurnInstance(botForThread(bot.id, threadId), threadId)?.adapter : undefined;
 const repeats = createLoopGuard( {live: (threadId) => { const bot = store.botByThread(threadId); return Boolean(bot && threadBusy(bot.id, threadId)); },
   settings: () => loopGuardSettings(cfg),
@@ -5034,8 +4827,6 @@ async function startTurn(
     relayed?: boolean;
     onDispatchError?: (message: string) => void;
     compactOnly?: boolean;
-    automaticRecoveryAttempted?: boolean;
-    automaticRecoveryIndex?: number;
     onTurnSettled?: () => void;
     coordination?: { id: string; resumed: boolean; settle: (outcome: HostTurnResult) => void };
   },
@@ -5056,9 +4847,6 @@ async function startTurn(
   }
   assertWithinBudget(cfg, DATA_DIR);
   if (threadBusy(botId, threadId)) throw Object.assign(new Error("this thread is already working — interrupt it first"), { status: 409, code: "thread_busy" });
-  if (botAtThreadCapacity(botId)) {
-    throw Object.assign(new Error(`this bot has reached its limit of ${maxConcurrentBotThreads(cfg)} parallel threads — wait for one to finish`), { status: 409, code: "thread_limit" });
-  }
   // Revoke what a previous turn left behind before minting this turn's integrations.
   revokeEarlierTurnCapabilities(threadId);
   if (opts?.unattended) markUnattended(bot.id, threadId);
@@ -5148,9 +4936,6 @@ async function startTurn(
   if (route.quickModel) routedTurnModels.set(threadId, model);
   else routedTurnModels.delete(threadId);
   if (route.quickModel && !opts?.cardContinuation && userMessage.quickModel !== route.quickModel) userMessage = store.patchMessage(threadId, userMessage.id, { quickModel: route.quickModel }) ?? userMessage;
-  const recoveryUserMessageId = opts?.coordination
-    ? store.activePath(threadId).findLast(m => m.role === "user" && m.kind === "text")?.id
-    : userMessage.id;
   if (opts?.trigger) turnTriggers.set(threadId, opts.trigger);
   if (!opts?.cardContinuation) {
     if (commsDepth === 0 && !opts?.unattended && !userMessage.peerAsk) {
@@ -5266,13 +5051,12 @@ async function startTurn(
         ? task.handedMessages?.[instanceId] : undefined;
       const unseen = handed && handedStateUsable(handed, cursor, contextOrder) ? unseenMessages(replayable, contextOrder, handed) : undefined;
       const externalUpdate = Boolean(opts?.coordination?.resumed || unseen?.some((m) => m.keep));
-      // What a resumed session keeps from its launch; Codex reasserts model and provider on resume, but an in-flight turn and an omitted effort keep the prior selection.
-      const persistentConfig = [bot.name, bot.title, bot.description, sectionContextSystemPrompt(bot.section),
-        ...(instance.driverKind === "codex" ? [model, effort ?? null] : [])];
+      // What a resumed session keeps from its launch.
+      const persistentConfig = [bot.name, bot.title, bot.description, sectionContextSystemPrompt(bot.section)];
       const plannedConfig = createHash("sha256").update(JSON.stringify(persistentConfig)).digest("hex").slice(0, 16);
       const skillAuthoring = skillAuthoringEnabled(cfg) && agentsMounted;
       const skillCommandText = supportsWorkspaceFiles(instance.driverKind)
-        ? skillsHost.expandSkillCommand(bot, providerText, instance)
+        ? skillsHost.expandSkillCommand(bot, providerText)
         : providerText;
       const setupText = agentsMounted ? expandSetupTurnText(skillCommandText) : skillCommandText;
       const userTurnText = promptWithReply(
@@ -5284,7 +5068,6 @@ async function startTurn(
         ? extractReplayImages(selection.inline, turnImages)
         : { transcript: selection.inline, images: [] };
       const decideContext = (config: string) => {
-        // A Codex thread keeps the last effort it was sent and no turn can clear it, so one holding a level is rebuilt, not resumed.
         const effortHeld = !effort && typeof handed?.effort === "string";
         const handedStale = Boolean(handed && (!unseen || effortHeld || (externalUpdate && handed.config !== config)));
         const { block: unseenBlock, placed } = unseen && !handedStale ? renderUnseen(unseen) : { block: "", placed: [] };
@@ -5311,7 +5094,6 @@ async function startTurn(
           resumeCursor, sessionReset: !resume, recoveryText,
           handoff: strictResume ? {
             botId: bot.id, instanceId, config, resumeCursor: typeof resumeCursor === "string" ? resumeCursor : undefined,
-            ...(instance.driverKind === "codex" ? { effort: effort ?? null } : {}),
             started: sessionStart(contextOrder, contextTurnText !== userTurnText ? windowIds : [], carried),
             recovery: sessionStart(contextOrder, recoveryText !== undefined ? windowIds : [], carried),
             resumed: sessionStart(contextOrder, [], [...placed, ...carried]),
@@ -5347,7 +5129,7 @@ async function startTurn(
         ensureWorkspace(bot.id, cfg.language);
         if (bot.memoryEnabled !== false) beginMemoryTurn(bot.id, threadId);
       }
-      const privateWorkspace = worksInWorkspace ? ensureTaskWorkspaceWithSkills(bot.id, threadId, skillsHost.turnImports(bot, threadId, instance)) : undefined;
+      const privateWorkspace = worksInWorkspace ? ensureTaskWorkspace(bot.id, threadId) : undefined;
       const skillInstructions = renderSkillInstructions(selectedSkills, {
         includeRoot: worksInWorkspace,
       });
@@ -5463,9 +5245,6 @@ async function startTurn(
       if (agentsMounted) {
         integrations.agents = agentsIntegration(bot.id, threadId, commsDepth, skillAuthoring, dispatchClaimId, opts?.coordination?.id, worksInWorkspace);
       }
-      if (instance.adapter.capabilities.hooks === true && hooksEnabled()) {
-        integrations.hooks = hooksIntegration(bot.id, threadId, dispatchClaimId);
-      }
       const tagged = integrations.agents
         ? mentionedBots(
             providerText,
@@ -5539,7 +5318,7 @@ async function startTurn(
         { id: "shell", label: "Long-running commands", text: worksInWorkspace ? longCommandsPrompt() : "" },
         { id: "computer", label: "Computer", text: computerPrompt(computerPromptKind) },
         { id: "", label: "", text: "" },
-        { id: "plan", label: "Surface", text: surfacePrompt({ computer: mountedComputer, browser: false }, { pinned: plan.pinned, note: plan.note + (computerSkipped && plan.computer !== "off" ? computerSkippedNote(redactSecretsInText(computerSkipped)) : ""), canSelect: computerSelectionTurns.has(threadId), cloudHome: Boolean(CLOUD_HOME) }) },
+        { id: "plan", label: "Surface", text: surfacePrompt({ computer: mountedComputer }, { pinned: plan.pinned, note: plan.note + (computerSkipped && plan.computer !== "off" ? computerSkippedNote(redactSecretsInText(computerSkipped)) : ""), canSelect: computerSelectionTurns.has(threadId), cloudHome: Boolean(CLOUD_HOME) }) },
         { id: "", label: "", text: "" },
         { id: "composio", label: "Connected apps", text: integrations.composio ? composioSystemPrompt(liveBot?.connectorTools ?? bot.connectorTools) + describeConnectorScopes((liveBot ?? bot).connectorScopes) : "" },
         { id: "mcp", label: "MCP servers", text: customMcpPrompt(Object.keys(integrations.custom ?? {})) },
@@ -5557,7 +5336,7 @@ async function startTurn(
         { id: "recent", label: "Recent work", text: recentWorkPrompt(recentWork(recentWorkSources(), bot, { userName: cfg.profile?.name?.trim() || "User", currentThreadId: threadId })) },
         { id: "memory", label: "Memory", text: memorySystemPrompt(bot.id, { managedWrites: Boolean(integrations.agents), fileTools: worksInWorkspace, enabled: bot.memoryEnabled !== false, writesRefused: notesRefused }) },
         // liveBot predates awaited setup work; an assignment PUT in that window must still reach this prompt.
-        { id: "skills", label: "Skills index", text: privateWorkspace ? skillsHost.skillsIndex(store.bot(bot.id) ?? bot, threadId, instance) : "" },
+        { id: "skills", label: "Skills index", text: privateWorkspace ? skillsHost.skillsIndex(store.bot(bot.id) ?? bot, threadId) : "" },
         { id: "skill-instructions", label: "Skill instructions", text: skillInstructions },
         { id: "playbooks", label: "Playbooks", text: packagePlaybooks },
         { id: "mentions", label: "Mentions", text: tagged.length ? `The user named these existing teammates: ${tagged.map(b => `${peerName(b.name)} (${b.id})`).join(", ")}. Use coordinate_bots when their contribution is needed; do not substitute native helper agents for these bots.` : "" },
@@ -5576,7 +5355,6 @@ async function startTurn(
       const dispatch = await guardTurnDispatch(shareNote.after(instance.adapter.sendTurn({
         threadId,
         botId: bot.id,
-        startupRecovery: false,
         text: withTurnClock(clock, withRecalled(recalled, dispatchContext.turnText + shareNote.text)),
         ...(recalled ? { recalled } : {}),
         images: dispatchContext.images,
@@ -5595,7 +5373,7 @@ async function startTurn(
         systemVolatile: prompt.volatile,
         mentionTurn: tagged.length > 0,
         integrations,
-        ...settingsTurnFields(cfg, DATA_DIR, managedPolicy.restrictsMcp()),
+        ...settingsTurnFields(cfg),
         cwd,
       })), () => !directTurnClaimExists(bot.id, dispatchClaimId, threadId), async () => {
         await instance.adapter.interruptTurn(threadId).catch(() => {});
@@ -5642,14 +5420,7 @@ async function startTurn(
         drainQueuedSends();
       }
     } catch (cause) {
-      let e = cause;
-      // Only the driver can prove a task was never submitted; an error string is not that proof.
-      const mayRecover = e instanceof TurnNotStartedError &&
-        directTurnClaimIsCurrent(bot.id, dispatchClaimId, threadId);
-      if (e instanceof TurnNotStartedError) {
-        retireProviderTurn(e.turnId);
-        if (!mayRecover) e = new DirectTurnSetupCancelled("turn stopped during provider setup");
-      }
+      const e = cause;
       handoffs.abandon(threadId, dispatchClaimId);
       if (computerSelectionTurns.get(threadId)?.generation === dispatchClaimId) computerSelectionTurns.delete(threadId);
       clearCancelledProviderHandshake(threadId, `direct:${dispatchClaimId}`);
@@ -5691,49 +5462,7 @@ async function startTurn(
         return;
       }
       if (e instanceof PlaceUnavailableError) clearFailedAutoPin(bot.id, threadId, e.place);
-      let message = e instanceof Error ? e.message : String(e);
-      const current = store.projectBotForTask(bot.id, threadId);
-      const backups: ModelSelection[] = [];
-      const nextIndex = backups.findIndex((candidate, index) => index >= (opts?.automaticRecoveryIndex ?? 0) &&
-        registry.get(candidate.instanceId)?.enabled &&
-        (candidate.instanceId !== instanceId || candidate.model !== model));
-      const backup = backups[nextIndex];
-      if (mayRecover && backup && current && (!opts?.cardContinuation || opts.coordination) &&
-          !directRequestOwners.get(threadId)?.stopped && !hasQueuedSteeredMessages(bot.id, threadId) &&
-          JSON.stringify(current.modelSelection) === JSON.stringify(bot.modelSelection) &&
-          (backup.instanceId !== instanceId || backup.model !== model) &&
-          store.activePath(threadId).findLast(m => m.role === "user" && m.kind === "text")?.id === recoveryUserMessageId) {
-        // No await between releasing the failed attempt and admitting its replacement: a newer send or Stop must never lose to a stale retry.
-        store.setTaskActivity(bot.id, threadId, "idle");
-        directTurnBots.delete(threadId);
-        const checked = checkedTaskModelSwitch(current, backup, false, false, true);
-        const target = checked.ok ? registry.get(checked.selection.instanceId) : null;
-        const refusal = !checked.ok ? checked.error : !target || !target.enabled ? "The backup engine is unavailable."
-          : !store.taskByThread(bot.id, threadId)?.cwd ? "This older thread has no pinned working folder. Choose its backup manually."
-          : policyModelRefusal(target) ?? recoveryCapabilityError(
-            { driverKind: instance.driverKind, capabilities: instance.adapter.capabilities },
-            { driverKind: target.driverKind, capabilities: target.adapter.capabilities });
-        if (!refusal && checked.ok && target) {
-          try {
-            assertWithinBudget(cfg, DATA_DIR);
-            store.switchTaskModel(bot.id, threadId, checked.selection, false, false, {
-              ...hostedModels?.resetTask(current.modelSelection, checked.selection), rewound: true,
-            });
-            store.appendMessage(threadId, { role: "bot", kind: "activity", tool: {
-              name: `recovery: Automatic recovery: ${instance.displayName || instance.driverKind} could not start. Trying ${target.displayName || target.driverKind} · ${checked.selection.model} once in this thread.`, ok: true,
-            } });
-            if (opts?.coordination) directCoordinationSettlers.delete(dispatchClaimId);
-            else settleDirectCoordination(dispatchClaimId, { ok: false, text: message });
-            await startTurn(bot.id, text, { ...opts, threadId, userMessage, editedMessageId: undefined,
-              automaticRecoveryAttempted: true, automaticRecoveryIndex: nextIndex + 1 });
-            // The backup now owns these callbacks: publish no failed result and release no queued receipt in between.
-            directFollowupSettlers.delete(dispatchClaimId);
-            return;
-          } catch (failure) {
-            message += ` Backup could not start: ${failure instanceof Error ? failure.message : String(failure)}`;
-          }
-        } else if (refusal) message = `Automatic recovery unavailable: ${refusal} Original error: ${message}`;
-      }
+      const message = e instanceof Error ? e.message : String(e);
       settleDirectFollowup(dispatchClaimId, { ok: false, text: message });
       store.appendMessage(threadId, {
         role: "bot",
@@ -5811,8 +5540,6 @@ async function deleteBotWithLifecycle(botId: string, revalidate: () => void = ()
   store.deleteBot(bot.id, setupRequest);
   skillReview.dropBot(bot.id);
   memoryUpkeep.forgetBot(bot.id);
-
-  cacheKeepWarm.cancelBot(bot.id);
 
   return deletionResponse(200, { ok: true });
 }
@@ -6570,21 +6297,6 @@ function settleSignIn(botId: string, threadId: string, messageId: string, outcom
   return { status: 200, body: { [outcome]: true, resumed } };
 }
 
-async function testCliBinary(
-  _cli: string,
-  _driver: (typeof BUILT_IN_DRIVERS)[number] | undefined,
-): Promise<{ ok: boolean; version?: string; message?: string; install?: (typeof BUILT_IN_DRIVERS)[number]["install"] }> {
-  return { ok: false, message: "CLI engines are not available." };
-}
-
-/** Only PATH: never hand inherited credentials to an arbitrary wrapper selected through Settings. */
-function cliProbeEnvironment(): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env, PATH: augmentedPath() };
-  stripWorkspaceCredentialEnv(env);
-  for (const key of PROVIDER_CREDENTIAL_ENV) delete env[key];
-  return env;
-}
-
 function editionForSettings(status: EditionStatus) {
   const expiring = status.edition === "enterprise" && status.expiresAt && status.expiresInDays !== undefined &&
     (status.graceEndsAt !== undefined || status.expiresInDays <= LICENSE_WARN_DAYS);
@@ -6596,8 +6308,6 @@ function editionForSettings(status: EditionStatus) {
 }
 
 function configStatus() {
-  const eventLogMaxBytes = threadEventLogMaxBytes(cfg);
-  const eventLogRetentionDays = threadEventLogRetentionDays(cfg);
   return {
     edition: editionForSettings(editionStatus()),
     budgets: {
@@ -6615,14 +6325,6 @@ function configStatus() {
     profile: { name: cfg.profile?.name ?? "", email: cfg.profile?.email ?? "", aboutMe: cfg.profile?.aboutMe ?? "" },
     managedPolicy: managedPolicy.summary(),
     language: cfg.language ?? "",
-    mcp: { callTimeoutMinutes: mcpCallTimeoutMinutes(cfg) },
-    automaticRecovery: cfg.automaticRecovery ?? { enabled: false },
-    cacheKeepWarm: cacheKeepWarmSettings(cfg),
-    threads: {
-      maxConcurrentPerBot: maxConcurrentBotThreads(cfg),
-      ...(eventLogMaxBytes !== null ? { eventLogMaxBytes } : {}),
-      ...(eventLogRetentionDays !== null ? { eventLogRetentionDays } : {}),
-    },
     features: {
       skillAuthoring: skillAuthoringEnabled(cfg),
       skillReview: cfg.features?.skillReview === true,
@@ -6630,8 +6332,6 @@ function configStatus() {
       skillsLibrary: skillsLibraryEnabled(cfg),
       shareLearnedSkills: skillsHost.mode(),
       showToolCalls: showToolCallsEnabled(cfg),
-      claudeUserMcp: claudeUserMcpEnabled(cfg),
-      claudeUserSkills: claudeUserSkillsEnabled(cfg),
       autoRecall: autoRecallEnabled(cfg),
       llmThreadTitles: llmThreadTitlesEnabled(cfg),
     },
@@ -6642,17 +6342,15 @@ function configStatus() {
       hintsSeen: cfg.onboarding?.hintsSeen ?? [],
       ...(cfg.onboarding?.firstTurnAt ? { firstTurnAt: cfg.onboarding.firstTurnAt } : {}),
     },
-    signIn: { admins: cfg.signIn?.admins ?? [], members: cfg.signIn?.members ?? [] },
   };
 }
 
 function configForAccess(status: ReturnType<typeof configStatus>, admin: boolean) {
   if (admin) return status;
-  // Client sessions get configured-or-not only: no SSH alias, email or sign-in list.
+  // Client sessions get configured-or-not only: no SSH alias or email.
   return {
     ...status,
     edition: { edition: status.edition.edition, features: status.edition.features },
-    signIn: { admins: [], members: [] },
     profile: { name: status.profile.name, email: "" },
 
   };
@@ -6694,18 +6392,13 @@ async function describeInstances() {
       ...instance,
       ...(entry?.icon ? { icon: entry.icon } : {}),
     };
-    if (hostedModels) return { ...described, readOnly: true,
-      install: undefined, authentication: undefined, cli: undefined, cliCandidates: [],
-    };
+    if (hostedModels) return { ...described, readOnly: true };
 
     const policyReason = policyModelRefusal(instance);
     const policy = policyReason ? { policy: { organizationName: managedPolicy.current()!.organizationName, reason: policyReason } } : {};
     if (managedDesktop.owns(instance.instanceId)) return {
       ...described, ...policy, readOnly: true, managed: managedDesktop.info(instance.instanceId),
-      install: undefined, authentication: undefined, cli: undefined, cliCandidates: [],
     };
-      // Windows keeps what Antigravity's runtime unpacked whenever it is stopped by force.
-    if (instance.driverKind === "antigravityAgent" && process.platform === "win32") return { ...described, ...policy, freeUpSpace: true };
     return { ...described, ...policy };
   });
 }
@@ -6714,7 +6407,7 @@ let companyShutdown = false;
 async function stopCompanyInstances(ids: string[]) {
   if (!ids.length) return;
   if (companyShutdown) {
-    for (const id of ids) { providerAuthSessions.clearInstance(id); bus.detach(id); }
+    for (const id of ids) { bus.detach(id); }
     return;
   }
   const cause = "turn interrupted — the Company connection changed";
@@ -6739,7 +6432,7 @@ async function stopCompanyInstances(ids: string[]) {
       store.setTaskActivity(botId, threadId, "idle");
     }
   }
-  for (const id of ids) { providerAuthSessions.clearInstance(id); bus.detach(id); }
+  for (const id of ids) { bus.detach(id); }
 }
 
 /** The engine a bot's process in a conversation runs on: the running turn's when it is the bot's, else the bot's selection there. */
@@ -6771,7 +6464,7 @@ async function reloadProviders(before: Record<string, unknown>) {
   for (const id of changed) providerInstancesChanging.add(id);
   // Those engines' processes are about to die: revoke before the first await.
   revokeEngineCapabilities(changed);
-  for (const id of changed) { providerAuthSessions.clearInstance(id); bus.detach(id); }
+  for (const id of changed) { bus.detach(id); }
   for (const task of direct) cancelDirectTurnDispatch(task.botId, task.threadId);
   try {
     const kept = [...changed].filter((id) => Object.hasOwn(configs, id));
@@ -6856,9 +6549,9 @@ ROUTES.push(createBotMessageRoutes({
   harnessCardOutcome,
 }));
 ROUTES.push(createThreadRoutes({
-  store, cfg, sessions, defaultPage: DEFAULT_PAGE,
+  store, cfg, defaultPage: DEFAULT_PAGE,
   pageSize, messagePage, messageWindow, publicBotQueuedMessages, wireBot, wireTask,
-  botComputerControlSnapshot, messageFileRootsForThread, viewerFor, visibleTo, coordinator,
+  botComputerControlSnapshot, messageFileRootsForThread, viewerFor, visibleTo,
 }));
 ROUTES.push(createBotCreateRoutes({
   store, cfg, presetStore, orgInstallStatuses,
@@ -6875,7 +6568,7 @@ ROUTES.push(createBotSettingsRoutes({
   cardAnswerRefusal,
 }));
 ROUTES.push(createBotPatchRoutes({
-  store, cfg, registry, sessions,   memoryUpkeep, cacheKeepWarm, hostedModels, supportsApprovalMode,
+  store, cfg, registry, sessions,   memoryUpkeep, hostedModels, supportsApprovalMode,
   hostedWorkspace: HOSTED_WORKSPACE, hostedFullAccessRefusal: HOSTED_FULL_ACCESS_REFUSAL, desktopManaged: DESKTOP_MANAGED, maxWorkspaceBots: MAX_WORKSPACE_BOTS,
   wireBot, storedAvatarExists, requestedTaskBot, threadBusy,
   checkedModelSelection, engineSwitchNeedsAsk, interruptAllDirectThreads,
@@ -6969,14 +6662,8 @@ ROUTES.push(createUndoRoutes({
   refusal: (auth, threadId, requestId) => cardAnswerRefusal(auth, threadId, requestId, "allow"),
   undo: (auth, res, threadId, requestId) => withDecisionActor(decisionActorFor(auth), () => undoAppliedChange(res, threadId, requestId)),
 }));
-ROUTES.push(createAntigravityLeftoverRoutes({
-  hosted: Boolean(hostedModels),
-  isAntigravity: (instanceId) => registry.get(instanceId)?.driverKind === "antigravityAgent",
-  find: () => findAntigravityLeftovers(),
-  remove: () => removeAntigravityLeftovers(),
-}));
 ROUTES.push(createConfigRoutes({
-  store, cfg, registry, sessions,
+  store, cfg, registry,
 
   hostedModels: Boolean(hostedModels),
   providerConfigs,
@@ -6985,10 +6672,8 @@ ROUTES.push(createConfigRoutes({
   revokeEngineCapabilities, reloadProviders, broadcast, drainQueuedSends,
 }));
 ROUTES.push(createInstanceRoutes({
-  store, registry,
   hostedModels: Boolean(hostedModels),
-  describeInstances, testCliBinary,
-  cliProbeEnvironment, threadBusy, botForThread,
+  describeInstances,
 }));
 ROUTES.push(createMcpServerRoutes({
   cfg, sessions, mcpOAuth,
@@ -6997,10 +6682,8 @@ ROUTES.push(createMcpServerRoutes({
   mcpConfigBusy: { get: () => mcpConfigBusy, set: (busy) => { mcpConfigBusy = busy; } },
   mcpServerResponse, mcpPolicyRefusal, persistMcpServers, savedCustomDomain,
 }));
-ROUTES.push(createSetupImportRoutes({ local: DESKTOP_MANAGED && !CLOUD_HOME && !HOSTED_WORKSPACE, cfg, mcpPolicyRefusal, persistMcpServers,
-  mcpConfigBusy: { get: () => mcpConfigBusy, set: (busy) => { mcpConfigBusy = busy; } } }));
 ROUTES.push(createStatusRoutes({
-  store, cfg, outboundCounts,
+  store, outboundCounts,
   staticDir: STATIC_DIR,
   sharedWorkspaceFullAccessEnabled, configStatus, broadcast,
 
@@ -7050,7 +6733,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
     // Two public routes come first; everything else needs the loopback owner or a paired session with the right scope.
     if (method === "GET" && !path.startsWith("/api/") && !path.startsWith("/.well-known/") && serveStatic(res, path)) return;
     if (method === "GET" && path === "/.well-known/openmausbot/environment") {
-      return json(res, 200, environmentDescriptor({ environmentId: ENVIRONMENT_ID, desktopManaged: DESKTOP_MANAGED, emailSignIn: false, cloudHome: Boolean(CLOUD_HOME) }));
+      return json(res, 200, environmentDescriptor({ environmentId: ENVIRONMENT_ID, desktopManaged: DESKTOP_MANAGED, cloudHome: Boolean(CLOUD_HOME) }));
     }
     const domainCheck = /^\/\.well-known\/openmausbot\/domain-check\/([a-f0-9]{64})$/.exec(path);
     if (method === "GET" && domainCheck) {
@@ -7067,7 +6750,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
 
       features: {  },
       loopbackTrust: LOOPBACK.trust,
-      cliOwnerToken, trustLocalBrowser: LOOPBACK.localBrowsers,
+      trustLocalBrowser: LOOPBACK.localBrowsers,
     });
     // The session term slides on use, so re-issue the cookie on every cookie request; handlers that clear it later overwrite this header.
     if (gate.auth?.kind === "session" && gate.auth.via === "cookie") {
@@ -7252,11 +6935,7 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
       if (internalCapability.generation === EXTERNAL_RUNTIME_GENERATION && !externalRuntimeMayCall(method, path)) {
         return json(res, 403, { error: "an external runtime can only list its peers, hand them work with coordinate_bots and read assignment_status" });
       }
-      const requiredCapabilityKind = path === "/api/internal/hook"
-        ? "hooks"
-        : path === "/api/internal/phone/claim"
-        ? "phone"
-        : path.startsWith("/api/internal/connectors/")
+      const requiredCapabilityKind = path.startsWith("/api/internal/connectors/")
         ? "connectors"
         : path === "/api/internal/computer-control" || path === "/api/internal/computer/mcp"
           ? "computer"
@@ -7343,10 +7022,6 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         return json(res, 200, { status: "pending", surface: option.surface,
           message: `End this turn now without using the previous computer tools. OpenMausBot will continue the original request on ${option.label} with a fresh tool connection.` });
       }
-      if (method === "POST" && path === "/api/internal/hook") {
-        const body = await readInternalBody();
-        return json(res, 200, ingestEngineHook(internalCapability, body));
-      }
       if (method === "POST" && path === "/api/internal/tool-result") {
         const body = await readInternalBody();
         if (!body || typeof body.text !== "string" || !body.text || body.text.length > TOOL_RESULT_MAX_CHARS ||
@@ -7399,13 +7074,6 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse) => {
         return json(res, result.ok ? 200 : 400, result);
       }
 
-      if (method === "POST" && path === "/api/internal/phone/claim") {
-        requireActiveInternalCapability();
-        if (!claimTurnResource(internalCapability, "computer:phone")) {
-          return json(res, 409, { error: "another thread is using the phone" });
-        }
-        return json(res, 200, { claimed: true });
-      }
       // Off: a 404 like a route that never existed. On: a turn sees only the computers of the person it provably acts for.
 
       if (method === "GET" && path === "/api/internal/agents") {
@@ -8904,31 +8572,6 @@ try {
   console.warn(`attachments: startup partial cleanup failed: ${error instanceof Error ? error.message : String(error)}`);
 }
 
-const THREAD_LOG_RETENTION_SWEEP_MS = 24 * 60 * 60 * 1000;
-
-function sweepThreadEventLogsNow(): void {
-  const retentionDays = threadEventLogRetentionDays(cfg);
-  if (retentionDays === null) return;
-  const candidates: ThreadLogRetentionCandidate[] = store.bots.flatMap((bot) =>
-    (bot.tasks ?? []).map((task) => ({
-      threadId: task.threadId,
-      closedAt: task.closedBy?.at ?? null,
-      archivedAt: task.archivedAt ?? null,
-      unread: task.unread === true,
-      busy: threadBusy(bot.id, task.threadId),
-      openDirectHandoff: coordinator.activeDirect(task.threadId),
-    })));
-  const swept = sweepThreadEventLogs(candidates, retentionDays);
-  if (swept > 0) console.log(`[retention] removed event logs for ${swept} idle thread(s) past ${retentionDays} day(s)`);
-}
-
-try {
-  sweepThreadEventLogsNow();
-} catch (error) {
-  console.warn(`thread event log retention sweep failed: ${error instanceof Error ? error.message : String(error)}`);
-}
-setInterval(sweepThreadEventLogsNow, THREAD_LOG_RETENTION_SWEEP_MS).unref();
-
 // Before any row below settles: an interrupted dispatch's words come back with a review notice, never to a model a second time.
 followupAtBoot("");
 for (const row of chatFollowups()) {
@@ -8980,18 +8623,6 @@ server.listen(PORT, "127.0.0.1", async () => {
   memoryUpkeep.start();
 });
 
-// Tunnel requests have no peer address, which request-auth treats as proxied: a session is required, never loopback trust.
-const TUNNEL_SOCKET = process.env.OMB_TUNNEL_SOCKET?.trim() || null;
-let tunnelListener: ReturnType<typeof createServer> | null = null;
-if (TUNNEL_SOCKET) {
-  if (process.platform !== "win32") rmSync(TUNNEL_SOCKET, { force: true });
-  tunnelListener = createServer(gzipTunnelReplies(handleRequest));
-  upgrades.attach(tunnelListener, handleRequest);
-  tunnelListener.listen(TUNNEL_SOCKET, () => {
-    console.log(`openmausbot tunnel listener on ${TUNNEL_SOCKET}`);
-  });
-}
-
 /** A root the runtime holds is the runtime's to account for at the next start: a line here, with Retry, would start the job a second time. */
 function noteTurnsCutByShutdown(): void {
   const cut = (threadId: string) => !coordinator.continuesAfterRestart(threadId) && !runtimeHoldsRoot(threadId);
@@ -9024,9 +8655,7 @@ const gracefulShutdown = createGracefulShutdown({
 
       watchdog.stop();
       memoryUpkeep.stop();
-      cacheKeepWarm.dispose();
-      skillReview.stop();
-      tunnelListener?.close(); 
+      skillReview.stop(); 
     },
     async () => { await managedDesktop.close(); await registry.disposeAll(); },
     async () => {},

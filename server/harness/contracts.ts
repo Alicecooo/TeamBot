@@ -33,17 +33,6 @@ export class ProviderError extends Error {
   }
 }
 
-/** The attempt never reached a prompt or client-side action and its process stopped, so the harness may recover it. */
-export class TurnNotStartedError extends Error {
-  readonly turnId: TurnId;
-
-  constructor(turnId: TurnId, message: string) {
-    super(message);
-    this.name = "TurnNotStartedError";
-    this.turnId = turnId;
-  }
-}
-
 /** Variants are opaque provider IDs, not the cross-engine effort enum. */
 export function isModelVariant(value: unknown): value is string {
   return typeof value === "string" && value.length > 0 && value.length <= 256 &&
@@ -100,8 +89,6 @@ export interface SendTurnInput {
   resumeCursor?: unknown;
   /** Start without the previous native context or retained process; wins over resumeCursor. */
   sessionReset?: boolean;
-  /** Hold the startup ACK until prompt dispatch; a retired transient setup failure may reject with TurnNotStartedError. */
-  startupRecovery?: boolean;
   /** The turn with the conversation replayed inline, sent once on a fresh session when the provider refuses resumeCursor before reading the prompt. */
   recoveryText?: string;
   /** Prior turns for transcript-replay providers (API-backed drivers). */
@@ -128,8 +115,6 @@ export interface SendTurnInput {
       generation?: string;
       scope?: "local-computer";
     };
-    /** Loopback URL and turn-scoped bearer for the engine's hook helper; hooks observe and inject context, never decide state. */
-    hooks?: { url: string; token: string };
     /** Peer-agent MCP proxy (list_bots / coordinate_bots); the harness owns turns, permissions and recursion limits. */
     agents?: { command: string; args: string[]; env: Record<string, string> };
 
@@ -141,10 +126,6 @@ export interface SendTurnInput {
     customResultBudgets?: Record<string, number>;
   };
   cwd?: string;
-  /** Also load the person's own CLI MCP setup (Claude Code user scope, claude.ai connectors). */
-  mcpFromUserConfig?: boolean;
-  /** Claude Code loads the person's own `~/.claude/skills` from this folder's `.claude/skills` (`--add-dir`). */
-  userSkillsDir?: string;
   /** Per-call ceiling (ms) for this turn's MCP tools; absent is the driver's default (10 min). */
   mcpCallTimeoutMs?: number;
   /** Times an API-model turn that answers after a failed tool call is sent back to re-run it (`loopGuard.correctiveRounds`); never after a denial. */
@@ -201,8 +182,6 @@ export interface ProviderAdapter {
     /** A resumeCursor turn runs in that exact native session, or fails, or starts a new one from recoveryText (session.started says
      * `rebuilt`), never a blank one. */
     strictResume?: boolean;
-    /** sendTurn can register the harness's hook helper with the engine (integrations.hooks). */
-    hooks?: boolean;
     /** "confined": sendTurn honours `guestConfined`; absent, a guest turn is refused. */
     guestTurns?: "confined";
     /** "meter": `contextTokens` / `contextWindow` are the engine's own report, shown on the context meter but never used to time compaction. */
@@ -230,83 +209,19 @@ export interface ProviderAdapter {
   hasSession(threadId: ThreadId): boolean;
   stopAll(): Promise<void>;
   onEvent(listener: RuntimeEventListener): () => void;
-  /** `ping` sends one tool-less forked request without touching the thread's session; `hold` keeps the live session open until
-   * `until` (epoch ms; null releases) and says whether one exists. */
-  cacheKeepWarm?: {
-    ping(threadId: ThreadId, options?: { signal?: AbortSignal }): Promise<CacheWarmPingResult>;
-    hold(threadId: ThreadId, until: number | null): boolean;
-  };
 }
-
-/** Tokens are the ping's own; `costUsd` is notional on a subscription. `busy`: a turn was running and nothing was sent;
- * `limit`: the account's usage limit refused it. */
-export type CacheWarmPingResult =
-  | { ok: true; input: number; cacheRead: number; cacheWrite: number; output: number; costUsd: number | null; model: string | null }
-  | { ok: false; reason: string; busy?: boolean; limit?: boolean };
 
 export type SteerOutcome = "steered" | "refused" | "indeterminate";
 
 export interface ProviderSnapshot {
-  /** Separate, explicitly authorized ChatGPT-plan billing (not Codex login). */
-  chatgptPlan?: boolean;
-  authenticationUnavailableReason?: string;
   state: "available" | "unavailable";
   reason?: string;
   authenticated?: boolean;
-  /** Display identity from the provider CLI, never credentials; `method` is a personal login or the workspace API key. */
-  account?: { email?: string; organization?: string; method?: "login" | "api-key" };
+  /** Display identity from the provider, never credentials; `method` is the workspace API key. */
+  account?: { email?: string; organization?: string; method?: "api-key" };
   version?: string | null;
-  /** A non-blocking provider update; the renderer shows the exact terminal command. */
-  update?: {
-    title: string;
-    message: string;
-    command: string;
-  };
   /** On a subscription a reported cost is notional. */
   billing?: "metered" | "subscription";
-  /** A setup condition costing the person without their asking, with nothing to run. */
-  warning?: {
-    title: string;
-    message: string;
-  };
-}
-
-// How a user installs this engine; onboarding, the picker and settings render from it.
-export interface EngineInstall {
-  /** Added by the registry: commands run on this server, not its web client. */
-  platform?: "darwin" | "win32";
-  /** One-liner per platform; omit a platform with no such command and the UI falls back to docsUrl. */
-  command?: Partial<Record<"darwin" | "win32", string>>;
-  /** Docs or download page. The only route for GUI-installed engines. */
-  docsUrl?: string;
-  /** Interactive sign-in run after installing, when install isn't enough. */
-  signInCommand?: string;
-  /** `command` needs npm on PATH, so the UI can say so when Node is absent. */
-  needsNode?: boolean;
-  /** The app downloads and verifies a pinned provider runtime itself. */
-  managed?: {
-    label: string;
-    downloadBytes: number;
-  };
-  /** The engine needs a key saved in the app rather than a terminal step. */
-  settings?: "connections";
-  /** Settings can npm-install this package as the server's own user into an app-owned dir; set by the registry, never by a client. */
-  server?: { package: string };
-}
-
-export interface ProviderAuthenticationStart {
-  phase: "waiting" | "succeeded";
-  flowId: string | null;
-  authorizationUrl: string | null;
-  expiresAt: string | null;
-  /** A short-lived code to enter only at the provider's authorization URL. */
-  userCode?: string;
-}
-
-export interface ProviderAuthenticationStatus extends Omit<ProviderAuthenticationStart, "phase"> {
-  phase: "waiting" | "succeeded" | "failed" | "expired" | "cancelled";
-  /** Safe, actionable copy; never unfiltered CLI output or credentials. */
-  message?: string;
 }
 
 export interface ModelCatalog {
@@ -379,19 +294,6 @@ export interface ProviderInstance {
   readonly displayName: string | undefined;
   readonly enabled: boolean;
   readonly models: ModelCatalog;
-  /** Refresh a live catalog without recreating the provider instance. */
-  readonly refreshModels?: () => Promise<void>;
-  /** Set while the last run's catalog is still refreshing; a turn awaits it, listen does not. */
-  readonly startupModelRefresh?: Promise<void>;
-  /** Optional first-party runtime installation and account setup. */
-  readonly installRuntime?: () => Promise<void>;
-  readonly startAuthentication?: () => Promise<ProviderAuthenticationStart>;
-  readonly authenticationMethod?: "browser-pkce";
-  readonly getAuthentication?: (flowId: string) => Promise<ProviderAuthenticationStatus>;
-  readonly completeAuthentication?: (flowId: string, callbackUrl: string) => Promise<void>;
-  readonly cancelAuthentication?: () => Promise<void>;
-  /** Remove the provider CLI's stored sign-in on this server; never touches another instance's home. */
-  readonly signOut?: () => Promise<void>;
   readonly adapter: ProviderAdapter;
   snapshot(): Promise<ProviderSnapshot>;
   /** Cheap one-shot text call (titles, summaries); the signal is a best-effort cap. */
@@ -416,8 +318,6 @@ export interface ProviderDriver<Config = unknown> {
     supportsMultipleInstances?: boolean;
     access?: EngineAccess;
   };
-  /** Omit for engines that need no local binary (API-key drivers). */
-  readonly install?: EngineInstall;
   /** Decode the opaque config envelope; throw on invalid (→ shadow). */
   decodeConfig(raw: unknown): Config;
   defaultConfig(): Config;

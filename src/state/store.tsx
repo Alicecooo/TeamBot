@@ -111,7 +111,7 @@ export interface Message extends Pick<import("../../shared/thread/wire").WireMes
   connector?: ConnectorCardData;
   secret?: SecretRequestCardData;
   signIn?: import("../../shared/thread/wire").SignInRequestCardData;
-  tool?: { name: string; ok?: boolean; setup?: boolean; claudeUpdate?: boolean; place?: PlaceRow; summary?: string; input?: string; output?: string ; itemId?: string; outputPath?: string; fullResult?: boolean };
+  tool?: { name: string; ok?: boolean; setup?: boolean; place?: PlaceRow; summary?: string; input?: string; output?: string ; itemId?: string; outputPath?: string; fullResult?: boolean };
   steered?: boolean;
   via?: "api";
   requestMessageId?: string;
@@ -161,7 +161,6 @@ export interface Task {
   updatedAt?: number;
   lastThreadOrderAt?: number;
   usage?: TaskUsage;
-  cacheKeepWarm?: import("../../shared/thread/wire").CacheKeepWarmStatus;
   cwd?: string | null;
   modelSelection?: ModelSelection;
   followsBotModel?: boolean;
@@ -252,7 +251,6 @@ export interface Bot {
   browser?: boolean;
   recordBrowserSteps?: boolean;
   memoryUpkeep?: boolean;
-  cacheKeepWarm?: boolean | null;
   helperModel?: boolean;
   mcpServers?: string[] | null;
   browserProfile?: string | null;
@@ -346,17 +344,13 @@ export type { ConfigStatus, ManagedPolicySummary };
 // A section left out here is wiped from state.config whenever a config frame lands.
 export type ConfigStatusFrame = Pick<
   ConfigStatus,
-  "composio" | "box" | "mcp" | "threads" | "automaticRecovery" | "cacheKeepWarm" | "profile" | "language" | "features" | "onboarding" | "edition" | "budgets" | "billing" | "managedPolicy" | "cloudHome"
+  "composio" | "box" | "profile" | "language" | "features" | "onboarding" | "edition" | "budgets" | "billing" | "managedPolicy" | "cloudHome"
 >;
 
 export function configStatusFromFrame(frame: ConfigStatusFrame): ConfigStatus {
   return {
     composio: frame.composio,
     box: frame.box,
-    mcp: frame.mcp,
-    threads: frame.threads,
-    automaticRecovery: frame.automaticRecovery,
-    cacheKeepWarm: frame.cacheKeepWarm,
     profile: frame.profile,
     language: frame.language,
     features: frame.features,
@@ -368,41 +362,20 @@ export function configStatusFromFrame(frame: ConfigStatusFrame): ConfigStatus {
     ...(frame.cloudHome ? { cloudHome: true } : {})};
 }
 
-export interface EngineInstall {
-  platform?: "darwin" | "win32";
-  command?: Partial<Record<"darwin" | "win32", string>>;
-  docsUrl?: string;
-  signInCommand?: string;
-  needsNode?: boolean;
-  managed?: { label: string; downloadBytes: number };
-  server?: { package: string };
-}
-
 export interface InstanceInfo {
   instanceId: string;
   driverKind: string;
   displayName: string;
   icon?: import("../../shared/view/provider-icon").ProviderIcon;
   readOnly?: boolean;
-  trialCredit?: "active" | "used_up" | "ended";
   managed?: { organizationId: string; organizationName: string };
   policy?: { organizationName: string; reason: string };
   snapshot: {
     state: "available" | "unavailable";
     reason?: string;
     authenticated?: boolean;
-    authenticationUnavailableReason?: string;
     version?: string | null;
-    update?: {
-      title: string;
-      message: string;
-      command: string;
-    };
     billing?: "metered" | "subscription";
-    warning?: {
-      title: string;
-      message: string;
-    };
   };
   models: { default: string; options: Array<{ id: string; label: string; custom?: boolean; loaded?: boolean; provider?: string; variants?: ModelVariantOption[] }> };
   capabilities?: {
@@ -419,28 +392,16 @@ export interface InstanceInfo {
     backgroundText?: boolean;
   };
   access?: "subscription" | "custom";
-  install?: EngineInstall;
-  cli?: string;
-  cliDefault?: string;
-  cliCandidates?: string[];
-  freeUpSpace?: boolean;
 }
 
 export type AppSettingsSection =
   | "general"
   | "desktopWorkspaces"
   | "organization"
-  | "cloudAccount"
-  | "appearance"
   | "appConnections"
   | "engines"
   | "companion"
-  | "remote"
-  | "computer"
-  | "logins"
   | "usage"
-  | "activity"
-  | "backups"
   | "skills";
 
 export type BotSettingsSection =
@@ -485,8 +446,6 @@ export interface AppState {
   notifications: NotificationLogEntry[];
   appSettingsOpen: boolean;
   appSettingsSection: AppSettingsSection;
-  appSettingsCloudLink: number;
-  appSettingsPhonePairing: number;
 
   botSettingsSection: BotSettingsSection;
   botSettingsExpandAccordion: boolean;
@@ -680,7 +639,7 @@ export type Action =
  | { type: "focusMessage"; threadId: string; messageId: string; matchText?: string }
  | { type: "focusMessageConsumed"; nonce: number }
  | { type: "unreadDividerDone"; threadId: string }
- | { type: "toggleAppSettings"; open?: boolean; section?: AppSettingsSection; cloudLink?: boolean; phonePairing?: boolean }
+ | { type: "toggleAppSettings"; open?: boolean; section?: AppSettingsSection }
  | {
       type: "updateBot";
       botId: string;
@@ -760,8 +719,6 @@ function optimisticUserMessage(
     sendId,
   };
 }
-
-export const CLOUD_LINK_SETTINGS = { type: "toggleAppSettings", open: true, section: "cloudAccount", cloudLink: true } as const satisfies Action;
 
 export function reducer(state: AppState, action: Action): AppState {
   if (action.type === "messageAdded" || action.type === "messagePatched" || action.type === "threadActive" || action.type === "optimisticMessageRemoved") {
@@ -1217,8 +1174,6 @@ export function reducer(state: AppState, action: Action): AppState {
         appSettingsOpen: open,
         activityOpen: open ? false : state.activityOpen,
         appSettingsSection: action.section ?? state.appSettingsSection,
-        appSettingsCloudLink: action.cloudLink && open ? state.appSettingsCloudLink + 1 : 0,
-        appSettingsPhonePairing: action.phonePairing && open ? state.appSettingsPhonePairing + 1 : 0,
         settingsOpen: open ? false : state.settingsOpen,
         inspectorOpen: open ? false : state.inspectorOpen,
         pluginsOpen: open ? false : state.pluginsOpen,
@@ -1449,8 +1404,6 @@ export const initialState: AppState = {
   notifications: [],
   appSettingsOpen: false,
   appSettingsSection: "general",
-  appSettingsCloudLink: 0,
-  appSettingsPhonePairing: 0,
 
   botSettingsSection: "identity",
   botSettingsExpandAccordion: false,
@@ -1695,7 +1648,6 @@ export const StoreContext = createContext<{
   dispatch: React.Dispatch<Action>;
   flushBotPatches: (botId: string) => Promise<BotAnnouncement | null>;
   refreshInstances: (options?: { reportErrors?: boolean }) => Promise<void>;
-  refreshModels: (instanceId: string) => Promise<void>;
 } | null>(null);
 
 function restoreBotSettingsSection(state: AppState): AppState {
@@ -2631,18 +2583,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const refreshModels = useCallback(async (instanceId: string) => {
-    const { instances } = await api(`/api/instances/${encodeURIComponent(instanceId)}/refresh-models`, {
-      method: "POST",
-    });
-    rawDispatch({ type: "instances", instances });
-  }, []);
-
   const lastFocusProbe = useRef(0);
   useEffect(() => {
     const onFocus = () => {
       const now = Date.now();
-      if (now - lastFocusProbe.current < 30_000) return; // every engine's CLI runs; a Keychain prompt refocuses the window
+      if (now - lastFocusProbe.current < 30_000) return;
       lastFocusProbe.current = now;
       void refreshInstances();
     };
@@ -2660,8 +2605,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [botPatchQueue],
   );
   const value = useMemo(
-    () => ({ state, dispatch, flushBotPatches, refreshInstances, refreshModels }),
-    [state, dispatch, flushBotPatches, refreshInstances, refreshModels],
+    () => ({ state, dispatch, flushBotPatches, refreshInstances }),
+    [state, dispatch, flushBotPatches, refreshInstances],
   );
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

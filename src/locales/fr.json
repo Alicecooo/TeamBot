@@ -567,7 +567,7 @@
   "connectors.grants.limited": "Bots avec des outils limités : {count}",
   "connectors.grants.more": "+{count} de plus",
   "place.view.local.line": "Utilise votre écran, votre souris et votre clavier.",
-  "place.view.browser.short": "Pages web uniquement",
+  "place.view.browser.short": "Browser removed",
   "place.action.tryAgain": "Réessayer",
   "place.view.ccOn.short": "Activé",
   "place.view.ccNew.short": "Prêt",

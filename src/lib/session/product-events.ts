@@ -1,5 +1,5 @@
 import { track } from "@/lib/session/analytics";
-import { allow, APP, BOT_SOURCE, BOT_TEMPLATE, CONNECTOR_RESULT, engineSlug, KEY_PROVIDER, KEY_RESULT, KEY_VIA, SIGN_IN_ENGINE, SIGN_IN_METHOD, type BotSource, type ConnectorResult, type KeyProvider, type KeyResult, type KeyVia, type SignInMethod } from "@/lib/session/analytics-allowlist";
+import { allow, APP, BOT_SOURCE, BOT_TEMPLATE, CONNECTOR_RESULT, engineSlug, KEY_PROVIDER, KEY_RESULT, KEY_VIA, type BotSource, type ConnectorResult, type KeyProvider, type KeyResult, type KeyVia } from "@/lib/session/analytics-allowlist";
 
 type Instances = ReadonlyArray<{ instanceId: string; driverKind: string }>;
 
@@ -30,10 +30,6 @@ export function keySaved(provider: KeyProvider | "other", via: KeyVia, result: K
 
 export function keyRemoved(provider: KeyProvider | "other", via: KeyVia): void {
   track("api_key_removed", { provider: allow(provider, KEY_PROVIDER), via: allow(via, KEY_VIA) });
-}
-
-export function engineSignedIn(engine: string, method: SignInMethod): void {
-  track("engine_signed_in", { engine: allow(engine, SIGN_IN_ENGINE), method: allow(method, SIGN_IN_METHOD) });
 }
 
 export function botCreated(source: BotSource, template?: string): void {

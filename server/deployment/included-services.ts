@@ -1,6 +1,6 @@
 // One relay URL + token pair per included service:
 //   OMB_CLOUD_BOAT_URL    + OMB_CLOUD_BOAT_TOKEN     the Boat relay, ending in /api/box/v1
-//   OMB_CLOUD_AI_URL      + OMB_CLOUD_AI_TOKEN       the trial's Claude credit, an OpenAI-compatible base URL
+//   OMB_CLOUD_AI_TOKEN is no longer used; it is still removed from the environment at startup.
 // The person's own key always wins and is resolved per request; an included token goes only to its relay and is never
 // written to config.json or reported to a client.
 
@@ -17,7 +17,6 @@ export interface ServiceCredential {
 
 interface Included {
   boat: ServiceCredential | null;
-  ai: ServiceCredential | null;
 }
 
 function includedService(url: string | undefined, token: string | undefined): ServiceCredential | null {
@@ -26,22 +25,9 @@ function includedService(url: string | undefined, token: string | undefined): Se
   return api && secret ? { token: secret, api, included: true } : null;
 }
 
-const includedFrom = (env: NodeJS.ProcessEnv): Included => ( {
+const includedFrom = (env: NodeJS.ProcessEnv): Included => ({
   boat: includedService(env.OMB_CLOUD_BOAT_URL, env.OMB_CLOUD_BOAT_TOKEN),
-  ai: trialCreditService(env.OMB_CLOUD_AI_URL, env.OMB_CLOUD_AI_TOKEN)});
-
-/** The token is a key the chat engine sends here, so the address must be HTTPS (loopback for tests) and the token the Admin's shape. */
-function trialCreditService(url: string | undefined, token: string | undefined): ServiceCredential | null {
-  const credential = includedService(url, token);
-  if (!credential || !/^omb_ai_[A-Za-z0-9_-]{43}$/.test(credential.token)) return null;
-  try {
-    const parsed = new URL(credential.api);
-    const loopback = parsed.protocol === "http:" && ["127.0.0.1", "[::1]"].includes(parsed.hostname);
-    return (parsed.protocol === "https:" || loopback) && !parsed.username && !parsed.password && !parsed.search && !parsed.hash ? credential : null;
-  } catch {
-    return null;
-  }
-}
+});
 
 let held: Included | null = null;
 
@@ -63,9 +49,5 @@ function resolve(own: string | undefined, providerApi: string, included: Service
 export const boatProviderApi = (env: NodeJS.ProcessEnv = process.env): string => env.OMB_BOAT_API || BOAT_API_DEFAULT;
 export function boatCredential(own: string | undefined, env: NodeJS.ProcessEnv = process.env): ServiceCredential | null {
   return resolve(own, boatProviderApi(env), (held ?? includedFrom(env)).boat);
-}
-
-export function trialCreditCredential(env: NodeJS.ProcessEnv = process.env): ServiceCredential | null {
-  return (held ?? includedFrom(env)).ai;
 }
 

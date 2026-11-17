@@ -3,12 +3,10 @@
 // bot made later gets them as the first one does. The copies are read-only and checked file by file whenever they are
 // read: a copy that changed, such as a bot editing a script every bot runs, is left out until it is brought in again.
 // A bot can switch any of them off; one the scan flagged stays off until a person switches it on for that bot after
-// reading it. A turn whose engine already loads the folder a skill came from (Claude Code with "Also use my Claude Code
-// skills", Codex with the person's own CODEX_HOME) leaves the copy out, so no engine sees a skill twice.
+// reading it.
 import { createHash, randomUUID } from "node:crypto";
-import { closeSync, constants, fstatSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, readlinkSync, renameSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { closeSync, constants, fstatSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { z } from "zod";
 
 import { parseSkillCommand } from "../../shared/skill/skill-command.ts";
@@ -262,7 +260,7 @@ export function storeImportedSkills(inputs: readonly ImportedSkillInput[]): Stor
 export interface ImportedSkillView {
   name: string;
   description: string;
-  /** Its folder, which native skill folders link to. */
+  /** The copy's folder. */
   folder: string;
   file: string;
 }
@@ -272,27 +270,16 @@ function enabledFor(name: string, entry: ImportedSkillEntry, choices: Choices): 
   return entry.warnings.length === 0 || choices.on[name] === entry.filesSha256;
 }
 
-const comparable = (path: string) => {
-  const resolved = resolve(path).replace(/^\\\\\?\\/, "");
-  return process.platform === "win32" ? resolved.toLowerCase() : resolved;
-};
-
-/** Whether the turn's engine loads this skill from where it came from: its folder there still exists. */
-function loadedInPlace(entry: ImportedSkillEntry, native: readonly string[]): boolean {
-  if (!native.some((folder) => comparable(folder) === comparable(entry.root))) return false;
-  return entryExistsWithoutFollowing(entry.origin);
-}
-
 /** The imported skills `botId` uses on a turn: switched on for it, unchanged since they came in, and named unlike any
- * of its own or library skills (`shadowed`), less those the turn's engine loads in place (`native`). */
-export function importedSkillsFor(botId: string, shadowed: ReadonlySet<string>, native: readonly string[] = []): ImportedSkillView[] {
+ * of its own or library skills (`shadowed`). */
+export function importedSkillsFor(botId: string, shadowed: ReadonlySet<string>): ImportedSkillView[] {
   const index = readImportedSkills();
   const names = Object.keys(index).filter((name) => !shadowed.has(name)).sort();
   if (!names.length) return [];
   const choices = readChoices(botId);
   return names.flatMap((name) => {
     const entry = index[name]!;
-    if (!enabledFor(name, entry, choices) || loadedInPlace(entry, native) || !importedSkillIntact(name, entry)) return [];
+    if (!enabledFor(name, entry, choices) || !importedSkillIntact(name, entry)) return [];
     const folder = join(IMPORTED_SKILLS_DIR, name);
     return [{ name, description: entry.description, folder, file: join(folder, "SKILL.md") }];
   });
@@ -350,41 +337,6 @@ export function setImportedSkillEnabled(botId: string, name: string, enabled: bo
   return importedSkillListings(botId, new Set()).find((skill) => skill.name === name)!;
 }
 
-/** The engine of one turn, as far as which skill folders it loads by itself. */
-export interface SkillTurnEngine {
-  driverKind: string;
-  config?: unknown;
-  environment?: Record<string, string | undefined>;
-}
-
-/** The skill folders a turn's engine loads in place: ~/.claude/skills for Claude Code with "Also use my Claude Code
- * skills" (or OMB_CLAUDE_INHERIT_USER_CONFIG), and $CODEX_HOME/skills for Codex on the person's own CODEX_HOME. */
-export function nativeSkillFolders(
-  engine: SkillTurnEngine | undefined,
-  options: { claudeUserSkills: boolean; home?: string; env?: Record<string, string | undefined> },
-): string[] {
-  if (!engine) return [];
-  const home = options.home ?? homedir();
-  const env = { ...(options.env ?? process.env), ...engine.environment };
-  const absolute = (value: string | undefined) => (value && isAbsolute(value) ? value : null);
-  if (engine.driverKind === "claudeAgent") {
-    if (env.OMB_CLAUDE_INHERIT_USER_CONFIG === "1") return [join(absolute(env.CLAUDE_CONFIG_DIR) ?? join(home, ".claude"), "skills")];
-    if (!options.claudeUserSkills) return [];
-    const folder = join(home, ".claude", "skills");
-    try {
-      return statSync(folder).isDirectory() ? [folder] : [];
-    } catch {
-      return [];
-    }
-  }
-  if (engine.driverKind === "codex") {
-    // A ChatGPT-plan instance runs on a CODEX_HOME of its own.
-    if ((engine.config as { authMode?: unknown } | undefined)?.authMode === "chatgpt-plan") return [];
-    return [join(absolute(env.CODEX_HOME) ?? join(home, ".codex"), "skills")];
-  }
-  return [];
-}
-
 /** After the bot's own skills, with a budget of its own, so bringing many in never pushes the bot's own out. */
 export function importedSkillsPrompt(skills: readonly ImportedSkillView[]): string {
   if (!skills.length) return "";
@@ -415,86 +367,4 @@ export function expandImportedSkillCommand(text: string, skills: readonly Import
   return command.request
     ? `${lead} Where the skill says {input}, use the request.\n\nRequest: ${command.request}`
     : `${lead} There is no further request, so run it as the skill describes.`;
-}
-
-const NATIVE_SKILL_DIRS = [".claude/skills", ".agents/skills", ".grok/skills"];
-
-/** Each level a real folder, never followed through a link. */
-function linkDirectory(root: string, relative: string, create: boolean): string | null {
-  let at = root;
-  for (const part of relative.split("/")) {
-    at = join(at, part);
-    if (create && directoryEntryState(at) === "missing") {
-      try {
-        mkdirSync(at, { mode: 0o700 });
-      } catch {
-        return null;
-      }
-    }
-    if (directoryEntryState(at) !== "directory") return null;
-  }
-  return at;
-}
-
-/** The link text only, never followed. */
-function linksToImported(link: string, name: string, base = dirname(link)): boolean {
-  try {
-    if (!lstatSync(link).isSymbolicLink()) return false;
-    return comparable(resolve(base, readlinkSync(link).replace(/^\\\\\?\\/, ""))) === comparable(join(IMPORTED_SKILLS_DIR, name));
-  } catch {
-    return false;
-  }
-}
-
-/** Moved aside before it is deleted: a bot can put something else under the name meanwhile, never make the moved entry
- * something else. */
-function removeLink(botId: string, link: string, name: string): void {
-  const aside = join(DATA_DIR, "skill-state", botId, "link-removal");
-  try {
-    mkdirSync(aside, { recursive: true, mode: 0o700 });
-  } catch {
-    return;
-  }
-  const moved = join(aside, randomUUID());
-  try {
-    renameSync(link, moved);
-  } catch {
-    return;
-  }
-  if (linksToImported(moved, name, dirname(link))) {
-    try {
-      unlinkSync(moved);
-      return;
-    } catch {}
-  }
-  try {
-    if (!entryExistsWithoutFollowing(link)) renameSync(moved, link);
-  } catch {}
-}
-
-/** Links `skills` into a task folder's native skill folders and removes the imported links it no longer wants. A name
- * the bot's own skill (or anything else) holds is left alone. */
-export function syncImportedSkillLinks(botId: string, folder: string, skills: readonly ImportedSkillView[]): void {
-  for (const relative of NATIVE_SKILL_DIRS) {
-    const dir = linkDirectory(folder, relative, skills.length > 0);
-    if (!dir) continue;
-    const wanted = new Map(skills.map((skill) => [skill.name, skill.folder]));
-    let names: string[] = [];
-    try {
-      names = readdirSync(dir).filter(isSkillName);
-    } catch {}
-    for (const name of names) {
-      const link = join(dir, name);
-      if (!linksToImported(link, name)) continue;
-      if (wanted.has(name)) wanted.delete(name);
-      else removeLink(botId, link, name);
-    }
-    for (const [name, target] of wanted) {
-      const link = join(dir, name);
-      if (entryExistsWithoutFollowing(link)) continue;
-      try {
-        symlinkSync(target, link, process.platform === "win32" ? "junction" : "dir");
-      } catch {}
-    }
-  }
 }

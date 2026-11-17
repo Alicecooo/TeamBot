@@ -4,7 +4,6 @@ import { join } from "node:path";
 
 import { EVENTS_DIR } from "../config/config.ts";
 import { redactSecrets } from "../security/redact.ts";
-import { capThreadLog, currentThreadLogCap } from "../storage/thread-log-rotation.ts";
 import { newId, type ProviderInstance, type RuntimeEvent, type RuntimeEventListener } from "./contracts.ts";
 
 const INCOMPLETE_LOG_MESSAGE =
@@ -209,7 +208,6 @@ export class EventBus {
       // People paste this log into bug reports: scrub credential-shaped content as the native tee does.
       await this.appendLog(file, persisted.map((entry) => JSON.stringify(entry)).join("\n") + "\n", { mode: 0o600 });
       if (warning) this.pendingLogWarnings.delete(threadId);
-      capThreadLog(file, currentThreadLogCap());
     } catch (error) {
       this.noteDiskFailure(events[0], error);
     } finally {

@@ -3,19 +3,6 @@ import { type InstanceInfo, useStore } from "@/state/store";
 import { cn } from "@/lib/ui/cn";
 import { t } from "@/lib/ui/i18n";
 
-export function needsSignIn(instance: InstanceInfo | undefined): boolean {
-  return instance?.snapshot.state === "available" && instance.snapshot.authenticated === false;
-}
-
-export function offersSignIn(instance: InstanceInfo | undefined): boolean {
-  if (!instance || !needsSignIn(instance) || !instance.install || instance.snapshot.authenticationUnavailableReason) return false;
-  return true;
-}
-
-export function needsCli(instance: InstanceInfo | undefined): boolean {
-  return instance?.snapshot.state !== "available";
-}
-
 export function EngineSetup({ className, unframed = false }: {
   instance: InstanceInfo;
   className?: string;

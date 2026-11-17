@@ -47,12 +47,12 @@ export const SECTIONS: Array<{
 }> = [
   { id: "general", group: "you", labelKey: "settings.section.general", icon: User, keywords: ["profile", "name", "email", "language", "skin", "theme", "appearance", "black", "white", "chat width", "font", "bubble", "sidebar", "notifications", "send", "外观", "黑", "白"] },
   { id: "companion", group: "you", labelKey: "settings.section.server", icon: Monitor, keywords: ["server", "https", "domain", "dns", "self-hosted", "caddy"] },
-  { id: "engines", group: "ai", labelKey: "settings.section.engines", icon: Terminal, keywords: ["models", "engines", "claude", "codex", "pi", "omp", "antigravity", "cursor", "grok", "cli", "模型", "检测"] },
+  { id: "engines", group: "ai", labelKey: "settings.section.engines", icon: Terminal, keywords: ["models", "engines", "openai", "anthropic", "模型", "检测"] },
   { id: "appConnections", group: "ai", labelKey: "settings.section.appConnections", icon: Plug, keywords: ["apps", "connections", "composio", "mcp", "tools", "servers", "gmail", "github", "slack", "notion", "应用", "连接", "工具", "連線", "應用"] },
   { id: "skills", group: "ai", labelKey: "settings.section.skills", icon: BookOpen, keywords: ["skills", "library", "assign", "agent skills", "skill md"] },
   { id: "desktopWorkspaces", group: "computers", labelKey: "settings.section.desktopWorkspaces", icon: Building2, keywords: ["workspace", "cloud", "hosted", "server", "servers", "connect", "pair", "switch", "local"] },
   { id: "organization", group: "account", labelKey: "settings.section.organization", icon: Building2, keywords: ["company", "organization", "organisation", "sign in", "enroll", "managed", "models", "disconnect"] },
-  { id: "usage", group: "account", labelKey: "settings.section.usage", icon: Coins, keywords: ["tokens", "cost", "billing", "plan", "quota", "remaining", "weekly", "5-hour", "model", "used"] },
+  { id: "usage", group: "account", labelKey: "settings.section.usage", icon: Coins, keywords: ["tokens", "cost", "billing", "model", "used"] },
 ];
 
 export function sectionMatches(section: (typeof SECTIONS)[number], query: string): boolean {
@@ -262,9 +262,9 @@ function ToolCallsRow() {
 export function SettingsModal() {
   const { state, dispatch } = useStore();
   const remoteActive = window.ogb?.remoteClient?.active === true;
-  const requested = state.appSettingsSection === "appearance" ? "general" : state.appSettingsSection;
+  const requested = state.appSettingsSection;
   const section: AppSettingsSection =
-    (remoteActive && !["general", "desktopWorkspaces"].includes(requested)) || requested === "remote" || requested === "computer"
+    remoteActive && !["general", "desktopWorkspaces"].includes(requested)
       ? "companion"
       : requested;
   const dialogRef = useRef<HTMLDivElement>(null);

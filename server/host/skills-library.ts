@@ -4,14 +4,12 @@ import type { SkillRequestCardData, SkillShareRecord } from "../../shared/skill/
 import { DATA_DIR, type AppConfig } from "../config/config.ts";
 import { appendDecision } from "../observability/decision-log.ts";
 import { UNDO_STALE, type DirectApply } from "../agent/direct-apply.ts";
-import { expandImportedSkillCommand, importedSkillListings, importedSkillsFor, importedSkillsPrompt, nativeSkillFolders, readImportedSkillFile, type ImportedSkillView, type SkillTurnEngine } from "../skills/imported-skills.ts";
+import { expandImportedSkillCommand, importedSkillListings, importedSkillsFor, importedSkillsPrompt, readImportedSkillFile, type ImportedSkillView } from "../skills/imported-skills.ts";
 import { redactSecretsInText } from "../security/redact.ts";
 import { readLibrarySkillFile, readSkillLibraryIndex, skillsLibraryEnabled } from "../skills/skill-library.ts";
 import { conversationAssignedSkills, prepareShareNote, shareLearnedSkill, shareLearnedSkillsMode, SHARED_REVISION_CHARS, sharedSkillEditable, undoSharedLearnedSkill, updateSharedLearnedSkill, type ShareBot } from "../skills/skill-share.ts";
 import { expandSkillCommandTurnText, listSkills, readSkillFile, resolveBotSkills, skillsSystemPrompt, type SkillListing } from "../skills/skills.ts";
 import type { BotRecord, Message, Store } from "../storage/store.ts";
-import { claudeUserSkillsEnabled } from "../agent/turn-settings.ts";
-
 type ReceiptArgs = {
   botId: string;
   threadId: string;
@@ -34,12 +32,7 @@ export interface SkillsLibraryHostDeps {
   store: Store;
   cfg: AppConfig;
   appendSkillRequestCard(args: ReceiptArgs): { requestId: string; summary: string };
-  /** An engine instance's saved config and environment: they decide which skill folders it loads by itself. */
-  engineConfig?(instanceId: string): { config?: unknown; environment?: Record<string, string> } | undefined;
 }
-
-/** The engine instance a turn runs on. */
-type TurnInstance = { instanceId: string; driverKind: string };
 
 type UndoResult =
   | { claimed: true; state: "undone" }
@@ -86,20 +79,9 @@ export function createSkillsLibraryHost(deps: SkillsLibraryHostDeps) {
   const conversationSkills = (bot: BotRecord, threadId: string): string[] | undefined =>
     skillsLibraryEnabled(cfg) ? conversationAssignedSkills(bot.id, liveAssigned(bot), conversationStartedAt(threadId)) : undefined;
 
-  const engineOf = (instance: TurnInstance | undefined): SkillTurnEngine | undefined => {
-    if (!instance) return undefined;
-    const saved = deps.engineConfig?.(instance.instanceId);
-    return {
-      driverKind: instance.driverKind,
-      ...(saved?.config !== undefined ? { config: saved.config } : {}),
-      ...(saved?.environment ? { environment: saved.environment } : {}),
-    };
-  };
-  /** This computer's skills for one turn: after the bot's own and library skills (`assigned`), less what the turn's
-   * engine already loads from the same folder. */
-  const importsFor = (bot: BotRecord, assigned: readonly string[] | undefined, instance: TurnInstance | undefined): ImportedSkillView[] =>
-    importedSkillsFor(bot.id, new Set(resolveBotSkills(bot.id, assigned).map((skill) => skill.name)),
-      nativeSkillFolders(engineOf(instance), { claudeUserSkills: claudeUserSkillsEnabled(cfg) }));
+  /** This computer's skills for one turn, after the bot's own and library skills (`assigned`). */
+  const importsFor = (bot: BotRecord, assigned: readonly string[] | undefined): ImportedSkillView[] =>
+    importedSkillsFor(bot.id, new Set(resolveBotSkills(bot.id, assigned).map((skill) => skill.name)));
 
   const editable = (botId: string, name: string): boolean =>
     mode() !== "off" && sharedSkillEditable(botId, store.bot(botId)?.assignedSkills, name);
@@ -198,22 +180,17 @@ export function createSkillsLibraryHost(deps: SkillsLibraryHostDeps) {
 
     /** A turn's skills index, or the preview's without a thread: the bot's own and library skills, then the ones from
      * this computer, each with a budget of its own. */
-    skillsIndex(bot: BotRecord, threadId: string | undefined, instance?: TurnInstance): string {
+    skillsIndex(bot: BotRecord, threadId: string | undefined): string {
       const assigned = threadId === undefined ? (skillsLibraryEnabled(cfg) ? bot.assignedSkills : undefined) : conversationSkills(bot, threadId);
       return skillsSystemPrompt(bot.id, assigned, threadId === undefined ? undefined : conversationStartedAt(threadId)) +
-        importedSkillsPrompt(importsFor(bot, assigned, instance));
-    },
-
-    /** The imported skills a turn links into its task folder: the same ones its index lists. */
-    turnImports(bot: BotRecord, threadId: string, instance?: TurnInstance): ImportedSkillView[] {
-      return importsFor(bot, conversationSkills(bot, threadId), instance);
+        importedSkillsPrompt(importsFor(bot, assigned));
     },
 
     /** `/name` for one of the bot's own, library or imported skills. */
-    expandSkillCommand(bot: BotRecord, text: string, instance?: TurnInstance): string {
+    expandSkillCommand(bot: BotRecord, text: string): string {
       const assigned = skillsLibraryEnabled(cfg) ? liveAssigned(bot) : undefined;
       const own = expandSkillCommandTurnText(bot.id, text, assigned);
-      return own !== text ? own : expandImportedSkillCommand(text, importsFor(bot, assigned, instance));
+      return own !== text ? own : expandImportedSkillCommand(text, importsFor(bot, assigned));
     },
 
     shareNote(bot: BotRecord, threadId: string, enabled: boolean): TurnShareNote {

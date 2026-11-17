@@ -10,17 +10,21 @@ import { completeMcpSignIn, mcpSignInLink, runMcpSignIn, type McpSignInStatus } 
 import { api, useStore } from "@/state/store";
 
 import { Switch } from "./SettingsPrimitives";
-import type { McpMessage, McpResultBudgetListing } from "./McpResultBudgetField";
+
+interface McpMessage {
+  key: LocaleKey;
+  params?: Record<string, string | number>;
+}
 
 /** Security: secrets arrive as names only. */
-interface StdioMcpListing extends McpResultBudgetListing {
+interface StdioMcpListing {
   name: string;
   command: string;
   args: string[];
   envKeys: string[];
   enabled: boolean;
 }
-interface RemoteMcpListing extends McpResultBudgetListing {
+interface RemoteMcpListing {
   name: string;
   type: "http" | "sse";
   url: string;

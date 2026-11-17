@@ -3,7 +3,6 @@ import { Check } from "lucide-react";
 import { useStore, type InstanceInfo } from "@/state/store";
 import { t } from "@/lib/ui/i18n";
 import { companyInstanceFor, instanceCanRun, planCompanySwitch } from "@/lib/models/company-models";
-import { EngineSetup, needsCli } from "./EngineSetup";
 
 const providerNames: Record<string, string> = { anthropic: "Anthropic", openai: "OpenAI", openrouter: "OpenRouter" };
 
@@ -36,7 +35,7 @@ export function CompanyModels({ providers }: { providers: ReadonlyArray<{ id: st
         <span className="text-ink-secondary">{provider.configured ? t("organization.modelCount", { count: provider.models.length }) : t("organization.notConfigured")}</span>
       </div>
       {provider.configured && provider.models.length > 0 &&
-        <CompanyEngineReadiness instance={companyInstanceFor(state.instances, provider.id)} instances={state.instances} />}
+        <CompanyEngineReadiness instance={companyInstanceFor(state.instances, provider.id)} />}
     </li>)}</ul>
     {done && <p role="status" className="break-words text-[12px] text-ink-secondary">{t("organization.useCompanyDone", { name: done.name, names: done.bots.join(", ") })}</p>}
     {target && plan.bots.length > 0 && <div data-company-switch className="flex flex-col items-start gap-2 rounded-lg border border-hairline/40 p-3">
@@ -53,17 +52,11 @@ export function CompanyModels({ providers }: { providers: ReadonlyArray<{ id: st
   </>;
 }
 
-function CompanyEngineReadiness({ instance, instances }: { instance: InstanceInfo | undefined; instances: readonly InstanceInfo[] }) {
+function CompanyEngineReadiness({ instance }: { instance: InstanceInfo | undefined }) {
   if (!instance) return null;
   if (instance.policy) return <p className="mt-1 text-[12px] text-ink-secondary">{instance.policy.reason}</p>;
   if (instanceCanRun(instance)) {
     return <p className="mt-1 flex items-center gap-1 text-[12px] text-ink-secondary"><Check size={12} className="text-success" aria-hidden="true" />{t("organization.engineReady")}</p>;
-  }
-  const local = instance.driverKind === "claudeAgent" || instance.driverKind === "codex"
-    ? instances.find((candidate) => candidate.driverKind === instance.driverKind && !candidate.readOnly && candidate.install)
-    : undefined;
-  if (local && needsCli(local)) {
-    return <EngineSetup instance={local} className="mt-2" />;
   }
   return <p className="mt-1 text-[12px] text-ink-secondary">{instance.snapshot.reason ?? t("organization.engineUnavailable")}</p>;
 }

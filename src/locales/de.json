@@ -585,7 +585,7 @@
   "connectors.grants.limited": "Bots mit eingeschränkten Tools: {count}",
   "connectors.grants.more": "+{count} weitere",
   "place.view.local.line": "Nutzt deinen Bildschirm, deine Maus und deine Tastatur.",
-  "place.view.browser.short": "Nur Webseiten",
+  "place.view.browser.short": "Browser removed",
   "place.action.tryAgain": "Nochmal versuchen",
   "place.view.ccOn.short": "An",
   "place.view.ccNew.short": "Bereit",

@@ -6,19 +6,10 @@ export const APPROVAL_MODES = ["ask", "edits", "auto", "full", "custom"] as cons
 
 export type ApprovalMode = (typeof APPROVAL_MODES)[number];
 
-/** Only providers with an implemented permission mapping may expose a level.
- * `edits` (auto-accept edits) exists where the engine has such a mode:
- * Claude and Grok `acceptEdits`, Antigravity `auto_edit`, Qwen `auto-edit`.
- * Codex's Ask already runs `workspace-write`, so an edits
- * level would change nothing there. Full access, the default level, runs on
- * every engine: in the engine's own most permissive mode, or, where it has
- * none, with the harness answering the permission requests it leaves (the
- * chat-completions family, ACP agents such as Kimi or Hermes, Pi's computer
- * confirms). */
-export function supportsApprovalMode(driverKind: string | undefined, mode: ApprovalMode): boolean {
-  if (mode === "custom") return driverKind === "codex";
-  if (mode === "edits") return ["claudeAgent", "grokAgent", "antigravityAgent", "qwenAgent"].includes(driverKind ?? "");
-  return true;
+/** Ask, auto, and full are the levels the remaining engines expose. Edits and
+ * custom stay in the stored union so older rows still parse, and fail closed. */
+export function supportsApprovalMode(_driverKind: string | undefined, mode: ApprovalMode): boolean {
+  return mode === "ask" || mode === "auto" || mode === "full";
 }
 
 /** Whether switching engines must first drop this level to Ask. A Custom
@@ -34,10 +25,8 @@ export function modelSwitchNeedsAsk(
   return !supportsApprovalMode(toDriver, mode) || (mode === "custom" && fromDriver !== toDriver);
 }
 
-export function hasNativeAutoReview(driverKind: string | undefined): boolean {
-  // Qwen Code's `--approval-mode auto` is an LLM classifier that approves
-  // safe actions and blocks risky ones — a reviewer, not a rubber stamp.
-  return ["codex", "claudeAgent", "cursorAgent", "grokAgent", "qwenAgent"].includes(driverKind ?? "");
+export function hasNativeAutoReview(_driverKind: string | undefined): boolean {
+  return false;
 }
 
 const APPROVAL_RANK: Record<ApprovalMode, number> = { ask: 0, edits: 1, auto: 2, full: 3, custom: 4 };

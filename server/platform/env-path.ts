@@ -1,5 +1,5 @@
 // A macOS app launched from Finder inherits a bare PATH (no ~/.local/bin, /opt/homebrew/bin or nvm/volta/asdf shims),
-// so every agent CLI spawn goes through augmentedPath().
+// so MCP and local computer commands go through augmentedPath().
 import { execFile } from "node:child_process";
 import { closeSync, existsSync, openSync, readFileSync, readSync, statSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
@@ -25,12 +25,8 @@ function sealedFixture(): boolean {
 function knownDirs(): string[] {
   const home = homedir();
   return [
-    join(home, ".local", "bin"), // claude installer default
-    join(home, ".npm-global", "bin"), // npm prefix ~/.npm-global (claude, opencode)
-    join(home, ".kimi-code", "bin"), // kimi-code installer
-    join(home, ".grok", "bin"), // x.ai installer
-    join(home, ".opencode", "bin"), // opencode installer
-    join(home, ".claude", "local"), // claude "local install"
+    join(home, ".local", "bin"),
+    join(home, ".npm-global", "bin"),
     ...(sealedFixture() ? [] : [
       "/opt/homebrew/bin", // brew, Apple silicon
       "/usr/local/bin", // brew Intel / classic installs
@@ -49,19 +45,11 @@ function knownDirs(): string[] {
 function windowsKnownDirs(): string[] {
   const home = homedir();
   const appData = process.env.APPDATA ?? join(home, "AppData", "Roaming");
-  const localAppData = process.env.LOCALAPPDATA ?? join(home, "AppData", "Local");
   const programFiles = process.env.ProgramFiles ?? "C:\\Program Files";
   return [
-    join(appData, "npm"), // npm -g shims: claude, codex
-    join(home, ".kimi-code", "bin"), // recover Kimi installs after a GUI launch too
-    join(home, ".grok", "bin"), // x.ai installer
-    join(localAppData, "agy", "bin"), // Antigravity installer
-    join(localAppData, "omp"), // Oh My Pi native Windows installer
-    // Cursor installer: cursor-agent.* and its `agent` copies
-    join(localAppData, "cursor-agent"),
-    join(home, ".local", "bin"), // claude native installer
-    join(home, ".claude", "local"),
-    join(home, "bin"), // Factory droid installer (%USERPROFILE%\bin)
+    join(appData, "npm"),
+    join(home, ".local", "bin"),
+    join(home, "bin"),
     join(home, ".bun", "bin"),
     join(home, ".deno", "bin"),
     join(home, "go", "bin"),
@@ -74,15 +62,6 @@ let cached: string | null = null;
 let probed = false;
 let loginShellPath: string | null = null;
 
-// App-managed dirs (its own npm prefix) go first, so an engine installed there wins over an older copy.
-const registeredDirs: string[] = [];
-
-export function registerPathDir(dir: string): void {
-  if (registeredDirs.includes(dir)) return;
-  registeredDirs.unshift(dir);
-  resetPathCache();
-}
-
 /** `probed` resets too, or a rescan would drop rc-file PATH entries and never probe the login shell again. */
 export function resetPathCache(): void {
   cached = null;
@@ -92,7 +71,6 @@ export function resetPathCache(): void {
 export function augmentedPath(): string {
   if (cached === null) {
     cached = mergePaths([
-      ...registeredDirs.filter((d) => existsSync(d)),
       ...(process.env.OMB_EXTRA_PATH ? process.env.OMB_EXTRA_PATH.split(delimiter) : []),
       ...(process.env.PATH ? process.env.PATH.split(delimiter) : []),
       // Keep the last login-shell result while a rescan re-probes, or rc-only CLIs vanish for the response that triggered it.
@@ -132,7 +110,6 @@ export function resetPathCacheForTests(): void {
   cached = null;
   probed = false;
   loginShellPath = null;
-  registeredDirs.length = 0;
 }
 
 /** Windows CLIs keep state under USERPROFILE; a HOME leaking in from a POSIX-flavoured shell is not it. */
@@ -144,24 +121,6 @@ export function userHome(env: Record<string, string | undefined> = process.env):
 
 export function harnessHome(name: string, env: Record<string, string | undefined> = process.env): string {
   return join(userHome(env), `.${name}`);
-}
-
-export function findCliCandidates(name: string): string[] {
-  if (!name || /[\n\r]/.test(name)) return [];
-  if (/[/\\]/.test(name) || /^[a-zA-Z]:/.test(name)) return [name];
-  const exts = process.platform === "win32" ? (process.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD").split(";").filter(Boolean) : [""];
-  const out: string[] = [];
-  for (const dir of augmentedPath().split(delimiter)) {
-    if (!dir) continue;
-    for (const ext of exts) {
-      const p = join(dir, name + ext);
-      if (existsSync(p)) {
-        out.push(p);
-        break;
-      }
-    }
-  }
-  return out;
 }
 
 // Windows: libuv ignores PATHEXT, Node refuses to spawn a .cmd without shell:true since CVE-2024-27980, and there is no #!.

@@ -5,7 +5,7 @@ import { approvalModeFor, type ApprovalMode } from "../../../shared/tool/approva
 import { cn } from "@/lib/ui/cn";
 import { useMenuMotion } from "../chrome/MenuMotion";
 import { t } from "@/lib/ui/i18n";
-import { approvalModeOptions, approvalModeOptionsFor, approvalModeSelectionRequiresLocalDesktop, shownApprovalMode } from "@/lib/models/approval-mode-options";
+import { approvalModeOptions, approvalModeOptionsFor, approvalModeSelectionRequiresLocalDesktop } from "@/lib/models/approval-mode-options";
 
 export {
   approvalModeOptions,
@@ -43,7 +43,7 @@ export function ApprovalModeSelector({
   const motion = useMenuMotion(open);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const mode = shownApprovalMode(driverKind, approvalModeFor({ approvalMode, autoApprove }));
+  const mode = approvalModeFor({ approvalMode, autoApprove });
   const allOptions = approvalModeOptions();
   const current = approvalModeOptionsFor(driverKind).find((option) => option.mode === mode)
     ?? allOptions.find((option) => option.mode === mode)
@@ -154,7 +154,7 @@ export function ApprovalModeSelector({
                 </Fragment>
               );
             })}
-            {!trustedModesAvailable && (trustedModesNotice || driverKind === "codex" || requiresLocalDesktop) && (
+            {!trustedModesAvailable && (trustedModesNotice || requiresLocalDesktop) && (
               <div className="border-t border-hairline/20 px-4 py-2.5 text-[11.5px] leading-snug text-ink-secondary">
                 {trustedModesNotice ?? t("approvalMode.customLocalOnlyDot")}
               </div>

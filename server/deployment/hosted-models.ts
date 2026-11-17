@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, mkdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
 import { writeFileAtomic } from "../storage/atomic.ts";
@@ -17,7 +17,7 @@ const catalogSchema = z.object({
   openrouter: z.array(z.string().max(160).regex(/^[A-Za-z0-9][A-Za-z0-9._-]*\/[A-Za-z0-9][A-Za-z0-9._:/+-]*$/)).max(100),
 }).strict();
 type HostedCatalog = z.infer<typeof catalogSchema>;
-const providerFor = { claude: "anthropic", codex: "openai", opencode: "openrouter" } as const;
+const providerFor = { opencode: "openrouter" } as const;
 
 /** Operator-only: partial policy configuration must never enable it, and a Cloud home ignores it. */
 export function hostedModelPolicy(dataDirectory: string, env: NodeJS.ProcessEnv = process.env) {
@@ -38,9 +38,6 @@ export function hostedModelPolicy(dataDirectory: string, env: NodeJS.ProcessEnv 
   const assigned = (id: string): string[] => Object.hasOwn(providerFor, id) ? catalog[providerFor[id as keyof typeof providerFor]] : [];
   const allows = (selection: ModelSelection) => assigned(selection.instanceId).includes(selection.model);
   const normalized = (selection: ModelSelection): ModelSelection => {
-    if (selection.instanceId === "codex" && selection.model.startsWith("omb-managed-openai::")) {
-      return { ...selection, model: selection.model.slice("omb-managed-openai::".length) };
-    }
     if (["opencode", "opencodeGo"].includes(selection.instanceId) && selection.model.startsWith("omb-managed-openrouter/")) {
       return { instanceId: "opencode", model: selection.model.slice("omb-managed-openrouter/".length) };
     }
@@ -54,16 +51,6 @@ export function hostedModelPolicy(dataDirectory: string, env: NodeJS.ProcessEnv 
       : Object.keys(providerFor).find(id => assigned(id).length);
     return id ? { instanceId: id, model: assigned(id)[0] } : { instanceId: "", model: "" };
   };
-  const home = (name: string) => {
-    let directory = dataDirectory;
-    for (const part of ["providers", "hosted", name]) {
-      directory = join(directory, part);
-      mkdirSync(directory, { recursive: true, mode: 0o700 });
-      const stat = lstatSync(directory);
-      if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error("Hosted provider storage must be an owned directory.");
-    }
-    return directory;
-  };
   return {
     allows, select,
     resetTask(previous: ModelSelection, next: ModelSelection) {
@@ -71,24 +58,9 @@ export function hostedModelPolicy(dataDirectory: string, env: NodeJS.ProcessEnv 
         ? { resumeCursors: {}, lastInstanceId: undefined, rewound: true, lastContextModel: undefined, appliedCompactionId: undefined }
         : {};
     },
-    error: () => Object.values(catalog).some(models => models.length) ? HOSTED_MODEL_SELECTION_ERROR : HOSTED_MODEL_SETUP_ERROR,
+    error: () => catalog.openrouter.length ? HOSTED_MODEL_SELECTION_ERROR : HOSTED_MODEL_SETUP_ERROR,
     configs(): InstanceConfigMap {
       const configs: InstanceConfigMap = {};
-      // Saved instance commands are tenant-editable; only the operator may replace the bundled executables.
-      const cli = (name: "CLAUDE" | "CODEX") => env[`OMB_HOSTED_${name}_CLI`]?.trim() || name.toLowerCase();
-      if (catalog.anthropic.length) configs.claude = {
-        driver: "claudeAgent", displayName: "Company · Claude",
-        config: { cli: cli("CLAUDE"), managed: true, managedModels: catalog.anthropic, configDir: home("claude") },
-        environment: { ANTHROPIC_API_KEY: token, ANTHROPIC_AUTH_TOKEN: token, ANTHROPIC_BASE_URL: `${base}/anthropic`,
-          ANTHROPIC_MODEL: catalog.anthropic[0], ANTHROPIC_DEFAULT_HAIKU_MODEL: catalog.anthropic[0],
-          ANTHROPIC_DEFAULT_SONNET_MODEL: catalog.anthropic[0], ANTHROPIC_DEFAULT_OPUS_MODEL: catalog.anthropic[0],
-          ANTHROPIC_SMALL_FAST_MODEL: catalog.anthropic[0] },
-      };
-      if (catalog.openai.length) configs.codex = {
-        driver: "codex", displayName: "Company · Codex",
-        config: { cli: cli("CODEX"), managed: { url: `${base}/openai/v1`, models: catalog.openai } },
-        environment: { OPENMAUSBOT_COMPANY_API_KEY: token, CODEX_HOME: home("codex") },
-      };
       if (catalog.openrouter.length) configs.opencode = {
         driver: "openai-compat", displayName: "Company · OpenRouter",
         config: { url: `${base}/openrouter/v1`, apiKeyEnv: "OPENMAUSBOT_COMPANY_API_KEY", provider: "", model: catalog.openrouter[0], managedModels: catalog.openrouter },
@@ -101,9 +73,6 @@ export function hostedModelPolicy(dataDirectory: string, env: NodeJS.ProcessEnv 
       return {
         ...instance,
         models: { default: models[0], options: models.map(id => ({ id, label: id })) },
-        refreshModels: async () => {},
-        installRuntime: undefined, startAuthentication: undefined, getAuthentication: undefined,
-        completeAuthentication: undefined, cancelAuthentication: undefined, signOut: undefined,
         snapshot: async () => ({ ...await instance.snapshot(), authenticated: true, billing: "metered" }),
         adapter: { ...instance.adapter, sendTurn: async input => {
           if (!input.model || !models.includes(input.model)) throw new Error(HOSTED_MODEL_SELECTION_ERROR);

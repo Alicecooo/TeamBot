@@ -17,8 +17,6 @@ export interface FailedTurnTool {
   /** fixed by installing or signing in, not by retrying */
   setup?: boolean;
   terminal?: boolean;
-  /** the installed Claude Code is too old for the model */
-  claudeUpdate?: boolean;
   /** the place this turn could not use, and where that place came from */
   place?: PlaceRow;
 }
@@ -26,7 +24,7 @@ export interface FailedTurnTool {
 /** The activity row a failed turn is stored as. */
 export function failedTurnTool(
   cause: string,
-  flags: { setup?: boolean; terminal?: boolean; claudeUpdate?: boolean; place?: PlaceRow } = {},
+  flags: { setup?: boolean; terminal?: boolean; place?: PlaceRow } = {},
 ): FailedTurnTool {
   const words = cause.length > FAILED_TURN_MAX_CHARS ? `${cause.slice(0, FAILED_TURN_MAX_CHARS - 1)}…` : cause;
   return {
@@ -34,7 +32,6 @@ export function failedTurnTool(
     ok: false,
     ...(flags.setup ? { setup: true } : {}),
     ...(flags.terminal ? { terminal: true } : {}),
-    ...(flags.claudeUpdate ? { claudeUpdate: true } : {}),
     ...(flags.place ? { place: flags.place } : {}),
   };
 }

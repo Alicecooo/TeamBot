@@ -3,7 +3,7 @@
 
 import { engineReady } from "@/lib/models/engine-ready";
 import { analyticsEnabled, track } from "@/lib/session/analytics";
-import { allow, APP, CONNECTORS_MODE, EDITION, engineForDriver, TRIAL_CREDIT, type EventProps, type PropValue } from "@/lib/session/analytics-allowlist";
+import { allow, APP, CONNECTORS_MODE, EDITION, engineForDriver, type EventProps, type PropValue } from "@/lib/session/analytics-allowlist";
 import { hasActiveConnection, type ConnectorStatus } from "@/lib/connectors/connector-status";
 import type { AppState, Bot, ConfigStatus, InstanceInfo } from "@/state/store";
 
@@ -52,7 +52,6 @@ export function buildUsageSnapshot(input: UsageInput): EventProps {
     teams: input.sections?.length ?? 0,
     engines: [...new Set(ready.map((instance) => engineForDriver(instance.driverKind)))].sort(),
     engine_count: ready.length,
-    trial_credit: allow(instances.find((instance) => instance.trialCredit !== undefined)?.trialCredit ?? "none", TRIAL_CREDIT),
     ...appFacts(input.apps),
     connectors_mode: allow(config.composio?.mode?.replace("-", "_"), CONNECTORS_MODE),
     ...memberFacts(input.sessions),

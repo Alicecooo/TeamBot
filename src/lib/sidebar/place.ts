@@ -4,12 +4,7 @@ import type { Bot, Task } from "@/state/store";
 import type { LocaleKey } from "@/locales";
 
 export type Place = "cloud" | "local" | "browser";
-export const PLACES: readonly Place[] = ["cloud", "local", "browser"];
 export type EffectivePlace = Place | "auto" | "off";
-
-export function placeOffered(_place: Place, _config: { cloudHome?: boolean } | null | undefined): boolean {
-  return true;
-}
 
 export function effectivePlace(bot: Pick<Bot, "computer">, task?: Pick<Task, "surface"> | null): EffectivePlace {
   if (bot.computer === "off") return "off";

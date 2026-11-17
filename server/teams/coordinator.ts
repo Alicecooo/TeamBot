@@ -1,7 +1,7 @@
 import { RuntimeCoordinator } from "./runtime-coordinator.ts";
 import type { WorkOrigin } from "./peer-provenance.ts";
 import type { LegacyThreadResolver } from "../runtime/import-legacy.ts";
-import type { Assignment, EnvelopeNames, Level, Limits, Mode, Origin, Outcome, Owner, Reply, Requester, StatusView, TurnEvidence } from "../runtime/types.ts";
+import type { EnvelopeNames, Level, Limits, Mode, Origin, Outcome, Owner, Reply, Requester, StatusView, TurnEvidence } from "../runtime/types.ts";
 
 /** One coordinate_bots call, as the internal route hands it to the server. */
 export type CoordinateBotsCall = {
@@ -122,8 +122,6 @@ export interface Coordinator {
   enqueue(source: ThreadAddress, generation: string, parentId: string | undefined, target: ThreadAddress, text: string,
     options?: HandoffOptions): { node: HandoffView; duplicate: boolean };
   status(id: string): StatusView | undefined;
-  /** Every assignment this conversation was given that was open at `since` or began after, with all handed out under it; rows oldest first. */
-  job(threadId: string, since: number, botId?: string): { scopes: string[]; rows: Assignment[] };
   /** Undelivered inbox items for a polling requester, marked delivered. */
   poll(owner: Owner): { items: StatusView["inbox"]; assignments: HandoffView[] };
   /** Non-terminal work the conversation in this thread is waiting on. */

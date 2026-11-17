@@ -88,15 +88,11 @@ export interface PlaceFacts {
     model?: string;
     /** It can use computer tools. */
     computer: boolean;
-    /** It can use the built-in browser. */
-    browser: boolean;
     /** Not waiting on a sign-in. */
     signedIn: boolean;
   };
   /** The bot's tool selection includes the computer. */
   toolsAllowComputer: boolean;
-  /** The built-in browser is switched on for this installation and bot. */
-  browserOn: boolean;
   role: "admin" | "user";
   /** The cloud computer as last seen; unknown reads as not made yet. */
   computer?: "none" | "starting" | "waking" | "on" | "asleep";
@@ -111,12 +107,12 @@ export interface PlaceFacts {
 /** The English catalog, mirrored by en.json. */
 export const PLACE_EN = {
   "place.view.auto.short": "Chooses for you",
-  "place.view.auto.lineMyCloud": "Uses the built-in browser. In a chat, it starts its cloud computer by itself when a task needs desktop apps.",
-  "place.view.auto.lineDesktop": "Uses the built-in browser, a private desktop on this computer, or this computer's screen, whichever the task needs.",
+  "place.view.auto.lineMyCloud": "In a chat, it starts its cloud computer when a task needs a screen.",
+  "place.view.auto.lineDesktop": "Uses a private desktop on this computer, or this computer's screen, whichever the task needs.",
   "place.view.autoTeam.short": "Shared",
   "place.view.autoTeam.line": "Uses {computer}, the cloud computer this team shares.",
   "place.view.ccCannot.short": "Not with this model",
-  "place.view.ccCannot.line": "{model} can't use a computer. Choose a model that can, such as Claude or ChatGPT.",
+  "place.view.ccCannot.line": "{model} can't use a computer. Choose a model that can.",
   "place.view.ccToolsOff.short": "Not allowed",
   "place.view.ccToolsOff.line": "What {bot} can use doesn't include a computer.",
   "place.view.ccSignIn.short": "Sign in first",
@@ -153,12 +149,12 @@ export const PLACE_EN = {
   "place.view.ccOnMyCloud.line": "Cloud computers from your plan work for bots on My Cloud for now.",
   "place.view.ccNeedsKey.short": "Needs a Boat key",
   "place.view.ccNeedsKey.line": "A cloud computer here needs your own Boat key, a paid service.",
-  "place.view.browser.short": "Web pages only",
-  "place.view.browser.line": "Works in the built-in browser only: web pages, no desktop apps.",
-  "place.view.browserOff.short": "Browser is off",
-  "place.view.browserOff.line": "The built-in browser is switched off.",
-  "place.view.browserCannot.short": "Not with this model",
-  "place.view.browserCannot.line": "{model} can't use the built-in browser.",
+  "place.view.browser.short": "Browser removed",
+  "place.view.browser.line": "The built-in browser was removed. This conversation can use a cloud computer or this computer instead.",
+  "place.view.browserOff.short": "Browser removed",
+  "place.view.browserOff.line": "The built-in browser was removed.",
+  "place.view.browserCannot.short": "Browser removed",
+  "place.view.browserCannot.line": "The built-in browser was removed.",
   "place.view.local.short": "Your screen",
   "place.view.local.line": "Uses your screen, mouse, and keyboard.",
   "place.view.localUnavailable.short": "Not ready",
@@ -237,8 +233,8 @@ const STATE: Record<PlaceState, { key: string; action: PlaceActionId | null }> =
   "cc-on-my-cloud": { key: "ccOnMyCloud", action: "open-my-cloud" },
   "cc-needs-key": { key: "ccNeedsKey", action: "add-boat-key" },
   browser: { key: "browser", action: null },
-  "browser-off": { key: "browserOff", action: "turn-on-browser" },
-  "browser-cannot": { key: "browserCannot", action: "choose-model" },
+  "browser-off": { key: "browserOff", action: null },
+  "browser-cannot": { key: "browserCannot", action: null },
   local: { key: "local", action: null },
   "local-unavailable": { key: "localUnavailable", action: null },
   "place-failed": { key: "placeFailed", action: "try-again" },
@@ -284,10 +280,7 @@ export function placeState(facts: PlaceFacts): { state: PlaceState; params: Plac
       ? { state: "auto-team", params: { bot, computer: facts.teamComputer } }
       : { state: "auto", params: { bot } };
   }
-  if (facts.place === "browser") {
-    if (!facts.engine.browser) return { state: "browser-cannot", params: { bot, model } };
-    return facts.browserOn ? { state: "browser", params: { bot } } : { state: "browser-off", params: { bot } };
-  }
+  if (facts.place === "browser") return { state: "browser-cannot", params: { bot } };
   if (facts.place === "local") {
     return facts.local?.ready === false
       ? { state: "local-unavailable", params: { bot, reason: facts.local.reason ?? "" } }

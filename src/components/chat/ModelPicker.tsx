@@ -3,8 +3,6 @@ import { Check, ChevronDown, Search, X } from "lucide-react";
 import { useStore, currentTaskBot, type Bot, type InstanceInfo, type ModelSelection } from "@/state/store";
 import type { EffortLevel } from "../../../shared/thread/wire";
 import type { ModelVariantOption } from "../../../shared/thread/runtime-events";
-import { InstanceProviderMark } from "../chrome/ProviderIcons";
-import { needsCli } from "../settings/EngineSetup";
 import { ConfirmDialog } from "../chrome/ConfirmDialog";
 import { approvalModeFor, modelSwitchNeedsAsk } from "../../../shared/tool/approval-mode";
 import { cn } from "@/lib/ui/cn";
@@ -18,11 +16,6 @@ import { Select } from "../chrome/Select";
 
 function modelLabel(instance: InstanceInfo | undefined, model: string): string {
   return instance?.models.options.find((option) => option.id === model)?.label ?? model;
-}
-
-export function engineStatus(instance: InstanceInfo): string {
-  if (needsCli(instance)) return t("agentCli.missing");
-  return instance.snapshot.version ?? t("model.ready");
 }
 
 export function effortLabel(level: EffortLevel): string {
@@ -247,29 +240,6 @@ function ModelSearch({
   );
 }
 
-export function ModelEngineRail({ instances, selectedInstance, onSelect }: {
-  instances: InstanceInfo[];
-  selectedInstance?: InstanceInfo;
-  onSelect: (instance: InstanceInfo) => void;
-}) {
-  return (
-    <div className="flex w-14 shrink-0 flex-col gap-1 overflow-y-auto border-r border-hairline/40 bg-panel p-2">
-      {instances.map((instance) => {
-        const selected = instance.instanceId === selectedInstance?.instanceId;
-        const attention = needsCli(instance);
-        return (
-          <button type="button" key={instance.instanceId} onClick={() => onSelect(instance)}
-            aria-label={instance.displayName} aria-pressed={selected}
-            title={`${instance.displayName} · ${engineStatus(instance)}`}
-            className={cn("relative flex size-9 items-center justify-center rounded-lg", selected ? "bg-control ring-1 ring-hairline/50" : "hover:bg-control/60")}>
-            <InstanceProviderMark instance={instance} size={18} />
-            {attention && <span className="absolute bottom-0.5 right-0.5 size-1.5 rounded-full bg-warning ring-2 ring-panel" />}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 const POPOVER_WIDTH = 420;
 
 export function ModelPicker({

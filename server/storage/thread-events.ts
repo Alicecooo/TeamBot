@@ -219,8 +219,7 @@ export function isRuntimeEvent(value: unknown): value is RuntimeEvent {
       return typeof value.message === "string";
     case "runtime.error":
       return typeof value.message === "string" &&
-        (value.setup === undefined || typeof value.setup === "boolean") &&
-        (value.claudeUpdate === undefined || typeof value.claudeUpdate === "boolean");
+        (value.setup === undefined || typeof value.setup === "boolean");
     default:
       return false;
   }

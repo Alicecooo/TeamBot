@@ -15,9 +15,6 @@ export interface DefaultSelectionContext {
   refusal?: (instance: SelectableInstance) => string | undefined;
 }
 
-const claudeFirst = (instances: readonly SelectableInstance[]) =>
-  instances.find((instance) => instance.driverKind === "claudeAgent") ?? instances[0];
-
 /** A custom endpoint brings its own credential, so its sign-in state does not count. */
 export function signedOut(instance: SelectableInstance): boolean {
   return instance.snapshot.state === "available" && instance.access !== "custom" && instance.snapshot.authenticated === false;
@@ -61,9 +58,9 @@ export function selectDefaultModelSelection(
   const ready = available.filter((instance) => readyToRun(instance, context));
   const company = context.company;
   const personal = company && instances.some((instance) => company(instance.instanceId))
-    ? claudeFirst(ready.filter((instance) => !company(instance.instanceId)))
+    ? ready.filter((instance) => !company(instance.instanceId))[0]
     : undefined;
-  const pick = personal ?? claudeFirst(ready) ?? claudeFirst(available);
+  const pick = personal ?? ready[0] ?? available[0];
   return { instanceId: pick?.instanceId ?? "", model: pick ? defaultModel(pick) : "" };
 }
 

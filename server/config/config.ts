@@ -10,7 +10,6 @@ import { newBotDefaultsSchema, type NewBotDefaults } from "../bots/new-bot-defau
 import { replaySettings } from "../agent/replay-settings.ts";
 import { EFFORT_LEVELS } from "../../shared/thread/wire.ts";
 import { isModelVariant, type InstanceConfigMap, type McpServerSpec, type ModelSelection } from "../harness/contracts.ts";
-import { DEFAULT_WINDOW_MINUTES, MAX_WINDOW_MINUTES } from "../agent/cache-keepwarm.ts";
 import { PROVIDER_ICON_PRESETS, providerIconError } from "../../shared/view/provider-icon.ts";
 import { helperStoredShape, type HelperConfig } from "../agent/side-jobs.ts";
 import { loopGuardConfigSchema, type LoopGuardConfig } from "../host/loop-guard.ts";
@@ -50,12 +49,8 @@ const featureConfigSchema = z.object({
   skillReviewSteps: z.number().int().min(3).max(100).optional(),
   /** Show each tool run in the transcript. Off unless explicitly enabled. */
   showToolCalls: z.boolean().optional(),
-  /** Built-in browser. On unless false; each bot also has its own switch. */
-
   /** Computer sharing. Off unless true, set by hand: there is no Settings toggle. */
   sharedComputers: z.boolean().optional(),
-  claudeUserMcp: z.boolean().optional(), // Claude bots also load this machine's Claude Code MCP servers. Off unless true: tools cost tokens.
-  claudeUserSkills: z.boolean().optional(), // Claude bots also load the skills in ~/.claude/skills, in place. Off unless true.
   /** LLM-generated titles for new threads. Off unless true. */
   llmThreadTitles: z.boolean().optional(),
   /** Recall matching passages from the bot's memory into each turn. On unless false. */
@@ -65,7 +60,6 @@ const featureConfigSchema = z.object({
   shareLearnedSkills: z.enum(["off", "ask", "auto"]).optional(),
   /** A teammate parked on a gate only the person can lift is reported to its Chief of Staff. Off unless true. */
   chiefEscalations: z.boolean().optional(),
-  acpPlanLines: z.boolean().optional(), // An ACP agent's plan as activity lines. Off unless true.
 }).extend({ agentsToolBridge: z.boolean().optional() }); // the find_tool / use_tool bridge; off unless true
 const onboardingConfigSchema = z.object({
   completedAt: z.string().trim().max(40).optional(),
@@ -90,13 +84,7 @@ const instanceConfigSchema = z.object({
 });
 const instanceConfigMapSchema = z.record(z.string(), instanceConfigSchema);
 const DEFAULT_CLI_INSTANCES: InstanceConfigMap = {
-  pi: { driver: "piAgent" },
   omp: { driver: "ompAgent" },
-  claude: { driver: "claudeAgent" },
-  codex: { driver: "codex" },
-  antigravity: { driver: "antigravityAgent" },
-  cursor: { driver: "cursorAgent" },
-  grok: { driver: "grokAgent" },
 };
 const LEGACY_MODEL_CONFIG_KEYS = [
   "anthropic", "openai", "openrouter", "openaiCompat", "xai", "mistral", "cerebras", "groq", "meta", "opencodeGo",
@@ -113,11 +101,6 @@ const automaticRecoverySchema = z.object({
   backup: defaultModelSelectionSchema.optional(),
 }).strict().refine((recovery) => !recovery.enabled || recovery.backup !== undefined,
   { message: "Choose a backup model before enabling automatic recovery", path: ["backup"] });
-/** Prompt-cache keep-warm. Off unless enabled; a bot's own `cacheKeepWarm` overrides it. */
-const cacheKeepWarmSchema = z.object({
-  enabled: z.boolean(),
-  windowMinutes: z.number().int().min(15).max(MAX_WINDOW_MINUTES).optional(),
-}).strict();
 const threadsConfigSchema = z.object({
   maxConcurrentPerBot: z.number().int().min(1).max(MAX_CONCURRENT_BOT_THREADS),
   /** Byte cap for each thread's events/ and native/ log; absent means unbounded. */
@@ -133,18 +116,9 @@ const threadsPatchSchema = threadsConfigSchema.extend({
 const appConfigSchema = z.object( {
   /** Set only by the verified domain endpoint, never by a config patch. */
   customDomain: z.string().optional(),
-  /** Who may sign in with an emailed code: addresses or `@domain` entries; admins get every scope, members chat only. */
-  signIn: z.object({ admins: z.array(z.string().max(320)).max(500).optional(), members: z.array(z.string().max(320)).max(5000).optional() }).optional(),
   defaultModelSelection: defaultModelSelectionSchema.optional(),
   automaticRecovery: automaticRecoverySchema.optional(),
-  cacheKeepWarm: cacheKeepWarmSchema.optional(),
   newBotDefaults: newBotDefaultsSchema.optional(),
-  /** CLI launch preferences; never enables remote access implicitly. */
-  cliStartup: z.object({
-    access: z.enum(["local", "tunnel", "tailscale", "public-url"]),
-    publicUrl: z.string().url().optional(),
-    phone: z.enum(["ios", "android"]).optional(),
-  }).optional(),
   /** Workspace monthly spend limit; enforced only with the `budgets` entitlement. */
   budgets: z
     .object({
@@ -201,26 +175,19 @@ const storedAppConfigSchema = appConfigSchema.extend(helperStoredShape).extend({
 
 });
 const appConfigPatchSchema = appConfigSchema.omit({
-  instances: true, mcpServers: true, cliStartup: true, customDomain: true,
+  instances: true, mcpServers: true, customDomain: true,
 })
   .extend({ threads: threadsPatchSchema.optional() });
 const jsonObjectSchema = z.record(z.string(), z.json());
 
 export interface AppConfig extends HelperConfig {
   customDomain?: string;
-  signIn?: { admins?: string[]; members?: string[] };
   /** Preferred selection for newly created bots; existing bots keep theirs. */
   defaultModelSelection?: ModelSelection;
   /** Off by default; one backup attempt only before any work starts. */
   automaticRecovery?: { enabled: boolean; backup?: ModelSelection };
-  cacheKeepWarm?: { enabled: boolean; windowMinutes?: number };
   /** UI creation template. Saving it never mutates a bot or grants access. */
   newBotDefaults?: NewBotDefaults;
-  cliStartup?: {
-    access: "local" | "tunnel" | "tailscale" | "public-url";
-    publicUrl?: string;
-    phone?: "ios" | "android";
-  };
   mcpServers?: Record<string, unknown>;
   language?: string;
   budgets?: { monthlyUsd?: number; warnAtPercent?: number };
@@ -236,7 +203,7 @@ export interface AppConfig extends HelperConfig {
   threads?: { maxConcurrentPerBot: number; eventLogMaxBytes?: number; eventLogRetentionDays?: number };
   context?: { rebuildBytes?: number; compactAt?: number; autoCompact?: boolean; replayToolHistory?: boolean };
   memory?: { captureQuietMs?: number; tidyHour?: number };
-  features?: { skillAuthoring?: boolean; skillReview?: boolean; skillReviewSteps?: number; showToolCalls?: boolean;  sharedComputers?: boolean; claudeUserMcp?: boolean; claudeUserSkills?: boolean; llmThreadTitles?: boolean; autoRecall?: boolean; skillsLibrary?: boolean; shareLearnedSkills?: "off" | "ask" | "auto"; chiefEscalations?: boolean; acpPlanLines?: boolean; agentsToolBridge?: boolean };
+  features?: { skillAuthoring?: boolean; skillReview?: boolean; skillReviewSteps?: number; showToolCalls?: boolean;  sharedComputers?: boolean; llmThreadTitles?: boolean; autoRecall?: boolean; skillsLibrary?: boolean; shareLearnedSkills?: "off" | "ask" | "auto"; chiefEscalations?: boolean; agentsToolBridge?: boolean };
   onboarding?: { completedAt?: string; version?: number; reelSeen?: boolean; hintsSeen?: string[]; firstTurnAt?: string };
 
   instances?: InstanceConfigMap;
@@ -266,24 +233,8 @@ export function parseConfigPatch(value: JsonValue): ConfigPatch {
 
 /** Revalidated because the value is forwarded into a child process environment. */
 
-export function mcpCallTimeoutMinutes(cfg: AppConfig): number {
-  return cfg.mcp?.callTimeoutMinutes ?? DEFAULT_MCP_CALL_TIMEOUT_MINUTES;
-}
-
-export function cacheKeepWarmSettings(cfg: AppConfig): { enabled: boolean; windowMinutes: number } {
-  return { enabled: cfg.cacheKeepWarm?.enabled === true, windowMinutes: cfg.cacheKeepWarm?.windowMinutes ?? DEFAULT_WINDOW_MINUTES };
-}
-
-export function maxConcurrentBotThreads(_cfg: { threads?: { maxConcurrentPerBot?: number } }): number {
-  return Number.MAX_SAFE_INTEGER;
-}
-
-export function threadEventLogMaxBytes(_cfg: AppConfig): number | null {
-  return null;
-}
-
-export function threadEventLogRetentionDays(_cfg: AppConfig): number | null {
-  return null;
+export function mcpCallTimeoutMinutes(): number {
+  return DEFAULT_MCP_CALL_TIMEOUT_MINUTES;
 }
 
 export function skillAuthoringEnabled(cfg: AppConfig): boolean {
@@ -326,10 +277,6 @@ export function showToolCallsEnabled(cfg: AppConfig): boolean {
 /** Security: off unless true because a read-only folder grant can still be escalated to a shell. */
 export function sharedComputersEnabled(cfg: AppConfig): boolean {
   return cfg.features?.sharedComputers === true;
-}
-
-export function claudeUserMcpEnabled(cfg: Pick<AppConfig, "features">): boolean {
-  return cfg.features?.claudeUserMcp === true;
 }
 
 export function llmThreadTitlesEnabled(cfg: AppConfig): boolean {
@@ -455,12 +402,6 @@ export function loadConfig(): AppConfig {
   cfg.composio = { ...cfg.composio };
   if (process.env.COMPOSIO_API_KEY !== undefined) cfg.composio.apiKey = process.env.COMPOSIO_API_KEY;
 
-  const splitEmails = (value: string) => value.split(/[,\s]+/).map((entry) => entry.trim().toLowerCase()).filter(Boolean);
-  if (process.env.OMB_SIGNIN_EMAILS !== undefined || process.env.OMB_SIGNIN_MEMBER_EMAILS !== undefined) {
-    cfg.signIn = { ...cfg.signIn };
-    if (process.env.OMB_SIGNIN_EMAILS !== undefined) cfg.signIn.admins = splitEmails(process.env.OMB_SIGNIN_EMAILS);
-    if (process.env.OMB_SIGNIN_MEMBER_EMAILS !== undefined) cfg.signIn.members = splitEmails(process.env.OMB_SIGNIN_MEMBER_EMAILS);
-  }
   return cfg;
 }
 
@@ -556,19 +497,6 @@ export const PROVIDER_CREDENTIAL_ENV = [
   "CURSOR_AUTH_TOKEN",
 ] as const;
 
-/** Provider keys OpenCode reads from its environment (with ANTHROPIC_API_KEY set it lists Anthropic's models). */
-export const OPENCODE_PROVIDER_ENV = [
-  "CLINE_API_KEY",
-  "ANTHROPIC_API_KEY",
-  "OPENAI_API_KEY",
-  "GEMINI_API_KEY",
-  "GOOGLE_API_KEY",
-  "KIMI_API_KEY",
-  "MOONSHOT_API_KEY",
-  "MINIMAX_API_KEY",
-  "GROQ_API_KEY",
-] as const;
-
 const configSaveListeners = new Set<(before: JsonObject, after: JsonObject) => void>();
 
 /** Called synchronously after each saveConfig with the file before and after; a listener must not throw. */
@@ -597,6 +525,7 @@ export function saveConfig(
 
   delete disk.localVm;
   delete disk.imageGen;
+  delete disk.cliStartup;
   for (const key of ["composio", "profile", "mcp", "threads", "context", "memory", "features", "budgets", "billing", "decisions", "loopGuard", "onboarding", "safetyFloor"] as const) {
     const section = checkedPatch[key];
     if (!section) continue;
@@ -612,10 +541,9 @@ export function saveConfig(
   delete disk.vps;
   if (checkedPatch.language !== undefined) disk.language = checkedPatch.language;
   if (checkedPatch.customDomain !== undefined) disk.customDomain = checkedPatch.customDomain;
-  if (checkedPatch.signIn !== undefined) disk.signIn = checkedPatch.signIn;
+  delete disk.signIn;
   // Replace the section so clearing a backup cannot revive the old selection.
   if (checkedPatch.automaticRecovery !== undefined) disk.automaticRecovery = checkedPatch.automaticRecovery;
-  if (checkedPatch.cacheKeepWarm !== undefined) disk.cacheKeepWarm = checkedPatch.cacheKeepWarm;
   if (checkedPatch.defaultModelSelection !== undefined) {
     disk.defaultModelSelection = checkedPatch.defaultModelSelection;
     if (disk.newBotDefaults) {
@@ -634,7 +562,6 @@ export function saveConfig(
       delete disk.defaultModelSelection;
     }
   }
-  if (checkedPatch.cliStartup !== undefined) disk.cliStartup = checkedPatch.cliStartup;
   if (checkedPatch.mcpServers !== undefined) {
     disk.mcpServers = jsonObjectSchema.parse(checkedPatch.mcpServers);
   }

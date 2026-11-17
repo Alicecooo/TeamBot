@@ -1,6 +1,5 @@
 
 import { activeLocale, t } from "@/lib/ui/i18n";
-import { engineSignedOut } from "@/lib/chat/failed-turn";
 import { type FeatureFlagConfig } from "@/lib/session/feature-flags";
 import { useOwnerOrAdmin } from "@/lib/session/use-owner-or-admin";
 import { openBotSettings } from "@/components/bot-panel/panel-link";
@@ -27,8 +26,7 @@ function engineFacts(instance: InstanceInfo | undefined, model: string | undefin
     name: instance?.displayName || instance?.driverKind || model || "",
     model: label || model || instance?.displayName || "",
     computer: instance?.capabilities?.computerMcp === true,
-    browser: false,
-    signedIn: !engineSignedOut(instance),
+    signedIn: true,
   };
 }
 
@@ -52,7 +50,6 @@ export function placeFacts(input: {
     boat: config?.box?.configured ? (config.box.included ? "included" : "own-key") : "none",
     engine: engineFacts(instance, bot.modelSelection.model),
     toolsAllowComputer: canUseMcpServer(bot.toolScope, "computer"),
-    browserOn: false,
     role: seat.role,
     ...(input.local ? { local: input.local } : {}),
     ...(input.computer ? { computer: input.computer } : {}),
@@ -90,14 +87,14 @@ export function openPlaceAction(
   target: { botId: string; threadId?: string; place?: Place },
   dispatch: (action: Action) => void,
 ): boolean {
-  const appSettings = (section: "engines" | "computer") =>
+  const appSettings = (section: "engines" | "companion") =>
     dispatch({ type: "toggleAppSettings", open: true, section });
   switch (id) {
     case "choose-model": openBotSettings(dispatch, "model", { botId: target.botId }); return true;
     case "open-tools": openBotSettings(dispatch, "access", { botId: target.botId, page: "tools" }); return true;
     case "sign-in": appSettings("engines"); return true;
-    case "manage-computers": appSettings("computer"); return true;
-    case "add-boat-key": appSettings("computer"); return true;
+    case "manage-computers": appSettings("companion"); return true;
+    case "add-boat-key": appSettings("companion"); return true;
     
     
     case "clear-pin":

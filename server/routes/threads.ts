@@ -4,13 +4,11 @@ import { deliveredCopy } from "../bots/bot-attachment.ts";
 import { memberBot, type Viewer, type VisibleSet } from "../bots/bot-visibility.ts";
 import type { ComputerControl } from "../computers/computer-control.ts";
 import type { AppConfig } from "../config/config.ts";
-import type { Coordinator } from "../teams/coordinator.ts";
 import type { ModelSelection } from "../harness/contracts.ts";
 import { listMessageFolder, messageAttachmentName, messageFileDisposition, messageFileDownloadName, messageFolderEntryName, messageImageTargetAt, messageReferencesFile, openMessageFile, openMessageFolderEntry, referencedFileName } from "../storage/message-file.ts";
-import type { RequestAuth, ResolveOptions } from "../auth/request-auth.ts";
+import type { RequestAuth } from "../auth/request-auth.ts";
 import type { queuedSteerSnapshot } from "../teams/steer-queue.ts";
 import type { BotRecord, Message, Store, TaskRecord } from "../storage/store.ts";
-import { createJobRoutes } from "./jobs.ts";
 import { PASS, type RouteContext, type RouteHandler } from "./table.ts";
 
 export type MessagePage = { messages: Array<Message | Record<string, unknown>>; hasMore?: boolean; activeLeafId: string | null };
@@ -19,9 +17,7 @@ export interface ThreadRouteDeps {
   store: Pick<Store,
     | "activeLeaf" | "activePath" | "bot" | "botByThread" | "bots" | "messagesFor"
     | "onChange" | "sections" | "groups" | "taskByThread" | "tasks">;
-  coordinator: Pick<Coordinator, "job">;
   cfg: Pick<AppConfig, "profile">;
-  sessions: ResolveOptions["sessions"];
   defaultPage: number;
   pageSize(raw: string | null): number | null | undefined;
   messagePage(threadId: string, limit: number | undefined, before?: string | null): MessagePage;
@@ -36,8 +32,7 @@ export interface ThreadRouteDeps {
 }
 
 export function createThreadRoutes(deps: ThreadRouteDeps): RouteHandler {
-  const {store, cfg, sessions, defaultPage: DEFAULT_PAGE, pageSize, messagePage, messageWindow, publicBotQueuedMessages, wireBot, wireTask, botComputerControlSnapshot, messageFileRootsForThread, viewerFor, visibleTo} = deps;
-  const jobs = createJobRoutes({ store, coordinator: deps.coordinator, viewerFor, visibleTo, sessions });
+  const {store, cfg, defaultPage: DEFAULT_PAGE, pageSize, messagePage, messageWindow, publicBotQueuedMessages, wireBot, wireTask, botComputerControlSnapshot, messageFileRootsForThread, viewerFor, visibleTo} = deps;
   const handle = async ({ req, res, url, path, method, auth, json, readBody }: RouteContext): Promise<unknown> => {
     let m: RegExpMatchArray | null = null;
     const visible = visibleTo(viewerFor(auth));
@@ -393,5 +388,5 @@ export function createThreadRoutes(deps: ThreadRouteDeps): RouteHandler {
     }
     return PASS;
   };
-  return async (ctx) => (await jobs(ctx) !== PASS || await handle(ctx) !== PASS ? undefined : PASS);
+  return async (ctx) => await handle(ctx) !== PASS ? undefined : PASS;
 }

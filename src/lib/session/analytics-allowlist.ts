@@ -18,14 +18,11 @@ export const SECTION_PROVIDER = {
   composio: "composio",
 } as const satisfies Record<string, KeyProvider>;
 
-export const ENGINE = [
-  "pi", "omp", "claude", "codex", "antigravity", "cursor", "grok",
-] as const;
+export const ENGINE = ["omp"] as const;
 export type Engine = (typeof ENGINE)[number];
 
 const ENGINE_BY_DRIVER = new Map<string, Engine>(Object.entries({
-  piAgent: "pi", ompAgent: "omp", claudeAgent: "claude", codex: "codex",
-  antigravityAgent: "antigravity", cursorAgent: "cursor", grokAgent: "grok",
+  ompAgent: "omp",
 } satisfies Record<string, Engine>));
 
 export function engineForDriver(driverKind: unknown): Engine | "other" {
@@ -51,15 +48,10 @@ export const KEY_VIA = ["settings", "computer_panel", "chat_request"] as const;
 export type KeyVia = (typeof KEY_VIA)[number];
 export const KEY_RESULT = ["ok", "rejected", "unverified", "error"] as const;
 export type KeyResult = (typeof KEY_RESULT)[number];
-export const SIGN_IN_ENGINE = ["claude", "codex", "grok"] as const;
-export const SIGN_IN_METHOD = ["code", "device_code", "browser"] as const;
-export type SignInMethod = (typeof SIGN_IN_METHOD)[number];
 export const BOT_SOURCE = ["blank", "template", "preset"] as const;
 export type BotSource = (typeof BOT_SOURCE)[number];
 export const CONNECTOR_RESULT = ["connected", "failed", "expired", "timed_out"] as const;
 export type ConnectorResult = (typeof CONNECTOR_RESULT)[number];
 export const CONNECTORS_MODE = ["managed", "self_hosted", "unavailable"] as const;
-export const LOCAL_VM_MODE = ["shared", "per_bot", "pool"] as const;
-export const TRIAL_CREDIT = ["active", "used_up", "ended", "none"] as const;
 export const EDITION = ["oss", "enterprise"] as const;
 export const PLATFORM = ["desktop", "browser"] as const;

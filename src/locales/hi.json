@@ -567,7 +567,7 @@
   "connectors.grants.limited": "सीमित टूल वाले बॉट: {count}",
   "connectors.grants.more": "+{count} और",
   "place.view.local.line": "आपकी स्क्रीन, माउस और कीबोर्ड का उपयोग करता है।",
-  "place.view.browser.short": "केवल वेब पेज",
+  "place.view.browser.short": "Browser removed",
   "place.action.tryAgain": "फिर कोशिश करें",
   "place.view.ccOn.short": "चालू",
   "place.view.ccNew.short": "तैयार",

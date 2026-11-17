@@ -11,12 +11,10 @@ export type ComputerWant = "cloud" | "local" | "off" | undefined;
 
 export interface MountedSurfaces {
   computer: Surface | null;
-  browser: boolean;
 }
 
 export interface SurfacePlan {
   computer: ComputerWant;
-  browser: boolean;
   pinned: Surface | null;
   note: string;
 }
@@ -45,12 +43,12 @@ export function computerSkippedNote(cause: string): string {
 export function resolveSurface(input: { destination: Destination; pinnedSurface?: Surface | null }): SurfacePlan {
   const destination = input.destination;
   const pin = input.pinnedSurface ?? null;
-  if (destination === "off") return { computer: "off", browser: false, pinned: null, note: OFF_NOTE };
-  if (pin && pin !== "browser") return { computer: pin, browser: false, pinned: pin, note: "" };
+  if (destination === "off") return { computer: "off", pinned: null, note: OFF_NOTE };
+  if (pin && pin !== "browser") return { computer: pin, pinned: pin, note: "" };
   if (destination === "browser" || pin === "browser") {
-    return { computer: "off", browser: false, pinned: null, note: " The built-in browser was removed. Use an explicitly configured external browser tool; no host computer is mounted in its place." };
+    return { computer: "off", pinned: null, note: " The built-in browser was removed. Use an explicitly configured external browser tool; no host computer is mounted in its place." };
   }
-  return { computer: destination, browser: false, pinned: null, note: "" };
+  return { computer: destination, pinned: null, note: "" };
 }
 
 export function cloudPlaceRefusal(engine: CloudEngine & { name: string }, source: PlaceSource, bot: string): PlaceUnavailableError | null {
@@ -97,12 +95,12 @@ const PLACE_CONTROL = "this conversation's computer configuration";
 const ASK_TO_SWITCH = `explain the mismatch and ask the user to change where this conversation works in ${PLACE_CONTROL}`;
 
 const SURFACE_AUTHORITY =
-  ` For browser and computer tasks, use OpenMausBot's mounted browser/computer tools first: inspect the target, perform the action, and verify its result before claiming success. Discover deferred tools by their server/name when needed. Do not substitute the provider's own desktop, a shell-launched browser, or another automation path for the selected OpenMausBot surface. Ordinary code and file tasks may still use their normal tools. Announcing an action is not performing it. A request naming another place does not move these tools: this computer is the user's host, the cloud computer is remote, and the built-in browser is a separate browser. If the requested place differs from the mounted one, ${ASK_TO_SWITCH}; never act on a different computer.`;
+  ` For computer tasks, use OpenMausBot's mounted computer tools first: inspect the target, perform the action, and verify its result before claiming success. Discover deferred tools by their server/name when needed. Do not substitute the provider's own desktop, a shell-launched browser, or another automation path for the selected OpenMausBot surface. Ordinary code and file tasks may still use their normal tools. Announcing an action is not performing it. A request naming another place does not move these tools: this computer is the user's host and the cloud computer is remote. If the requested place differs from the mounted one, ${ASK_TO_SWITCH}; never act on a different computer.`;
 
 /** A Cloud home cannot reach the user's own computer. */
 const CLOUD_HOME_WORDING: ReadonlyArray<readonly [string, string]> = [
-  ["this computer is the user's host, the cloud computer is remote, and the built-in browser is a separate browser",
-    "the cloud computer is remote, the built-in browser is a separate browser, and the user's own computer cannot be reached from here"],
+  ["this computer is the user's host and the cloud computer is remote",
+    "the cloud computer is remote, and the user's own computer cannot be reached from here"],
 ];
 
 /** Built from what was actually mounted, never from the setting, so the model is only told about tools it can call. */
@@ -110,31 +108,25 @@ export function surfacePrompt(
   mounted: MountedSurfaces,
   opts: { pinned?: Surface | null; note?: string; canSelect?: boolean; cloudHome?: boolean } = {},
 ): string {
-  const computer = mounted.computer ? surfaceLabel(mounted.computer) : null;
+  const computer = mounted.computer && mounted.computer !== "browser" ? surfaceLabel(mounted.computer) : null;
   let text = "";
-  if (computer && mounted.browser) {
+  if (computer) {
     text =
-      ` Two surfaces are mounted this turn: the built-in browser (the browser server's browser_navigate, browser_snapshot, browser_click, browser_fill and friends) and ${computer} (the computer server's tools). Web tasks → the built-in browser. Desktop apps, files and shell → ${computer} tools. Pick one surface for a task and stay on it; if you need the user to sign in, say which surface — the Browser tab or ${computer}.`;
-  } else if (computer) {
-    text =
-      ` Everything you do on screen happens on ${computer}, web pages included, through its own browser; there is no separate built-in browser this turn. If you need the user to sign in, tell them it is on ${computer}.`;
-  } else if (mounted.browser) {
-    text =
-      " Everything you do on screen happens in the built-in browser tab; there is no desktop, file or shell computer this turn. If you need the user to sign in, tell them to sign in in that browser.";
+      ` Everything you do on screen happens on ${computer}, including web pages, through that computer's browser. If you need the user to sign in, tell them it is on ${computer}.`;
   }
   if (text) text += RESTATE_SENTENCE + (opts.canSelect
     ? SURFACE_AUTHORITY.replace(ASK_TO_SWITCH, "inspect connected choices with select_computer and select the requested available place; on a pending result end this turn so OpenMausBot can reconnect the correct tools and continue the original request")
     : SURFACE_AUTHORITY);
   else if (!opts.note && !opts.canSelect) {
-    text = " No computer or built-in browser tools are mounted this turn. You cannot open apps, click, or inspect a screen through OpenMausBot. If asked for screen work, explain that computer access must be configured for this bot first; do not claim to have opened or checked anything.";
+    text = " No computer tools are mounted this turn. You cannot open apps, click, or inspect a screen through OpenMausBot. If asked for screen work, explain that computer access must be configured for this bot first; do not claim to have opened or checked anything.";
   }
   if (opts.pinned) {
     text += ` This conversation is pinned to ${surfaceLabel(opts.pinned)}; changing places requires updating ${PLACE_CONTROL}, not a different tool name.`;
   }
   if (opts.canSelect) text += " For a screen task, use select_computer with no arguments when you need to inspect the actual available targets. Choose the requested place from its result; if the user left the place open, use a suitable available target or surface auto instead of asking them to operate the menu. Choose before taking actions, and do not repeat actions already completed if the task must continue elsewhere. OpenMausBot can start an existing configured computer and highlight the selected target. If the right tools are already mounted, use them directly. On a pending switch, end this turn: the original request resumes automatically with the new tools, and then you must carry out the task. Only ask for input for a genuine blocker, such as missing setup, required sign-in or an approval.";
   if (opts.canSelect) text += " If no suitable computer is running but its provider is configured, select_computer can provision one for this computer task; reuse existing resources first. Do not provision merely for ordinary chat or inspection.";
-  if (opts.canSelect && !computer && !mounted.browser) text += " No computer or browser tools are mounted yet; select_computer is the way to connect them before screen work, not a reason to claim you already performed it.";
-  if (computer || mounted.browser) text += " For online research, use the selected OpenMausBot browser when a search service is unavailable. A failed tool proves only that this attempt failed, not that every browser is unavailable. Inspect the current page after navigation; report a sign-in page, redirect or error as such. A completed model turn is not proof that the user's task succeeded.";
+  if (opts.canSelect && !computer) text += " No computer tools are mounted yet; select_computer is the way to connect them before screen work, not a reason to claim you already performed it.";
+  if (computer) text += " For online research, use the mounted computer's browser when a search service is unavailable. A failed tool proves only that this attempt failed. Inspect the current page after navigation; report a sign-in page, redirect or error as such. A completed model turn is not proof that the user's task succeeded.";
   if (opts.cloudHome) for (const [desktop, cloudHome] of CLOUD_HOME_WORDING) text = text.replace(desktop, cloudHome);
   return text + (opts.note ?? "");
 }

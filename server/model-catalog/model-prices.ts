@@ -89,16 +89,9 @@ export const LIST_PRICES: Readonly<Record<string, ListPrice>> = {
   "minimax/minimax-m2.7": price(OPENROUTER, 0.3, 0.06, 1.2),
 };
 
-/** The Antigravity picker offers Gemini 3.8 Flash at three thinking levels. */
-const ALIASES: Readonly<Record<string, string>> = {
-  "gemini-3.8-flash-high": "gemini-3.8-flash",
-  "gemini-3.8-flash-medium": "gemini-3.8-flash",
-  "gemini-3.8-flash-low": "gemini-3.8-flash",
-};
-
 export function listPriceFor(model: string, at: Date = new Date()): ModelPrice | null {
   const key = model.trim().toLowerCase();
-  const entry = LIST_PRICES[ALIASES[key] ?? key];
+  const entry = LIST_PRICES[key];
   if (!entry) return null;
   const day = at.toISOString().slice(0, 10);
   const change = entry.changes?.filter((candidate) => candidate.from <= day).at(-1);

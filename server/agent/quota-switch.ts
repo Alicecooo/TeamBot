@@ -9,10 +9,11 @@ import type { EngineAccess, ModelCatalog, ModelSelection, ProviderAdapter, Provi
 import type { Coordinator } from "../teams/coordinator.ts";
 import { readyToRun, selectDefaultModelSelection, type SelectableInstance } from "../model-catalog/default-model-selection.ts";
 import { classifyError } from "../drivers/retry.ts";
-import { PROBE_TIMEOUT_MS } from "../platform/engine-install.ts";
 import type { WorkOrigin } from "../teams/peer-provenance.ts";
 import type { BotRecord, Message, Store, TaskRecord } from "../storage/store.ts";
 import type { TurnStops } from "./turn-outcome.ts";
+
+const PROBE_TIMEOUT_MS = 30_000;
 
 export interface QuotaSwitchEngine {
   instanceId: string;
@@ -105,7 +106,7 @@ export function createQuotaSwitch(deps: QuotaSwitchDeps): QuotaSwitch {
   const openCard = (threadId: string): Message | undefined => store.messagesFor(threadId)
     .find((message) => message.card?.quotaSwitch && !message.card.answered && !message.card.dismissed);
 
-  /** Null on a probe timeout: a hung CLI must hold neither a card nor the request that answers one. */
+  /** Null on a probe timeout: a hung status read must hold neither a card nor the request that answers one. */
   const described = async (engine: QuotaSwitchEngine): Promise<SelectableInstance | null> => {
     const snapshot = await new Promise<ProviderSnapshot | null>((resolve) => {
       const wait = after(PROBE_TIMEOUT_MS, () => resolve(null));

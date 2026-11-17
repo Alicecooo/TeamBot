@@ -8,7 +8,6 @@ import { isMausColor, MAUS_COLOR_NAMES, type WireBot } from "../../shared/thread
 import { validateBotCwd } from "../bots/bot-cwd.ts";
 import { parseBotProfilePatch } from "../bots/bot-profile.ts";
 
-import type { CacheKeepWarm } from "../agent/cache-keepwarm.ts";
 import * as composio from "../integrations/composio.ts";
 import type { AppConfig } from "../config/config.ts";
 import type { ModelSelection } from "../harness/contracts.ts";
@@ -32,7 +31,6 @@ export interface BotPatchRouteDeps {
   sessions: Pick<SessionRegistry, "isLive">;
 
   memoryUpkeep: Pick<MemoryUpkeep, "dropBot">;
-  cacheKeepWarm: Pick<CacheKeepWarm, "refresh">;
   hostedModels: ReturnType<typeof hostedModelPolicy>;
   supportsApprovalMode: ReturnType<typeof createApprovalModeSupport>;
   /** Full access comes only from the workspace policy. */
@@ -52,7 +50,7 @@ export interface BotPatchRouteDeps {
 }
 
 export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
-  const {store, cfg, registry, sessions,   memoryUpkeep, cacheKeepWarm, hostedModels, supportsApprovalMode, hostedWorkspace: HOSTED_WORKSPACE, hostedFullAccessRefusal: HOSTED_FULL_ACCESS_REFUSAL, desktopManaged: DESKTOP_MANAGED, maxWorkspaceBots: MAX_WORKSPACE_BOTS, wireBot, storedAvatarExists, requestedTaskBot, threadBusy, checkedModelSelection, engineSwitchNeedsAsk,  interruptAllDirectThreads } = deps;
+  const {store, cfg, registry, sessions,   memoryUpkeep, hostedModels, supportsApprovalMode, hostedWorkspace: HOSTED_WORKSPACE, hostedFullAccessRefusal: HOSTED_FULL_ACCESS_REFUSAL, desktopManaged: DESKTOP_MANAGED, maxWorkspaceBots: MAX_WORKSPACE_BOTS, wireBot, storedAvatarExists, requestedTaskBot, threadBusy, checkedModelSelection, engineSwitchNeedsAsk,  interruptAllDirectThreads } = deps;
   const pinnedClientThread = pinnedClientThreadGuard(store);
   return async ({ req, res, path, method, auth, json, readBody }) => {
     let m: RegExpMatchArray | null = null;
@@ -252,11 +250,6 @@ export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
       if (body.memoryUpkeep !== undefined) {
         if (typeof body.memoryUpkeep !== "boolean") return json(res, 400, { error: "memoryUpkeep must be true or false" });
         patch.memoryUpkeep = body.memoryUpkeep;
-      }
-      // true/false overrides the workspace, null follows it.
-      if (body.cacheKeepWarm !== undefined) {
-        if (body.cacheKeepWarm !== null && typeof body.cacheKeepWarm !== "boolean") return json(res, 400, { error: "cacheKeepWarm must be true, false or null" });
-        patch.cacheKeepWarm = body.cacheKeepWarm ?? undefined;
       }
       if (body.helperModel !== undefined) {
         if (typeof body.helperModel !== "boolean") return json(res, 400, { error: "helperModel must be true or false" });
@@ -529,7 +522,6 @@ export function createBotPatchRoutes(deps: BotPatchRouteDeps): RouteHandler {
       if (!bot) return json(res, 404, { error: "no such bot" });
       if (body.applyToAllThreads === true && requestedApprovalMode !== "custom") store.setAllThreadApprovalMode(bot.id, requestedApprovalMode);
       if (body.memoryUpkeep === false || body.memoryEnabled === false) memoryUpkeep.dropBot(bot.id);
-      if (body.cacheKeepWarm !== undefined) cacheKeepWarm.refresh();
       if (computerSpecified && requestedComputer !== undefined) store.clearAutoSurfacePins(m[1], requestedComputer);
       if (normalizedSelection && movedTask) store.patchTask(bot.id, movedTask.threadId, { modelSelection: undefined,
         ...hostedModels?.resetTask(movedTask.modelSelection, normalizedSelection) });

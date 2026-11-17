@@ -71,9 +71,6 @@ export function describeTool(name: string): { app: string | null; label: string 
     if (server === "computer") return { app: "Computer", label: humanize(action) };
     if (server === "agents") return { app: "Team", label: humanize(action) };
     if (server === "highlevel") return { app: "HighLevel", label: humanize(action.replace(/^HIGHLEVEL_/, "")) };
-    if (server.startsWith("claude_ai_")) {
-      return { app: server.slice("claude_ai_".length).replace(/_/g, " "), label: humanize(action) };
-    }
     return { app: humanize(server), label: humanize(action) };
   }
 

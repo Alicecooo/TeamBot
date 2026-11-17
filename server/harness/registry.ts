@@ -1,13 +1,10 @@
 // Provider instance registry — port of upstream's ProviderInstanceRegistryLive behavior, minus Effect.
-import { findCliCandidates } from "../platform/env-path.ts";
-import { installNpmEngine, npmAvailable, serverInstallFor } from "../platform/engine-install.ts";
-import type { AnyProviderDriver, EngineAccess, InstanceConfigMap, InstanceId, ProviderAuthenticationStart, ProviderAuthenticationStatus, ProviderInstance, ProviderSnapshot } from "./contracts.ts";
+import type { AnyProviderDriver, EngineAccess, InstanceConfigMap, InstanceId, ProviderInstance, ProviderSnapshot } from "./contracts.ts";
 
 export interface ShadowInstance {
   instanceId: InstanceId;
   driverKind: string;
   displayName: string | undefined;
-  cli: string | undefined;
   shadow: true;
   reason: string;
 }
@@ -16,32 +13,10 @@ export type RegistryEntry =
   | { instanceId: InstanceId; live: ProviderInstance; shadow?: undefined }
   | { instanceId: InstanceId; live?: undefined; shadow: ShadowInstance };
 
-function withServerInstall(install: AnyProviderDriver["install"], npmPresent: boolean): AnyProviderDriver["install"] {
-  if (!install) return undefined;
-  const server = serverInstallFor(install, npmPresent);
-  const platform = process.platform === "darwin" || process.platform === "win32" ? process.platform : undefined;
-  return { ...install, platform, ...(server ? { server } : {}) };
-}
-
-function cliDefaultOf(driver: AnyProviderDriver | undefined): string | undefined {
-  if (!driver) return undefined;
-  try {
-    const cfg = driver.defaultConfig() as { cli?: unknown };
-    return typeof cfg?.cli === "string" ? cfg.cli : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function cliOfRaw(raw: unknown): string | undefined {
-  const cli = (raw as { cli?: unknown } | undefined)?.cli;
-  return typeof cli === "string" && cli ? cli : undefined;
-}
-
 export const SNAPSHOT_DEADLINE_MS = 60_000;
-/** How long a finished status read answers later reads, so a start-up's model lists and engine-list reads probe each CLI once. */
+/** How long a finished status read answers later reads, so a start-up's model lists and engine-list reads probe each engine once. */
 export const SNAPSHOT_REUSE_MS = 3_000;
-const SNAPSHOT_DEADLINE_REASON = "This engine did not report its status within a minute. Check that its CLI starts in a terminal.";
+const SNAPSHOT_DEADLINE_REASON = "This engine did not report its status within a minute.";
 
 function withinDeadline(read: () => Promise<ProviderSnapshot>): Promise<ProviderSnapshot> {
   let deadline: NodeJS.Timeout | undefined;
@@ -58,16 +33,11 @@ type SharedRead = { generation: number; settledAt?: number; read: Promise<Provid
 
 export class ProviderRegistry {
   private byId = new Map<InstanceId, RegistryEntry>();
-  private cliByInstance = new Map<InstanceId, string>();
   private lastSnapshots = new Map<InstanceId, ProviderSnapshot>();
   private snapshotGeneration = 0;
   private driversByKind: Map<string, AnyProviderDriver>;
-  private readonly enginesBaseDir: string | undefined;
-  private readonly npmPresent: () => boolean;
 
-  constructor(drivers: readonly AnyProviderDriver[], options: { enginesBaseDir?: string; npmAvailable?: () => boolean } = {}) {
-    this.enginesBaseDir = options.enginesBaseDir;
-    this.npmPresent = options.npmAvailable ?? npmAvailable;
+  constructor(drivers: readonly AnyProviderDriver[]) {
     this.driversByKind = new Map(drivers.map((d) => [d.driverKind, d]));
   }
 
@@ -104,7 +74,6 @@ export class ProviderRegistry {
           instanceId,
           driverKind: entry.driver,
           displayName: entry.displayName,
-          cli: cliOfRaw(entry.config),
           shadow: true,
           reason: `unknown driver "${entry.driver}" — kept as configured, unavailable here`,
         },
@@ -112,9 +81,6 @@ export class ProviderRegistry {
     }
     try {
       const config = entry.config === undefined ? driver.defaultConfig() : driver.decodeConfig(entry.config);
-      // The RAW config: decodeConfig fills in the driver default, which would flag every instance as overridden.
-      const rawCli = cliOfRaw(entry.config);
-      if (rawCli) this.cliByInstance.set(instanceId, rawCli);
       const live = await driver.create({
         instanceId,
         displayName: entry.displayName ?? driver.metadata.displayName,
@@ -131,7 +97,6 @@ export class ProviderRegistry {
           instanceId,
           driverKind: entry.driver,
           displayName: entry.displayName ?? driver.metadata.displayName,
-          cli: cliOfRaw(entry.config),
           shadow: true,
           reason: e instanceof Error ? e.message : String(e),
         },
@@ -141,7 +106,7 @@ export class ProviderRegistry {
 
   /**
    * One engine's status read, bounded and shared: callers join the probe in flight, and one that finished within
-   * SNAPSHOT_REUSE_MS answers again, so the CLI is not spawned twice for the same answer. A failed read is never reused.
+   * SNAPSHOT_REUSE_MS answers again, so the same engine is not read twice for the same answer. A failed read is never reused.
    * Replaced on the driver's own instance, beneath a decorator's checks, which still run on every read; an object
    * spread would evaluate getters such as `models` once.
    */
@@ -158,7 +123,7 @@ export class ProviderRegistry {
     };
   }
 
-  /** Every engine's next status read probes its CLI again: an install, update, sign-in or key change may alter what it reports. */
+  /** Every engine's next status read runs again: a key change may alter what it reports. */
   forgetSnapshots(): void {
     this.snapshotGeneration += 1;
   }
@@ -177,15 +142,10 @@ export class ProviderRegistry {
   }
 
   /** From the registry's config, never an HTTP body. */
-  cliTarget(instanceId: InstanceId): { driverKind: string; cli: string | null } | null {
+  cliTarget(instanceId: InstanceId): { driverKind: string } | null {
     const entry = this.byId.get(instanceId);
     if (!entry) return null;
-    const driverKind = entry.shadow?.driverKind ?? entry.live!.driverKind;
-    const driver = this.driversByKind.get(driverKind);
-    return {
-      driverKind,
-      cli: this.cliByInstance.get(instanceId) ?? entry.shadow?.cli ?? cliDefaultOf(driver) ?? null,
-    };
+    return { driverKind: entry.shadow?.driverKind ?? entry.live!.driverKind };
   }
 
   entries(): RegistryEntry[] {
@@ -196,73 +156,7 @@ export class ProviderRegistry {
     return [...this.byId.values()].flatMap((e) => (e.live ? [e.live] : []));
   }
 
-  /** Settings' Check and Refresh, and OpenCode's key policy changing: the engine's status is read again too. */
-  async refreshModels(instanceId: InstanceId): Promise<boolean> {
-    const instance = this.get(instanceId);
-    if (!instance) return false;
-    try {
-      await instance.refreshModels?.();
-    } finally {
-      this.forgetSnapshots();
-    }
-    return true;
-  }
-
-  async installRuntime(instanceId: InstanceId): Promise<boolean> {
-    const entry = this.byId.get(instanceId);
-    if (!entry) return false;
-    // A failed install changes the status too: Antigravity reports the failure as its reason.
-    try {
-      if (entry.live?.installRuntime) {
-        await entry.live.installRuntime();
-        return true;
-      }
-      const driver = this.driversByKind.get(entry.shadow?.driverKind ?? entry.live!.driverKind);
-      const server = serverInstallFor(driver?.install, this.npmPresent());
-      if (!server) return false;
-      await installNpmEngine(server.package, { baseDir: this.enginesBaseDir, cli: cliDefaultOf(driver) });
-      return true;
-    } finally {
-      this.forgetSnapshots();
-    }
-  }
-
-  async startAuthentication(instanceId: InstanceId): Promise<ProviderAuthenticationStart | null> {
-    const instance = this.get(instanceId);
-    return instance?.startAuthentication ? instance.startAuthentication() : null;
-  }
-
-  async getAuthentication(instanceId: InstanceId, flowId: string): Promise<ProviderAuthenticationStatus | null> {
-    const instance = this.get(instanceId);
-    return instance?.getAuthentication ? instance.getAuthentication(flowId) : null;
-  }
-
-  async completeAuthentication(instanceId: InstanceId, flowId: string, callbackUrl: string): Promise<boolean> {
-    const instance = this.get(instanceId);
-    if (!instance?.completeAuthentication) return false;
-    await instance.completeAuthentication(flowId, callbackUrl);
-    return true;
-  }
-
-  async cancelAuthentication(instanceId: InstanceId): Promise<boolean> {
-    const instance = this.get(instanceId);
-    if (!instance?.cancelAuthentication) return false;
-    await instance.cancelAuthentication();
-    return true;
-  }
-
   async describe() {
-    const candidatesByName = new Map<string, string[]>();
-    const candidatesFor = (driver: AnyProviderDriver | undefined): string[] => {
-      const name = cliDefaultOf(driver);
-      if (!name) return [];
-      const cached = candidatesByName.get(name);
-      if (cached) return cached;
-      const found = findCliCandidates(name);
-      candidatesByName.set(name, found);
-      return found;
-    };
-    const npmPresent = this.npmPresent();
     return Promise.all(
       this.entries().map(async (entry) => {
         const driver = this.driversByKind.get(entry.shadow?.driverKind ?? entry.live!.driverKind);
@@ -275,10 +169,6 @@ export class ProviderRegistry {
             models: { default: "", options: [] },
             capabilities: { computerMcp: false, agentsMcp: false, localComputerMcp: false },
             access: driver?.metadata.access ?? "subscription",
-            install: withServerInstall(driver?.install, npmPresent),
-            cli: entry.shadow.cli,
-            cliDefault: cliDefaultOf(driver),
-            cliCandidates: candidatesFor(driver),
           };
         }
         const inst = entry.live;
@@ -310,20 +200,6 @@ export class ProviderRegistry {
             backgroundText: inst.generateText !== undefined || inst.generateMemoryText !== undefined,
           },
           access: driver?.metadata.access ?? "subscription",
-          install: withServerInstall(driver?.install, npmPresent),
-          authentication: inst.startAuthentication
-            ? {
-                method: inst.authenticationMethod ?? (inst.getAuthentication && inst.completeAuthentication
-                  ? "paste-code" as const // a link to open, then a code pasted back (Claude)
-                  : inst.getAuthentication
-                    ? "device-code" as const // a code to enter at the provider's page (Codex)
-                    : "browser" as const), // a link and a callback URL (managed engines)
-                signOut: inst.signOut !== undefined,
-              }
-            : undefined,
-          cli: this.cliByInstance.get(inst.instanceId),
-          cliDefault: cliDefaultOf(driver),
-          cliCandidates: candidatesFor(driver),
         };
       }),
     );
@@ -332,14 +208,12 @@ export class ProviderRegistry {
   async disposeAll() {
     await Promise.allSettled(this.instances().map((i) => i.dispose()));
     this.byId.clear();
-    this.cliByInstance.clear();
     this.lastSnapshots.clear();
   }
 
   async dispose(instanceId: InstanceId) {
     const entry = this.byId.get(instanceId);
     this.byId.delete(instanceId);
-    this.cliByInstance.delete(instanceId);
     this.lastSnapshots.delete(instanceId);
     await entry?.live?.dispose();
   }
